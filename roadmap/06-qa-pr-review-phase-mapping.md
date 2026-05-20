@@ -1,6 +1,8 @@
 # Roadmap: mapeo skill `qa-pr-review` → artefactos
 
-Skill de referencia: `.agents/skills/qa-pr-review/SKILL.md`
+**Fases y comandos `qas` (propuesta de producto):** ver [11-proposed-workflow-phases.md](./11-proposed-workflow-phases.md). La skill abajo **migra** a esos comandos; referencias del proyecto → `qaspec/references/`.
+
+Origen en migración: `.agents/skills/qa-pr-review/SKILL.md`
 
 ## Fases actuales de la skill
 
@@ -13,12 +15,12 @@ Skill de referencia: `.agents/skills/qa-pr-review/SKILL.md`
 
 ## Mapeo a archivos en `changes/<name>/`
 
-| Fase skill | Artefacto en repo | Notas |
-|------------|-------------------|--------|
-| 1 | `analisis.md` | Puede incluir IDs técnicos; narrativa usuario en español según skill |
-| 2 | `testmatrix.md` | Markdown por suite; una línea por caso |
-| 3 | `execution-context.md` | Qase project code, rol, base URL |
-| 4 | No necessarily un md grande | Log opcional `publish-log.md`; MCP es side effect |
+| Fase skill | Artefacto en repo | Comando QASpec (ver [11](./11-proposed-workflow-phases.md)) |
+|------------|-------------------|-------------------------------------------------------------|
+| 1 | `analisis.md` | `/qas:analyze` |
+| 2 | `testmatrix.md` | `/qas:matrix` (ediciones en chat) |
+| 3 | — | Absorbida por `/qas:publish` (prerrequisitos Qase; halt si faltan datos) |
+| 4 | `publish-log.md`; opcional `execution-context.md` | `/qas:publish` |
 
 ## Comportamientos de la skill que NO son el CLI
 
@@ -59,7 +61,7 @@ rules:
     - Titles and steps: plain-language, no code identifiers in Qase-bound text
 ```
 
-## Dualidad README vs skill
+## Dualidad README vs comandos `qas`
 
-- **README QASpec**: global, inglés, agnóstico.
-- **qa-pr-review**: opinionado (PR GitHub, Qase, Angular/Cynch en análisis). Tratar como **pack de cliente** o schema pack `qaspec-cynch`, no defaults del motor.
+- **README QASpec**: visión global del producto.
+- **Comandos `qas`**: comportamiento operativo migrado desde esta skill; detalles de dominio (stack, idioma) vía `openspec/config.yaml` del proyecto, no vía pack paralelo.

@@ -19,10 +19,11 @@ Este directorio documenta el plan acordado para evolucionar este repositorio **d
 4. [04-openspec-config-yaml.md](./04-openspec-config-yaml.md) — `openspec/config.yaml` adaptado a QASpec
 5. [05-custom-schema-and-artifacts.md](./05-custom-schema-and-artifacts.md) — Schema QA y nombres de archivos
 6. [06-qa-pr-review-phase-mapping.md](./06-qa-pr-review-phase-mapping.md) — Fases de la skill → artefactos
-7. [07-commands-and-cli-rename.md](./07-commands-and-cli-rename.md) — Renombres futuros (`qas`, `qas analyze`, …)
-8. [08-resume-across-chats.md](./08-resume-across-chats.md) — Retomar trabajo en otro chat/IA
-9. [09-tcms-connectors.md](./09-tcms-connectors.md) — Qase, TestRail, Xray
-10. [10-upstream-merge-policy.md](./10-upstream-merge-policy.md) — Mantener alineado con OpenSpec upstream
+7. **[11-proposed-workflow-phases.md](./11-proposed-workflow-phases.md)** — **Fases QASpec propuestas, comandos `qas`, Qase v1**
+8. [07-commands-and-cli-rename.md](./07-commands-and-cli-rename.md) — Renombres futuros (`qas`, `qas analyze`, …)
+9. [08-resume-across-chats.md](./08-resume-across-chats.md) — Retomar trabajo en otro chat/IA
+10. [09-tcms-connectors.md](./09-tcms-connectors.md) — Qase, TestRail, Xray
+11. [10-upstream-merge-policy.md](./10-upstream-merge-policy.md) — Mantener alineado con OpenSpec upstream
 
 ## Convención para cambios OpenSpec
 
