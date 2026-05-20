@@ -34,6 +34,25 @@ openspec/
     └── archive/
 ```
 
+### Requirement: QASpec reference scaffolding on init
+
+The `openspec init` command SHALL scaffold `qaspec/references/historical_bugs.md` and `qaspec/references/qase_test_case_rules.md` when missing, without overwriting existing files.
+
+#### Scenario: References created on first init
+
+- **WHEN** init completes successfully on a project without those files
+- **THEN** both reference files exist under `qaspec/references/`
+- **AND** existing reference files are unchanged on re-init
+
+### Requirement: QASpec core workflow messaging
+
+Upon successful init with the QASpec core profile, success output SHALL mention `/qas:explore`, `/qas:analyze`, `/qas:matrix`, and `/qas:publish` as primary next steps instead of `/opsx:propose` and `/opsx:apply`.
+
+#### Scenario: Post-init guidance
+
+- **WHEN** init finishes configuring at least one AI tool with the QASpec core profile
+- **THEN** the CLI prints next-step hints using `/qas:*` command names
+
 ### Requirement: AI Tool Configuration
 
 The command SHALL configure AI coding assistants with skills and slash commands using a searchable multi-select experience.
@@ -51,9 +70,10 @@ The command SHALL configure AI coding assistants with skills and slash commands 
 #### Scenario: Selecting tools to configure
 
 - **WHEN** user selects tools and confirms
-- **THEN** generate skills in `.<tool>/skills/` directory for each selected tool
-- **AND** generate slash commands in `.<tool>/commands/opsx/` directory for each selected tool
-- **AND** create `openspec/config.yaml` with default schema setting
+- **THEN** generate QASpec workflow skills in `.<tool>/skills/` directory for each selected tool when using the QASpec core profile
+- **AND** generate slash commands as `qas-<id>.md` (or tool-equivalent paths) with `/qas:<id>` names for Cursor-class tools
+- **AND** create `openspec/config.yaml` with default schema `qaspec-pr-review` when the QASpec product default applies
+- **AND** generate legacy OpenSpec skills and `opsx-*` commands when the user selects a custom profile that includes legacy workflow ids
 
 ### Requirement: Interactive Mode
 The command SHALL provide an interactive menu for AI tool selection with clear navigation instructions.
@@ -85,10 +105,8 @@ The command SHALL provide clear, actionable next steps upon successful initializ
   - "Created: <tools>" for newly configured tools
   - "Refreshed: <tools>" for already-configured tools that were updated
   - Count of skills and commands generated
-- **AND** display getting started section with:
-  - `/opsx:new` - Start a new change
-  - `/opsx:continue` - Create the next artifact
-  - `/opsx:apply` - Implement tasks
+- **AND** display getting started section with QASpec core hints (`/qas:explore`, `/qas:analyze`, `/qas:matrix`, `/qas:publish`) when the core profile is active
+- **OR** legacy OpenSpec hints (`/opsx:new`, `/opsx:continue`, `/opsx:apply`) when legacy workflows are in the active profile
 - **AND** display links to documentation and feedback
 
 #### Scenario: Displaying restart instruction

@@ -12,10 +12,10 @@ The system SHALL define a tool-agnostic `CommandContent` interface for command d
 
 - **WHEN** defining a command to generate
 - **THEN** `CommandContent` SHALL include:
-  - `id`: string identifier (e.g., 'explore', 'apply')
-  - `name`: human-readable name (e.g., 'OpenSpec Explore')
+  - `id`: string identifier (e.g., 'explore', 'analyze', 'matrix', 'publish')
+  - `name`: human-readable name (e.g., 'QASpec Analyze')
   - `description`: brief description of command purpose
-  - `category`: grouping category (e.g., 'OpenSpec')
+  - `category`: grouping category (e.g., 'QASpec' or 'OpenSpec')
   - `tags`: array of tag strings
   - `body`: the command instruction content
 
@@ -31,23 +31,39 @@ The system SHALL define a `ToolCommandAdapter` interface for per-tool formatting
   - `getFilePath(commandId: string)`: returns file path for command (relative from project root, or absolute for global-scoped tools like Codex)
   - `formatFile(content: CommandContent)`: returns complete file content with frontmatter
 
-#### Scenario: Claude adapter formatting
+#### Scenario: Claude adapter formatting for QASpec workflows
 
-- **WHEN** formatting a command for Claude Code
+- **WHEN** formatting a QASpec command for Claude Code
 - **THEN** the adapter SHALL output YAML frontmatter with `name`, `description`, `category`, `tags` fields
-- **AND** file path SHALL follow pattern `.claude/commands/opsx/<id>.md`
+- **AND** file path SHALL follow pattern `.claude/commands/qas/<id>.md`
 
-#### Scenario: Cursor adapter formatting
+#### Scenario: Claude adapter formatting for legacy workflows
 
-- **WHEN** formatting a command for Cursor
-- **THEN** the adapter SHALL output YAML frontmatter with `name` as `/opsx-<id>`, `id`, `category`, `description` fields
+- **WHEN** formatting a legacy OpenSpec command for Claude Code
+- **THEN** file path SHALL follow pattern `.claude/commands/opsx/<id>.md`
+
+#### Scenario: Cursor adapter formatting for QASpec workflows
+
+- **WHEN** formatting a QASpec command for Cursor
+- **THEN** the adapter SHALL output YAML frontmatter with `name` as `/qas:<id>`, `id` as `qas-<id>`, `category`, `description` fields
+- **AND** file path SHALL follow pattern `.cursor/commands/qas-<id>.md`
+
+#### Scenario: Cursor adapter formatting for legacy workflows
+
+- **WHEN** formatting a legacy OpenSpec command for Cursor
+- **THEN** frontmatter `name` SHALL use `/opsx:<id>` form
 - **AND** file path SHALL follow pattern `.cursor/commands/opsx-<id>.md`
 
-#### Scenario: Windsurf adapter formatting
+#### Scenario: Windsurf adapter formatting for QASpec workflows
 
-- **WHEN** formatting a command for Windsurf
+- **WHEN** formatting a QASpec command for Windsurf
 - **THEN** the adapter SHALL output YAML frontmatter with `name`, `description`, `category`, `tags` fields
-- **AND** file path SHALL follow pattern `.windsurf/workflows/opsx-<id>.md`
+- **AND** file path SHALL follow pattern `.windsurf/workflows/qas-<id>.md`
+
+#### Scenario: Windsurf adapter formatting for legacy workflows
+
+- **WHEN** formatting a legacy OpenSpec command for Windsurf
+- **THEN** file path SHALL follow pattern `.windsurf/workflows/opsx-<id>.md`
 
 ### Requirement: Command generator function
 
@@ -94,4 +110,28 @@ The body content of commands SHALL be shared across all tools.
 - **WHEN** generating the 'explore' command for Claude and Cursor
 - **THEN** both SHALL use the same `body` content
 - **AND** only the frontmatter and file path SHALL differ
+
+### Requirement: QASpec command id prefix
+
+When generating commands for QASpec workflows, adapters SHALL use the `qas-` file prefix and `/qas:` slash name prefix instead of `opsx-` and `/opsx:`.
+
+#### Scenario: Cursor QASpec command path
+
+- **WHEN** generating the `analyze` command for Cursor with QASpec templates
+- **THEN** `getFilePath('analyze')` resolves to `.cursor/commands/qas-analyze.md` using path.join
+- **AND** formatted frontmatter `name` is `/qas:analyze`
+
+#### Scenario: Hyphen transform tools
+
+- **WHEN** generating commands for OpenCode or Pi with hyphen command syntax
+- **THEN** `transformToHyphenCommands` converts `/qas:` to `/qas-` in instruction bodies
+
+### Requirement: QASpec command content registry
+
+The skill generation registry SHALL map workflow ids `explore`, `analyze`, `matrix`, `publish`, and `archive` to QASpec template getters.
+
+#### Scenario: Filtered generation
+
+- **WHEN** init requests workflows `['analyze', 'matrix']` only
+- **THEN** only matching QASpec command and skill templates are emitted
 
