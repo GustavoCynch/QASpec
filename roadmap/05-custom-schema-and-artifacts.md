@@ -19,7 +19,7 @@ Editar:
 
 | spec-driven (OpenSpec) | QASpec (propuesto) |
 |------------------------|-------------------|
-| `proposal.md` | `intake.md` o brief; motivo y alcance del ciclo QA |
+| `proposal.md` | *(v1: no intake obligatorio)* — alcance vía chat o `analisis.md` |
 | — | `analisis.md` — análisis de riesgo / PR (Phase 1 skill) |
 | `specs/**/*.md` | Opcional para capacidades estables; o integrado en matriz |
 | `design.md` | Conectores, MCP, decisiones técnicas del flujo |
@@ -27,19 +27,17 @@ Editar:
 | — | `execution-context.md` — proyecto TCMS, rol, URLs (Phase 3) |
 | `apply` (código) | `publish` — subida TCMS, checklist de suites creadas |
 
-## Grafo tentativo
+## Grafo (v1 — ver también [11](./11-proposed-workflow-phases.md))
 
 ```
-intake.md (opcional)
-    ↓
 analisis.md
     ↓
-testmatrix.md
+testmatrix.md   (checkboxes; publish.tracks)
     ↓
-execution-context.md
-    ↓
-publish (apply phase — trackear publicación, no código)
+publish         → publish-log.md; execution-context.md opcional (escrito por publish)
 ```
+
+Sin `intake.md` obligatorio. Prerrequisitos Qase van **dentro** de `publish`, no en un artefacto `execution-context` previo al grafo.
 
 ## `generates` en schema.yaml
 

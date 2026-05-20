@@ -628,7 +628,7 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatCleanupSummary(result);
-      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /opsx:*)');
+      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /qas:*)');
     });
 
     it('should format modified files', () => {
@@ -922,7 +922,11 @@ ${OPENSPEC_MARKERS.end}`);
 
       expect(LEGACY_SLASH_COMMAND_PATHS['cursor']).toEqual({
         type: 'files',
-        pattern: '.cursor/commands/openspec-*.md',
+        pattern: [
+          '.cursor/commands/qas-*.md',
+          '.cursor/commands/opsx-*.md',
+          '.cursor/commands/openspec-*.md',
+        ],
       });
 
       expect(LEGACY_SLASH_COMMAND_PATHS['windsurf']).toEqual({
@@ -1121,13 +1125,13 @@ ${OPENSPEC_MARKERS.end}`);
       expect(tools).toHaveLength(1);
     });
 
-    it('should deduplicate opencode when both opsx-* and openspec-* files exist', () => {
+    it('should deduplicate opencode when both qas-* and openspec-* files exist', () => {
       const detection = {
         configFiles: [],
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [
-          '.opencode/command/opsx-propose.md',
+          '.opencode/command/qas-propose.md',
           '.opencode/command/openspec-new.md',
         ],
         hasOpenspecAgents: false,

@@ -16,7 +16,7 @@ export const codebuddyAdapter: ToolCommandAdapter = {
   toolId: 'codebuddy',
 
   getFilePath(commandId: string): string {
-    return path.join('.codebuddy', 'commands', 'opsx', `${commandId}.md`);
+    return path.join('.codebuddy', 'commands', 'qas', `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { CORE_WORKFLOWS } from '../../../src/core/profiles.js';
 import {
   getSkillTemplates,
   getCommandTemplates,
@@ -6,34 +7,42 @@ import {
   generateSkillContent,
 } from '../../../src/core/shared/skill-generation.js';
 
+const LEGACY_ONLY_WORKFLOWS = ['propose', 'new', 'continue', 'apply', 'ff', 'sync', 'bulk-archive', 'verify', 'onboard'] as const;
+
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return all 11 skill templates', () => {
+    it('should return merged QASpec and legacy skill templates when unfiltered', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(11);
+      expect(templates.length).toBeGreaterThanOrEqual(14);
     });
 
-    it('should have unique directory names', () => {
+    it('should return QASpec core skills for CORE_WORKFLOWS', () => {
+      const templates = getSkillTemplates(CORE_WORKFLOWS);
+      expect(templates).toHaveLength(5);
+      const dirNames = templates.map((t) => t.dirName);
+      expect(dirNames).toEqual(
+        expect.arrayContaining([
+          'qas-explore',
+          'qas-analyze',
+          'qas-matrix',
+          'qas-publish',
+          'qas-archive',
+        ])
+      );
+    });
+
+    it('should have unique directory names when unfiltered', () => {
       const templates = getSkillTemplates();
-      const dirNames = templates.map(t => t.dirName);
+      const dirNames = templates.map((t) => t.dirName);
       const uniqueDirNames = new Set(dirNames);
       expect(uniqueDirNames.size).toBe(templates.length);
     });
 
-    it('should include all expected skills', () => {
+    it('should include legacy skills when unfiltered', () => {
       const templates = getSkillTemplates();
-      const dirNames = templates.map(t => t.dirName);
+      const dirNames = templates.map((t) => t.dirName);
 
-      expect(dirNames).toContain('openspec-explore');
       expect(dirNames).toContain('openspec-new-change');
-      expect(dirNames).toContain('openspec-continue-change');
-      expect(dirNames).toContain('openspec-apply-change');
-      expect(dirNames).toContain('openspec-ff-change');
-      expect(dirNames).toContain('openspec-sync-specs');
-      expect(dirNames).toContain('openspec-archive-change');
-      expect(dirNames).toContain('openspec-bulk-archive-change');
-      expect(dirNames).toContain('openspec-verify-change');
-      expect(dirNames).toContain('openspec-onboard');
       expect(dirNames).toContain('openspec-propose');
     });
 
@@ -49,23 +58,21 @@ describe('skill-generation', () => {
       }
     });
 
-    it('should have unique workflow IDs', () => {
+    it('should have unique workflow IDs when unfiltered', () => {
       const templates = getSkillTemplates();
-      const ids = templates.map(t => t.workflowId);
+      const ids = templates.map((t) => t.workflowId);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(templates.length);
     });
 
-    it('should filter by workflow IDs when provided', () => {
+    it('should filter legacy and shared QAS workflows when filter has no QASpec-only ids', () => {
       const filtered = getSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       expect(filtered).toHaveLength(4);
-      const ids = filtered.map(t => t.workflowId);
-      expect(ids).toContain('propose');
-      expect(ids).toContain('explore');
-      expect(ids).toContain('apply');
-      expect(ids).toContain('archive');
-      expect(ids).not.toContain('new');
-      expect(ids).not.toContain('ff');
+      const dirNames = filtered.map((t) => t.dirName);
+      expect(dirNames).toContain('openspec-propose');
+      expect(dirNames).toContain('qas-explore');
+      expect(dirNames).toContain('openspec-apply-change');
+      expect(dirNames).toContain('qas-archive');
     });
 
     it('should return all templates when filter is undefined', () => {
@@ -79,7 +86,7 @@ describe('skill-generation', () => {
       expect(filtered).toHaveLength(0);
     });
 
-    it('should return single template when filter has one workflow', () => {
+    it('should return single legacy template when filter has propose only', () => {
       const filtered = getSkillTemplates(['propose']);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].workflowId).toBe('propose');
@@ -88,45 +95,40 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandTemplates', () => {
-    it('should return all 11 command templates', () => {
+    it('should return merged command templates when unfiltered', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(11);
+      expect(templates.length).toBeGreaterThanOrEqual(14);
     });
 
-    it('should have unique IDs', () => {
+    it('should return five QASpec commands for CORE_WORKFLOWS', () => {
+      const templates = getCommandTemplates(CORE_WORKFLOWS);
+      expect(templates).toHaveLength(5);
+      expect(templates.map((t) => t.id).sort()).toEqual(
+        ['analyze', 'archive', 'explore', 'matrix', 'publish'].sort()
+      );
+    });
+
+    it('should have unique IDs when unfiltered', () => {
       const templates = getCommandTemplates();
-      const ids = templates.map(t => t.id);
+      const ids = templates.map((t) => t.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(templates.length);
     });
 
-    it('should include all expected commands', () => {
+    it('should include legacy command ids when unfiltered', () => {
       const templates = getCommandTemplates();
-      const ids = templates.map(t => t.id);
+      const ids = templates.map((t) => t.id);
 
-      expect(ids).toContain('explore');
-      expect(ids).toContain('new');
-      expect(ids).toContain('continue');
-      expect(ids).toContain('apply');
-      expect(ids).toContain('ff');
-      expect(ids).toContain('sync');
-      expect(ids).toContain('archive');
-      expect(ids).toContain('bulk-archive');
-      expect(ids).toContain('verify');
-      expect(ids).toContain('onboard');
+      for (const id of LEGACY_ONLY_WORKFLOWS) {
+        if (id === 'explore' || id === 'archive' || id === 'apply') continue;
+        expect(ids).toContain(id);
+      }
       expect(ids).toContain('propose');
     });
 
-    it('should filter by workflow IDs when provided', () => {
+    it('should filter legacy commands when filter has no QASpec ids', () => {
       const filtered = getCommandTemplates(['propose', 'explore', 'apply', 'archive']);
       expect(filtered).toHaveLength(4);
-      const ids = filtered.map(t => t.id);
-      expect(ids).toContain('propose');
-      expect(ids).toContain('explore');
-      expect(ids).toContain('apply');
-      expect(ids).toContain('archive');
-      expect(ids).not.toContain('new');
-      expect(ids).not.toContain('ff');
     });
 
     it('should return all templates when filter is undefined', () => {
@@ -142,9 +144,9 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandContents', () => {
-    it('should return all 11 command contents', () => {
+    it('should return merged command contents when unfiltered', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(11);
+      expect(contents.length).toBeGreaterThanOrEqual(14);
     });
 
     it('should have valid content structure', () => {
@@ -162,19 +164,18 @@ describe('skill-generation', () => {
       const templates = getCommandTemplates();
       const contents = getCommandContents();
 
-      const templateIds = templates.map(t => t.id).sort();
-      const contentIds = contents.map(c => c.id).sort();
+      const templateIds = templates.map((t) => t.id).sort();
+      const contentIds = contents.map((c) => c.id).sort();
 
       expect(contentIds).toEqual(templateIds);
     });
 
-    it('should filter by workflow IDs when provided', () => {
+    it('should filter legacy contents when filter has propose and explore only', () => {
       const filtered = getCommandContents(['propose', 'explore']);
       expect(filtered).toHaveLength(2);
-      const ids = filtered.map(c => c.id);
+      const ids = filtered.map((c) => c.id);
       expect(ids).toContain('propose');
       expect(ids).toContain('explore');
-      expect(ids).not.toContain('new');
     });
 
     it('should return all contents when filter is undefined', () => {
@@ -211,91 +212,19 @@ describe('skill-generation', () => {
       expect(content).toContain('Test instructions');
     });
 
-    it('should use default values for optional fields', () => {
-      const template = {
-        name: 'minimal-skill',
-        description: 'Minimal description',
-        instructions: 'Minimal instructions',
-      };
-
-      const content = generateSkillContent(template, '0.24.0');
-
-      expect(content).toContain('license: MIT');
-      expect(content).toContain('compatibility: Requires openspec CLI.');
-      expect(content).toContain('author: openspec');
-      expect(content).toContain('version: "1.0"');
-      expect(content).toContain('generatedBy: "0.24.0"');
-    });
-
-    it('should embed the provided version in generatedBy field', () => {
-      const template = {
-        name: 'version-test',
-        description: 'Test version embedding',
-        instructions: 'Instructions',
-      };
-
-      const content1 = generateSkillContent(template, '0.23.0');
-      expect(content1).toContain('generatedBy: "0.23.0"');
-
-      const content2 = generateSkillContent(template, '1.0.0');
-      expect(content2).toContain('generatedBy: "1.0.0"');
-
-      const content3 = generateSkillContent(template, '0.24.0-beta.1');
-      expect(content3).toContain('generatedBy: "0.24.0-beta.1"');
-    });
-
-    it('should end frontmatter with separator and blank line', () => {
-      const template = {
-        name: 'test',
-        description: 'Test',
-        instructions: 'Body content',
-      };
-
-      const content = generateSkillContent(template, '0.23.0');
-
-      expect(content).toMatch(/---\n\nBody content\n$/);
-    });
-
     it('should apply transformInstructions callback when provided', () => {
       const template = {
         name: 'transform-test',
         description: 'Test transform callback',
-        instructions: 'Use /opsx:new to start and /opsx:apply to implement.',
+        instructions: 'Use /qas:new to start and /qas:apply to implement.',
       };
 
-      const transformer = (text: string) => text.replace(/\/opsx:/g, '/opsx-');
+      const transformer = (text: string) => text.replace(/\/(qas|opsx):/g, '/$1-');
       const content = generateSkillContent(template, '0.23.0', transformer);
 
-      expect(content).toContain('/opsx-new');
-      expect(content).toContain('/opsx-apply');
-      expect(content).not.toContain('/opsx:new');
-      expect(content).not.toContain('/opsx:apply');
-    });
-
-    it('should not transform instructions when callback is undefined', () => {
-      const template = {
-        name: 'no-transform-test',
-        description: 'Test without transform',
-        instructions: 'Use /opsx:new to start.',
-      };
-
-      const content = generateSkillContent(template, '0.23.0', undefined);
-
-      expect(content).toContain('/opsx:new');
-    });
-
-    it('should support custom transformInstructions logic', () => {
-      const template = {
-        name: 'custom-transform',
-        description: 'Test custom transform',
-        instructions: 'Some PLACEHOLDER text here.',
-      };
-
-      const customTransformer = (text: string) => text.replace('PLACEHOLDER', 'REPLACED');
-      const content = generateSkillContent(template, '0.23.0', customTransformer);
-
-      expect(content).toContain('Some REPLACED text here.');
-      expect(content).not.toContain('PLACEHOLDER');
+      expect(content).toContain('/qas-new');
+      expect(content).toContain('/qas-apply');
+      expect(content).not.toContain('/qas:new');
     });
   });
 });

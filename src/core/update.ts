@@ -268,11 +268,22 @@ export class UpdateCommand {
 
     // 12. Show onboarding message for newly configured tools from legacy upgrade
     if (newlyConfiguredTools.length > 0) {
+      const activeWorkflows = [...getProfileWorkflows(profile, globalConfig.workflows)];
       console.log();
-      console.log(chalk.bold('Getting started:'));
-      console.log('  /opsx:new       Start a new change');
-      console.log('  /opsx:continue  Create the next artifact');
-      console.log('  /opsx:apply     Implement tasks');
+      if (activeWorkflows.includes('analyze')) {
+        console.log(chalk.bold('Getting started:'));
+        console.log('  openspec new change <name>   Create a QA change');
+        console.log('  /qas:explore                 Think before the formal cycle');
+        console.log('  /qas:analyze                 Analysis (analisis.md)');
+        console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
+        console.log('  /qas:publish                 Publish to Qase');
+      } else if (activeWorkflows.includes('propose')) {
+        console.log(chalk.bold('Getting started:'));
+        console.log('  Start your first change: /opsx:propose "your idea"');
+      } else if (activeWorkflows.includes('new')) {
+        console.log(chalk.bold('Getting started:'));
+        console.log('  Start your first change: /opsx:new "your idea"');
+      }
       console.log();
       console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/OpenSpec')}`);
     }

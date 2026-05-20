@@ -16,7 +16,7 @@ export const qoderAdapter: ToolCommandAdapter = {
   toolId: 'qoder',
 
   getFilePath(commandId: string): string {
-    return path.join('.qoder', 'commands', 'opsx', `${commandId}.md`);
+    return path.join('.qoder', 'commands', 'qas', `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

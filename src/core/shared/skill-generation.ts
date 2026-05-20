@@ -27,6 +27,16 @@ import {
   getOpsxVerifyCommandTemplate,
   getOpsxOnboardCommandTemplate,
   getOpsxProposeCommandTemplate,
+  getQasExploreSkillTemplate,
+  getQasExploreCommandTemplate,
+  getQasAnalyzeSkillTemplate,
+  getQasAnalyzeCommandTemplate,
+  getQasMatrixSkillTemplate,
+  getQasMatrixCommandTemplate,
+  getQasPublishSkillTemplate,
+  getQasPublishCommandTemplate,
+  getQasArchiveSkillTemplate,
+  getQasArchiveCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -48,62 +58,102 @@ export interface CommandTemplateEntry {
   id: string;
 }
 
+const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
+  { template: getQasExploreSkillTemplate(), dirName: 'qas-explore', workflowId: 'explore' },
+  { template: getQasAnalyzeSkillTemplate(), dirName: 'qas-analyze', workflowId: 'analyze' },
+  { template: getQasMatrixSkillTemplate(), dirName: 'qas-matrix', workflowId: 'matrix' },
+  { template: getQasPublishSkillTemplate(), dirName: 'qas-publish', workflowId: 'publish' },
+  { template: getQasArchiveSkillTemplate(), dirName: 'qas-archive', workflowId: 'archive' },
+];
+
+const LEGACY_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
+  { template: getNewChangeSkillTemplate(), dirName: 'openspec-new-change', workflowId: 'new' },
+  { template: getContinueChangeSkillTemplate(), dirName: 'openspec-continue-change', workflowId: 'continue' },
+  { template: getApplyChangeSkillTemplate(), dirName: 'openspec-apply-change', workflowId: 'apply' },
+  { template: getFfChangeSkillTemplate(), dirName: 'openspec-ff-change', workflowId: 'ff' },
+  { template: getSyncSpecsSkillTemplate(), dirName: 'openspec-sync-specs', workflowId: 'sync' },
+  { template: getBulkArchiveChangeSkillTemplate(), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
+  { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
+  { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
+  { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-propose', workflowId: 'propose' },
+];
+
+const QAS_COMMAND_ENTRIES: CommandTemplateEntry[] = [
+  { template: getQasExploreCommandTemplate(), id: 'explore' },
+  { template: getQasAnalyzeCommandTemplate(), id: 'analyze' },
+  { template: getQasMatrixCommandTemplate(), id: 'matrix' },
+  { template: getQasPublishCommandTemplate(), id: 'publish' },
+  { template: getQasArchiveCommandTemplate(), id: 'archive' },
+];
+
+const LEGACY_COMMAND_ENTRIES: CommandTemplateEntry[] = [
+  { template: getOpsxNewCommandTemplate(), id: 'new' },
+  { template: getOpsxContinueCommandTemplate(), id: 'continue' },
+  { template: getOpsxApplyCommandTemplate(), id: 'apply' },
+  { template: getOpsxFfCommandTemplate(), id: 'ff' },
+  { template: getOpsxSyncCommandTemplate(), id: 'sync' },
+  { template: getOpsxBulkArchiveCommandTemplate(), id: 'bulk-archive' },
+  { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
+  { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
+  { template: getOpsxProposeCommandTemplate(), id: 'propose' },
+];
+
+function usesQasWorkflowSurface(workflowFilter?: readonly string[]): boolean {
+  if (!workflowFilter) return false;
+  const set = new Set(workflowFilter);
+  return set.has('analyze') || set.has('matrix') || set.has('publish');
+}
+
 /**
  * Gets skill templates with their directory names, optionally filtered by workflow IDs.
- *
- * @param workflowFilter - If provided, only return templates whose workflowId is in this array
  */
 export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemplateEntry[] {
-  const all: SkillTemplateEntry[] = [
-    { template: getExploreSkillTemplate(), dirName: 'openspec-explore', workflowId: 'explore' },
-    { template: getNewChangeSkillTemplate(), dirName: 'openspec-new-change', workflowId: 'new' },
-    { template: getContinueChangeSkillTemplate(), dirName: 'openspec-continue-change', workflowId: 'continue' },
-    { template: getApplyChangeSkillTemplate(), dirName: 'openspec-apply-change', workflowId: 'apply' },
-    { template: getFfChangeSkillTemplate(), dirName: 'openspec-ff-change', workflowId: 'ff' },
-    { template: getSyncSpecsSkillTemplate(), dirName: 'openspec-sync-specs', workflowId: 'sync' },
-    { template: getArchiveChangeSkillTemplate(), dirName: 'openspec-archive-change', workflowId: 'archive' },
-    { template: getBulkArchiveChangeSkillTemplate(), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
-    { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
-    { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-propose', workflowId: 'propose' },
-  ];
+  const filterSet = workflowFilter ? new Set(workflowFilter) : null;
 
-  if (!workflowFilter) return all;
+  const pick = (entries: SkillTemplateEntry[]) =>
+    filterSet ? entries.filter((entry) => filterSet.has(entry.workflowId)) : entries;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.workflowId));
+  if (!workflowFilter) {
+    return [...QAS_WORKFLOW_ENTRIES, ...LEGACY_WORKFLOW_ENTRIES];
+  }
+
+  if (usesQasWorkflowSurface(workflowFilter)) {
+    return pick(QAS_WORKFLOW_ENTRIES);
+  }
+
+  const legacy = pick(LEGACY_WORKFLOW_ENTRIES);
+  const qasShared = pick(
+    QAS_WORKFLOW_ENTRIES.filter((e) => e.workflowId === 'explore' || e.workflowId === 'archive')
+  );
+  return [...qasShared, ...legacy];
 }
 
 /**
  * Gets command templates with their IDs, optionally filtered by workflow IDs.
- *
- * @param workflowFilter - If provided, only return templates whose id is in this array
  */
 export function getCommandTemplates(workflowFilter?: readonly string[]): CommandTemplateEntry[] {
-  const all: CommandTemplateEntry[] = [
-    { template: getOpsxExploreCommandTemplate(), id: 'explore' },
-    { template: getOpsxNewCommandTemplate(), id: 'new' },
-    { template: getOpsxContinueCommandTemplate(), id: 'continue' },
-    { template: getOpsxApplyCommandTemplate(), id: 'apply' },
-    { template: getOpsxFfCommandTemplate(), id: 'ff' },
-    { template: getOpsxSyncCommandTemplate(), id: 'sync' },
-    { template: getOpsxArchiveCommandTemplate(), id: 'archive' },
-    { template: getOpsxBulkArchiveCommandTemplate(), id: 'bulk-archive' },
-    { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
-    { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(), id: 'propose' },
-  ];
+  const filterSet = workflowFilter ? new Set(workflowFilter) : null;
 
-  if (!workflowFilter) return all;
+  const pickCmd = (entries: CommandTemplateEntry[]) =>
+    filterSet ? entries.filter((entry) => filterSet.has(entry.id)) : entries;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.id));
+  if (!workflowFilter) {
+    return [...QAS_COMMAND_ENTRIES, ...LEGACY_COMMAND_ENTRIES];
+  }
+
+  if (usesQasWorkflowSurface(workflowFilter)) {
+    return pickCmd(QAS_COMMAND_ENTRIES);
+  }
+
+  const legacy = pickCmd(LEGACY_COMMAND_ENTRIES);
+  const qasShared = pickCmd(
+    QAS_COMMAND_ENTRIES.filter((e) => e.id === 'explore' || e.id === 'archive')
+  );
+  return [...qasShared, ...legacy];
 }
 
 /**
  * Converts command templates to CommandContent array, optionally filtered by workflow IDs.
- *
- * @param workflowFilter - If provided, only return contents whose id is in this array
  */
 export function getCommandContents(workflowFilter?: readonly string[]): CommandContent[] {
   const commandTemplates = getCommandTemplates(workflowFilter);
@@ -119,10 +169,6 @@ export function getCommandContents(workflowFilter?: readonly string[]): CommandC
 
 /**
  * Generates skill file content with YAML frontmatter.
- *
- * @param template - The skill template
- * @param generatedByVersion - The OpenSpec version to embed in the file
- * @param transformInstructions - Optional callback to transform the instructions content
  */
 export function generateSkillContent(
   template: SkillTemplate,

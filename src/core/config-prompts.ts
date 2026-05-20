@@ -13,6 +13,14 @@ export function serializeConfig(config: Partial<ProjectConfig>): string {
   lines.push(`schema: ${config.schema}`);
   lines.push('');
 
+  if (config.schema === 'qaspec-pr-review') {
+    lines.push('context: |');
+    lines.push('  Language: English');
+    lines.push('  All QA artifacts, reference scaffolds, and halt messages must use the language declared here.');
+    lines.push('  See docs/multi-language.md to switch (e.g. Spanish, Portuguese).');
+    lines.push('');
+  }
+
   // Context section with comments
   lines.push('# Project context (optional)');
   lines.push('# This is shown to AI when creating artifacts.');

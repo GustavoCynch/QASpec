@@ -1,0 +1,37 @@
+import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
+
+const QAS_PUBLISH_BODY = `Run QASpec **publish** (Phase 3). Upload approved \`testmatrix.md\` to Qase via MCP.
+
+**Language:** \`publish-log.md\`, \`execution-context.md\`, and halts use project language from config.
+
+**Steps**
+
+1. Run \`openspec instructions apply --change "<name>" --json\` (publish phase for \`qaspec-pr-review\`).
+2. Re-read \`qaspec/references/qase_test_case_rules.md\`; confirm matrix approved and checkbox-formatted.
+3. Resolve Qase prerequisites (project code, role, base URL) from artifacts, \`execution-context.md\`, or chat; if missing, **one** halt with only missing fields — then persist to \`execution-context.md\`.
+4. Validate matrix against rules; then MCP \`create_suite\` / \`create_case\` (or bulk).
+5. Write \`publish-log.md\`; mark each published row \`- [x]\` in \`testmatrix.md\`.
+6. Stop on PII/secrets. Do not modify application source under test.
+
+**Guardrails:** no second halt after prerequisites are complete; v1 TCMS is Qase only.`;
+
+export function getQasPublishSkillTemplate(): SkillTemplate {
+  return {
+    name: 'qas-publish',
+    description: 'QASpec publish — Qase MCP upload and testmatrix checkbox updates',
+    instructions: QAS_PUBLISH_BODY,
+    compatibility: 'Requires openspec CLI and Qase MCP.',
+    metadata: { author: 'qaspec', version: '1.0' },
+  };
+}
+
+export function getQasPublishCommandTemplate(): CommandTemplate {
+  return {
+    name: 'QAS: Publish',
+    description: 'Publish approved test matrix to Qase and update checkboxes',
+    category: QASPEC_COMMAND_CATEGORY,
+    tags: ['workflow', 'publish', 'qa'],
+    content: QAS_PUBLISH_BODY,
+  };
+}

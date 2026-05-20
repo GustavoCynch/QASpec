@@ -29,7 +29,9 @@ Additional connectors may follow the same plugin model.
 
 ## Status
 
-This repository is in **early, private development**. The CLI, project scaffold (`qaspec/`), agent skills, and installer are not published here yet.
+This repository is in **early development** (OpenSpec fork). The CLI ships as `openspec` today; QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `openspec init`. The standalone `qaspec` binary rename is planned (see `roadmap/`).
+
+The legacy `.agents/skills/qa-pr-review` pack is **superseded** by `/qas:analyze`, `/qas:matrix`, and `/qas:publish`; it will be removed in a follow-up change.
 
 ## License
 

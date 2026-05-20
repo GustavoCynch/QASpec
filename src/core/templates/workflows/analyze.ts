@@ -1,0 +1,39 @@
+import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
+
+const QAS_ANALYZE_BODY = `Run QASpec **analyze** (Phase 1). Produce \`analisis.md\` for the active change.
+
+**Language:** Artifact body and halt question use the project language from \`openspec/config.yaml\` \`context\` and \`rules\`.
+
+**Read-only** on application source under test.
+
+**Steps**
+
+1. Resolve change name; run \`openspec status --change "<name>" --json\` and \`openspec instructions analyze --change "<name>" --json\`.
+2. Read \`qaspec/references/historical_bugs.md\` (mandatory; re-read this run).
+3. Gather diff: \`gh pr diff\` / \`gh pr view\` for GitHub PRs, else \`git diff\` or user patch.
+4. Run **two parallel blind Task subagents** to draft analysis; synthesize one \`analisis.md\` at \`resolvedOutputPath\`.
+5. Dual source of truth: functional intent (notes, description) vs technical diff.
+6. End with **exactly one** halt question. Do NOT write \`testmatrix.md\` or continue to matrix in the same message.
+
+**Guardrails:** no Qase MCP; no app code edits; one message for this phase.`;
+
+export function getQasAnalyzeSkillTemplate(): SkillTemplate {
+  return {
+    name: 'qas-analyze',
+    description: 'QASpec analyze — PR/requirements analysis and risks into analisis.md',
+    instructions: QAS_ANALYZE_BODY,
+    compatibility: 'Requires openspec CLI; gh or git for diffs.',
+    metadata: { author: 'qaspec', version: '1.0' },
+  };
+}
+
+export function getQasAnalyzeCommandTemplate(): CommandTemplate {
+  return {
+    name: 'QAS: Analyze',
+    description: 'Analyze change and write analisis.md with dual-analyst synthesis',
+    category: QASPEC_COMMAND_CATEGORY,
+    tags: ['workflow', 'analyze', 'qa'],
+    content: QAS_ANALYZE_BODY,
+  };
+}

@@ -16,7 +16,7 @@ export const lingmaAdapter: ToolCommandAdapter = {
   toolId: 'lingma',
 
   getFilePath(commandId: string): string {
-    return path.join('.lingma', 'commands', 'opsx', `${commandId}.md`);
+    return path.join('.lingma', 'commands', 'qas', `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

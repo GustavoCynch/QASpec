@@ -109,6 +109,34 @@ openspec instructions proposal --change my-change
 # Output will include your language context
 ```
 
+## QASpec: code in English, artifacts in your language
+
+The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, tests) in **English**.
+
+**User-facing** content follows `openspec/config.yaml`:
+
+- Generated change artifacts: `analisis.md`, `testmatrix.md`, `publish-log.md`
+- Reference scaffolds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_test_case_rules.md`
+- Halt questions and case titles from `/qas:analyze`, `/qas:matrix`, `/qas:publish`
+
+Example for a Spanish QA project:
+
+```yaml
+schema: qaspec-pr-review
+
+context: |
+  Language: Spanish (es)
+  All QA artifacts, reference scaffolds, and halt messages must be written in Spanish.
+
+rules:
+  analyze:
+    - Plain-language Spanish for analysis and halts
+  test-matrix:
+    - Case titles and steps: Spanish; no code identifiers in Qase-bound text
+```
+
+New projects initialized with QASpec default schema include an English `Language:` placeholder in `context`; edit it before your first `/qas:analyze` run.
+
 ## Related Documentation
 
 - [Customization Guide](./customization.md) - Project configuration options

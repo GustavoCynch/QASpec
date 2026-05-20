@@ -16,7 +16,7 @@ export const crushAdapter: ToolCommandAdapter = {
   toolId: 'crush',
 
   getFilePath(commandId: string): string {
-    return path.join('.crush', 'commands', 'opsx', `${commandId}.md`);
+    return path.join('.crush', 'commands', 'qas', `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

@@ -39,7 +39,7 @@ export const claudeAdapter: ToolCommandAdapter = {
   toolId: 'claude',
 
   getFilePath(commandId: string): string {
-    return path.join('.claude', 'commands', 'opsx', `${commandId}.md`);
+    return path.join('.claude', 'commands', 'qas', `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

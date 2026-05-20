@@ -7,6 +7,11 @@
 export type { SkillTemplate, CommandTemplate } from './types.js';
 
 export { getExploreSkillTemplate, getOpsxExploreCommandTemplate } from './workflows/explore.js';
+export { getQasExploreSkillTemplate, getQasExploreCommandTemplate } from './workflows/qas-explore.js';
+export { getQasAnalyzeSkillTemplate, getQasAnalyzeCommandTemplate } from './workflows/analyze.js';
+export { getQasMatrixSkillTemplate, getQasMatrixCommandTemplate } from './workflows/matrix.js';
+export { getQasPublishSkillTemplate, getQasPublishCommandTemplate } from './workflows/publish.js';
+export { getQasArchiveSkillTemplate, getQasArchiveCommandTemplate } from './workflows/qas-archive.js';
 export { getNewChangeSkillTemplate, getOpsxNewCommandTemplate } from './workflows/new-change.js';
 export { getContinueChangeSkillTemplate, getOpsxContinueCommandTemplate } from './workflows/continue-change.js';
 export { getApplyChangeSkillTemplate, getOpsxApplyCommandTemplate } from './workflows/apply-change.js';

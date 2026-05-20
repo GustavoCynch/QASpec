@@ -12,6 +12,11 @@ import { AI_TOOLS } from '../config.js';
  * Names of skill directories created by openspec init.
  */
 export const SKILL_NAMES = [
+  'qas-explore',
+  'qas-analyze',
+  'qas-matrix',
+  'qas-publish',
+  'qas-archive',
   'openspec-explore',
   'openspec-new-change',
   'openspec-continue-change',
@@ -32,6 +37,9 @@ export type SkillName = (typeof SKILL_NAMES)[number];
  */
 export const COMMAND_IDS = [
   'explore',
+  'analyze',
+  'matrix',
+  'publish',
   'new',
   'continue',
   'apply',

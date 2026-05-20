@@ -1,0 +1,73 @@
+name: qaspec-pr-review
+version: 1
+description: QASpec QA workflow — analysis → test matrix → Qase publish
+artifacts:
+  - id: analyze
+    generates: analisis.md
+    description: PR/requirements analysis, risks, and regression signals
+    template: analisis.md
+    instruction: |
+      Create `analisis.md` as the testable-change analysis artifact.
+
+      **Language:** Write all artifact body text and halt messages in the project language from
+      `openspec/config.yaml` `context` and `rules` (see docs/multi-language.md).
+
+      Before writing:
+      - Read `qaspec/references/historical_bugs.md` from the project root (mandatory; re-read every pass).
+      - Gather the change set via `gh pr diff` / `gh pr view` when reviewing a GitHub PR, or `git diff` / user-supplied patch otherwise.
+      - Use dual blind analyst Task delegations in parallel, then synthesize one user-facing analysis (orchestrator only).
+
+      Sections to include:
+      - Summary of affected areas
+      - Functional intent vs implementation (dual source of truth)
+      - High-risk changes and regression indicators (historical bug patterns)
+      - Responsive, usability, and localization risks when UI is touched
+      - Open clarifications folded into exactly **one** closing question (halt)
+
+      Do NOT write `testmatrix.md` in this step. End with one halt question; do not continue to matrix in the same message.
+    requires: []
+
+  - id: test-matrix
+    generates: testmatrix.md
+    description: Approved test case matrix with trackable checkboxes
+    template: testmatrix.md
+    instruction: |
+      Create `testmatrix.md` as the QA task list (equivalent to `tasks.md` in spec-driven).
+
+      **Language:** Write all artifact body text and halt messages in the project language from
+      `openspec/config.yaml` `context` and `rules`.
+
+      Before writing:
+      - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
+      - Read `analisis.md` for context.
+      - Use dual blind analyst Task delegations for draft lists, merge, then one synthesized matrix.
+
+      **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]`.
+
+      Guidelines:
+      - Group under `## Suite: <name>` headings
+      - One case = one checkbox: `- [ ] 1.1 Observable case title`
+      - Use plain-language titles (tester-observable); no code identifiers in case text
+      - Include explicit BVA, negative, regression, and resilience cases when applicable
+
+      End with exactly **one** approval question (halt). Do not publish to Qase in this step.
+    requires:
+      - analyze
+
+apply:
+  requires:
+    - test-matrix
+  tracks: testmatrix.md
+  instruction: |
+    Publish the approved matrix to Qase (MCP) and update tracking.
+
+    **Language:** Write `publish-log.md`, `execution-context.md`, and user-facing halt text in the project language from config.
+
+    Before MCP:
+    - Re-read `qaspec/references/qase_test_case_rules.md`
+    - Confirm `testmatrix.md` is approved and checkbox-formatted
+    - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist new values to `execution-context.md` when collected
+    - Write `publish-log.md` with suite/case creation trace
+    - Mark each published case `- [x]` in `testmatrix.md`
+
+    Do not modify application source code under test. Stop on PII/secrets.

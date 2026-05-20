@@ -40,7 +40,10 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   'costrict': { type: 'directory', path: '.cospec/openspec/commands' },
 
   // File-based: individual openspec-*.md files in a commands/workflows/prompts folder
-  'cursor': { type: 'files', pattern: '.cursor/commands/openspec-*.md' },
+  'cursor': {
+    type: 'files',
+    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/opsx-*.md', '.cursor/commands/openspec-*.md'],
+  },
   'windsurf': { type: 'files', pattern: '.windsurf/workflows/openspec-*.md' },
   'kilocode': { type: 'files', pattern: '.kilocode/workflows/openspec-*.md' },
   'kiro': { type: 'files', pattern: '.kiro/prompts/openspec-*.prompt.md' },
@@ -447,7 +450,7 @@ export function formatCleanupSummary(result: CleanupResult): string {
     }
 
     for (const dir of result.deletedDirs) {
-      lines.push(`  ✓ Removed ${dir}/ (replaced by /opsx:*)`);
+      lines.push(`  ✓ Removed ${dir}/ (replaced by /qas:*)`);
     }
 
     for (const file of result.modifiedFiles) {

@@ -45,6 +45,7 @@ import { getGlobalConfig, type Delivery, type Profile } from './global-config.js
 import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
+import { scaffoldQaspecReferences } from './reference-scaffold.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -53,7 +54,7 @@ const { version: OPENSPEC_VERSION } = require('../../package.json');
 // Constants
 // -----------------------------------------------------------------------------
 
-const DEFAULT_SCHEMA = 'spec-driven';
+const DEFAULT_SCHEMA = 'qaspec-pr-review';
 
 const PROGRESS_SPINNER = {
   interval: 80,
@@ -61,17 +62,20 @@ const PROGRESS_SPINNER = {
 };
 
 const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
-  'explore': 'openspec-explore',
-  'new': 'openspec-new-change',
-  'continue': 'openspec-continue-change',
-  'apply': 'openspec-apply-change',
-  'ff': 'openspec-ff-change',
-  'sync': 'openspec-sync-specs',
-  'archive': 'openspec-archive-change',
+  explore: 'qas-explore',
+  analyze: 'qas-analyze',
+  matrix: 'qas-matrix',
+  publish: 'qas-publish',
+  archive: 'qas-archive',
+  new: 'openspec-new-change',
+  continue: 'openspec-continue-change',
+  apply: 'openspec-apply-change',
+  ff: 'openspec-ff-change',
+  sync: 'openspec-sync-specs',
   'bulk-archive': 'openspec-bulk-archive-change',
-  'verify': 'openspec-verify-change',
-  'onboard': 'openspec-onboard',
-  'propose': 'openspec-propose',
+  verify: 'openspec-verify-change',
+  onboard: 'openspec-onboard',
+  propose: 'openspec-propose',
 };
 
 // -----------------------------------------------------------------------------
@@ -143,6 +147,7 @@ export class InitCommand {
 
     // Create directory structure and config
     await this.createDirectoryStructure(openspecPath, extendMode);
+    await scaffoldQaspecReferences(projectPath);
 
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
@@ -701,7 +706,14 @@ export class InitCommand {
     const activeProfile: Profile = (this.profileOverride as Profile) ?? globalCfg.profile ?? 'core';
     const activeWorkflows = [...getProfileWorkflows(activeProfile, globalCfg.workflows)];
     console.log();
-    if (activeWorkflows.includes('propose')) {
+    if (activeWorkflows.includes('analyze')) {
+      console.log(chalk.bold('Getting started:'));
+      console.log('  openspec new change <name>   Create a QA change');
+      console.log('  /qas:explore                 Think before the formal cycle');
+      console.log('  /qas:analyze                 Analysis (analisis.md)');
+      console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
+      console.log('  /qas:publish                 Publish to Qase');
+    } else if (activeWorkflows.includes('propose')) {
       console.log(chalk.bold('Getting started:'));
       console.log('  Start your first change: /opsx:propose "your idea"');
     } else if (activeWorkflows.includes('new')) {

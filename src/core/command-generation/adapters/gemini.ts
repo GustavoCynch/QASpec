@@ -16,7 +16,7 @@ export const geminiAdapter: ToolCommandAdapter = {
   toolId: 'gemini',
 
   getFilePath(commandId: string): string {
-    return path.join('.gemini', 'commands', 'opsx', `${commandId}.toml`);
+    return path.join('.gemini', 'commands', 'qas', `${commandId}.toml`);
   },
 
   formatFile(content: CommandContent): string {

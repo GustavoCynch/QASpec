@@ -9,14 +9,14 @@ import type { CommandContent, ToolCommandAdapter } from '../types.js';
 
 /**
  * GitHub Copilot adapter for command generation.
- * File path: .github/prompts/opsx-<id>.prompt.md
+ * File path: .github/prompts/qas-<id>.prompt.md
  * Frontmatter: description
  */
 export const githubCopilotAdapter: ToolCommandAdapter = {
   toolId: 'github-copilot',
 
   getFilePath(commandId: string): string {
-    return path.join('.github', 'prompts', `opsx-${commandId}.prompt.md`);
+    return path.join('.github', 'prompts', `qas-${commandId}.prompt.md`);
   },
 
   formatFile(content: CommandContent): string {
