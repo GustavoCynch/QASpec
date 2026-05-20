@@ -2,6 +2,11 @@
 
 <!-- Affected areas and scope -->
 
+## Affected capabilities
+
+<!-- Kebab-case capability names for delta specs in matrix phase (e.g. billing-export, user-auth) -->
+<!-- Do not write specs/**/*.md in the analyze step -->
+
 ## Functional intent vs implementation
 
 <!-- Dual source of truth: what should happen vs what the diff does -->

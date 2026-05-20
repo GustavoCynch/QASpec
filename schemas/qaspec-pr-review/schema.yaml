@@ -1,6 +1,6 @@
 name: qaspec-pr-review
 version: 1
-description: QASpec QA workflow — analysis → test matrix → Qase publish
+description: QASpec QA workflow — analysis → test matrix + specs → Qase publish
 artifacts:
   - id: analyze
     generates: analisis.md
@@ -19,12 +19,13 @@ artifacts:
 
       Sections to include:
       - Summary of affected areas
+      - **Affected capabilities** — kebab-case capability names that will receive delta specs in the matrix phase (e.g. `billing-export`, `user-auth`); no delta spec files in this step
       - Functional intent vs implementation (dual source of truth)
       - High-risk changes and regression indicators (historical bug patterns)
       - Responsive, usability, and localization risks when UI is touched
       - Open clarifications folded into exactly **one** closing question (halt)
 
-      Do NOT write `testmatrix.md` in this step. End with one halt question; do not continue to matrix in the same message.
+      Do NOT write `testmatrix.md` or `specs/**/*.md` in this step. End with one halt question; do not continue to matrix in the same message.
     requires: []
 
   - id: test-matrix
@@ -32,31 +33,70 @@ artifacts:
     description: Approved test case matrix with trackable checkboxes
     template: testmatrix.md
     instruction: |
-      Create `testmatrix.md` as the QA task list (equivalent to `tasks.md` in spec-driven).
+      Create or update `testmatrix.md` as the QA task list (equivalent to `tasks.md` in spec-driven).
 
       **Language:** Write all artifact body text and halt messages in the project language from
       `openspec/config.yaml` `context` and `rules`.
 
       Before writing:
       - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
-      - Read `analisis.md` for context.
+      - Read `analisis.md` for context, including **Affected capabilities**.
+      - For each capability listed in `analisis.md`, read `openspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
       - Use dual blind analyst Task delegations for draft lists, merge, then one synthesized matrix.
+
+      **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this change for testable behavior introduced or changed. Align requirements and scenarios with cases in `testmatrix.md` (no orphan requirements). Use the `specs` artifact instructions and `templates/spec.md` delta format.
 
       **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]`.
 
       Guidelines:
       - Group under `## Suite: <name>` headings
       - One case = one checkbox: `- [ ] 1.1 Observable case title`
+      - Optional traceability: `<!-- req: capability/requirement-slug -->` on a case line
       - Use plain-language titles (tester-observable); no code identifiers in case text
       - Include explicit BVA, negative, regression, and resilience cases when applicable
 
-      End with exactly **one** approval question (halt). Do not publish to Qase in this step.
+      End with exactly **one** approval question covering **both** the case list and the delta specs (halt). Do not publish to Qase in this step.
+    requires:
+      - analyze
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Change delta specifications aligned with the approved test matrix
+    template: spec.md
+    instruction: |
+      Create or update change delta specification files that define agreed testable behavior for this QA cycle.
+
+      **Language:** Write requirement and scenario text in the project language from config.
+
+      Before writing:
+      - Read `analisis.md` (**Affected capabilities** section).
+      - Read `testmatrix.md` when it exists; keep requirements aligned with listed cases.
+      - For each affected capability, read `openspec/specs/<capability>/spec.md` when present before writing MODIFIED blocks.
+
+      Create one spec file per affected capability: `specs/<capability>/spec.md`.
+
+      Delta operations (use ## headers):
+      - **ADDED Requirements**: New testable behavior for this change
+      - **MODIFIED Requirements**: Changed behavior — MUST include full updated requirement block (copy from main spec first)
+      - **REMOVED Requirements**: Deprecated behavior — MUST include **Reason** and **Migration**
+      - **RENAMED Requirements**: Name changes only — use FROM:/TO: format
+
+      Format requirements:
+      - Each requirement: `### Requirement: <name>` followed by description
+      - Use SHALL/MUST for normative requirements
+      - Each scenario: `#### Scenario: <name>` with WHEN/THEN format (exactly four `#` on Scenario headers)
+      - Every requirement MUST have at least one scenario
+
+      Co-produced with `testmatrix.md` in the matrix phase (`/qas:matrix`). Chat iterations that change cases or requirements MUST update both artifacts.
+
+      End with the same single halt as test-matrix when both are produced in one turn — do not start publish in the same message.
     requires:
       - analyze
 
 apply:
   requires:
     - test-matrix
+    - specs
   tracks: testmatrix.md
   instruction: |
     Publish the approved matrix to Qase (MCP) and update tracking.
@@ -66,6 +106,8 @@ apply:
     Before MCP:
     - Re-read `qaspec/references/qase_test_case_rules.md`
     - Confirm `testmatrix.md` is approved and checkbox-formatted
+    - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
+    - Read completed `specs/**/*.md` for context before MCP when files exist
     - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist new values to `execution-context.md` when collected
     - Write `publish-log.md` with suite/case creation trace
     - Mark each published case `- [x]` in `testmatrix.md`

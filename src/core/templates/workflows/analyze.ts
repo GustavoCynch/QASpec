@@ -13,8 +13,9 @@ const QAS_ANALYZE_BODY = `Run QASpec **analyze** (Phase 1). Produce \`analisis.m
 2. Read \`qaspec/references/historical_bugs.md\` (mandatory; re-read this run).
 3. Gather diff: \`gh pr diff\` / \`gh pr view\` for GitHub PRs, else \`git diff\` or user patch.
 4. Run **two parallel blind Task subagents** to draft analysis; synthesize one \`analisis.md\` at \`resolvedOutputPath\`.
-5. Dual source of truth: functional intent (notes, description) vs technical diff.
-6. End with **exactly one** halt question. Do NOT write \`testmatrix.md\` or continue to matrix in the same message.
+5. Include **Affected capabilities** (kebab-case names) for delta specs in the matrix phase; do not write \`specs/**/*.md\` in this step.
+6. Dual source of truth: functional intent (notes, description) vs technical diff.
+7. End with **exactly one** halt question. Do NOT write \`testmatrix.md\`, \`specs/**/*.md\`, or continue to matrix in the same message.
 
 **Guardrails:** no Qase MCP; no app code edits; one message for this phase.`;
 

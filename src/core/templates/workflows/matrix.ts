@@ -1,27 +1,28 @@
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
 
-const QAS_MATRIX_BODY = `Run QASpec **matrix** (Phase 2). Produce \`testmatrix.md\` with mandatory checkboxes.
+const QAS_MATRIX_BODY = `Run QASpec **matrix** (Phase 2). Produce \`testmatrix.md\` with mandatory checkboxes and co-produced change delta specs under \`specs/**/*.md\`.
 
-**Language:** Case titles, suites, and halt use project language from \`openspec/config.yaml\`.
+**Language:** Case titles, suites, requirements, and halt use project language from \`openspec/config.yaml\`.
 
 **Read-only** on application source under test.
 
 **Steps**
 
-1. Resolve change; run \`openspec instructions test-matrix --change "<name>" --json\` (artifact id \`test-matrix\`).
-2. Read \`qaspec/references/qase_test_case_rules.md\` and \`analisis.md\`.
-3. Run **two parallel blind Task subagents** for draft case lists; merge into one matrix.
-4. Format: \`## Suite: <name>\` then \`- [ ] 1.1 Observable title\` per case (progress parser requires checkboxes).
-5. Plain-language titles; no code identifiers in case text; include BVA/negative/regression when risks warrant.
-6. End with **exactly one** approval halt. Do NOT publish to Qase in this step.
+1. Resolve change; run \`openspec instructions test-matrix --change "<name>" --json\` and \`openspec instructions specs --change "<name>" --json\`.
+2. Read \`qaspec/references/qase_test_case_rules.md\` and \`analisis.md\` (including **Affected capabilities**).
+3. For each capability in \`analisis.md\`, read \`openspec/specs/<capability>/spec.md\` when present (baseline for MODIFIED deltas).
+4. Run **two parallel blind Task subagents** for draft case lists; merge into one matrix and aligned delta specs.
+5. Format matrix: \`## Suite: <name>\` then \`- [ ] 1.1 Observable title\` per case (progress parser requires checkboxes). Optional: \`<!-- req: capability/requirement-slug -->\` on a line.
+6. Format specs: \`specs/<capability>/spec.md\` using ADDED/MODIFIED/REMOVED/RENAMED delta sections; align with matrix cases.
+7. End with **exactly one** approval halt covering **both** the case list and requirements. Do NOT publish to Qase in this step.
 
-User-requested edits after halt: update \`testmatrix.md\` in chat without a separate revise command.`;
+User-requested edits after halt: update \`testmatrix.md\` and affected \`specs/**/*.md\` in chat without a separate slash command.`;
 
 export function getQasMatrixSkillTemplate(): SkillTemplate {
   return {
     name: 'qas-matrix',
-    description: 'QASpec test matrix — checkbox test cases in testmatrix.md',
+    description: 'QASpec test matrix and delta specs — testmatrix.md + specs/**/*.md',
     instructions: QAS_MATRIX_BODY,
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'qaspec', version: '1.0' },
@@ -31,7 +32,7 @@ export function getQasMatrixSkillTemplate(): SkillTemplate {
 export function getQasMatrixCommandTemplate(): CommandTemplate {
   return {
     name: 'QAS: Matrix',
-    description: 'Build approved testmatrix.md with checkboxes',
+    description: 'Build approved testmatrix.md and change delta specs in one phase',
     category: QASPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'matrix', 'qa'],
     content: QAS_MATRIX_BODY,

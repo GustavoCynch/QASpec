@@ -16,6 +16,28 @@ The system SHALL ship a schema named `qaspec-pr-review` that validates successfu
 - **THEN** validation succeeds with no errors
 - **AND** the schema is loadable from the packaged `schemas/qaspec-pr-review/` directory
 
+### Requirement: Specs artifact co-produced in matrix phase
+
+The schema SHALL define artifact `specs` that generates `specs/**/*.md`, requires `analyze`, and uses the same delta format as spec-driven (ADDED, MODIFIED, REMOVED, RENAMED).
+
+#### Scenario: Specs ready after analysis
+
+- **WHEN** `analisis.md` exists for a change using `qaspec-pr-review`
+- **THEN** artifact `specs` is ready alongside `test-matrix`
+- **AND** `openspec instructions specs` resolves output patterns under `specs/<capability>/spec.md` in the change directory
+
+#### Scenario: Specs template and main-spec baseline
+
+- **WHEN** an agent creates delta specs for this change
+- **THEN** instructions require reading existing `openspec/specs/<capability>/spec.md` for each affected capability before MODIFIED blocks
+- **AND** the packaged template `schemas/qaspec-pr-review/templates/spec.md` follows spec-driven delta structure
+
+#### Scenario: Matrix phase instruction coupling
+
+- **WHEN** schema instructions for `test-matrix` and `specs` are loaded
+- **THEN** `test-matrix` instructs co-creation or update of `specs/**/*.md` in the same phase as `testmatrix.md`
+- **AND** `specs` instructs alignment with the case list in `testmatrix.md` (no orphan requirements)
+
 ### Requirement: Analyze artifact
 
 The schema SHALL define artifact `analyze` that generates `analisis.md` with no upstream dependencies.
@@ -26,9 +48,15 @@ The schema SHALL define artifact `analyze` that generates `analisis.md` with no 
 - **THEN** `analyze` is available as the first ready artifact
 - **AND** `openspec instructions analyze` resolves output to `analisis.md` under the change directory
 
+#### Scenario: Affected capabilities seed specs
+
+- **WHEN** `analisis.md` is created
+- **THEN** the artifact includes an **Affected capabilities** section with kebab-case capability names
+- **AND** instructions state that delta specs are not written in the analyze step
+
 ### Requirement: Test matrix artifact with checkbox template
 
-The schema SHALL define artifact `test-matrix` that generates `testmatrix.md` and requires `analyze`.
+The schema SHALL define artifact `test-matrix` that generates `testmatrix.md`, requires `analyze`, and instructs agents to produce or update change delta specs in the same phase as the matrix.
 
 #### Scenario: Matrix depends on analysis
 
@@ -41,13 +69,18 @@ The schema SHALL define artifact `test-matrix` that generates `testmatrix.md` an
 - **WHEN** `openspec status` runs for a change using this schema
 - **THEN** checkbox progress in `testmatrix.md` is reported the same way as `tasks.md` in `spec-driven`
 
+#### Scenario: Matrix references main specs
+
+- **WHEN** matrix instructions are generated for a change
+- **THEN** instructions require reading `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when those files exist
+
 ### Requirement: Publish artifact and tracking
 
-The schema SHALL define a publish phase that requires `test-matrix` and tracks `testmatrix.md`.
+The schema SHALL define a publish phase that requires both `test-matrix` and `specs`, and tracks `testmatrix.md`.
 
 #### Scenario: Publish readiness
 
-- **WHEN** `testmatrix.md` exists
+- **WHEN** `testmatrix.md` exists and at least one file exists under `specs/` for the change
 - **THEN** the publish phase is ready to run
 - **AND** `publish.tracks` is set to `testmatrix.md`
 
@@ -61,8 +94,9 @@ The schema SHALL define a publish phase that requires `test-matrix` and tracks `
 
 The schema SHALL NOT require an `intake.md` or separate `tasks.md` for the QA cycle.
 
-#### Scenario: Minimal artifact set
+#### Scenario: QA artifact graph
 
 - **WHEN** a user inspects the artifact graph for `qaspec-pr-review`
-- **THEN** the required path is `analyze` → `test-matrix` → publish
+- **THEN** artifacts `analyze`, `test-matrix`, and `specs` are required before publish
+- **AND** the dependency shape is `analyze` → (`test-matrix` | `specs`) → publish with both matrix outputs required for apply
 - **AND** there is no artifact id `intake` in the graph

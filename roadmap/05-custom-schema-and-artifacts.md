@@ -21,7 +21,7 @@ Editar:
 |------------------------|-------------------|
 | `proposal.md` | *(v1: no intake obligatorio)* — alcance vía chat o `analisis.md` |
 | — | `analisis.md` — análisis de riesgo / PR (Phase 1 skill) |
-| `specs/**/*.md` | Opcional para capacidades estables; o integrado en matriz |
+| `specs/**/*.md` | Delta specs co-producidos en Fase 2 (`/qas:matrix`) junto con `testmatrix.md` |
 | `design.md` | Conectores, MCP, decisiones técnicas del flujo |
 | `tasks.md` | `testmatrix.md` — matriz/lista de casos aprobables |
 | — | `execution-context.md` — proyecto TCMS, rol, URLs (Phase 3) |
@@ -29,12 +29,13 @@ Editar:
 
 ## Grafo (v1 — ver también [11](./11-proposed-workflow-phases.md))
 
-```
+```text
 analisis.md
-    ↓
-testmatrix.md   (checkboxes; publish.tracks)
-    ↓
-publish         → publish-log.md; execution-context.md opcional (escrito por publish)
+    ├── testmatrix.md   (checkboxes; publish.tracks)
+    └── specs/**/*.md   (delta; hermano de test-matrix bajo analyze)
+            ↓
+publish (requires test-matrix + specs)
+    → publish-log.md; execution-context.md opcional (escrito por publish)
 ```
 
 Sin `intake.md` obligatorio. Prerrequisitos Qase van **dentro** de `publish`, no en un artefacto `execution-context` previo al grafo.
@@ -53,13 +54,13 @@ artifacts:
     generates: testmatrix.md
     requires: [analyze]
 
-  - id: execution-context
-    generates: execution-context.md
-    requires: [test-matrix]
+  - id: specs
+    generates: "specs/**/*.md"
+    requires: [analyze]
 
 apply:
-  requires: [execution-context]
-  tracks: testmatrix.md   # o publish-log.md — decidir en el change
+  requires: [test-matrix, specs]
+  tracks: testmatrix.md
 ```
 
 ## Carpeta de changes

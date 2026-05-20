@@ -62,8 +62,9 @@ Si el archivo **ya existe**, no se sobrescribe.
 
 | Artefacto | Contenido | Comando que lo produce / actualiza |
 |-----------|-----------|-----------------------------------|
-| `analisis.md` | Alcance implícito, riesgos, intención vs implementación, regresión | `/qas:analyze` (puede incorporar PR #, enlaces y notas que el usuario dio en chat) |
+| `analisis.md` | Alcance implícito, riesgos, intención vs implementación, regresión, **capacidades afectadas** (kebab-case) | `/qas:analyze` (puede incorporar PR #, enlaces y notas que el usuario dio en chat) |
 | `testmatrix.md` | **Lista de casos + checklist de progreso** (análogo a `tasks.md` en OpenSpec) | `/qas:matrix`; ediciones y checks vía chat; `/qas:publish` puede marcar ítems publicados |
+| `specs/**/*.md` | Delta specs (ADDED/MODIFIED/…) alineados con la matriz | `/qas:matrix` (misma fase que `testmatrix.md`); lectura de `openspec/specs/<capability>/` como baseline |
 | `publish-log.md` | Traza de publicación en Qase | `/qas:publish` |
 | `execution-context.md` | *(Opcional)* Proyecto Qase, rol, URLs si `publish` los persistió | Escrito por `/qas:publish` al recoger datos, no por fase aparte |
 
@@ -158,18 +159,20 @@ La skill `qa-pr-review` hoy usa una línea por caso sin checkbox; al migrar a `/
 
 ---
 
-### Fase 2 — Matriz de pruebas
+### Fase 2 — Matriz de pruebas y requisitos
 
-**Objetivo:** Lista revisable en repo y **checklist de QA** — equivalente a `tasks.md` (**Phase 2** de `qa-pr-review`). Ver sección [`testmatrix.md` = `tasks.md` de QA](#testmatrixmd--tasksmd-de-qa).
+**Objetivo:** Lista revisable en repo, **checklist de QA**, y delta specs del change — equivalente a `tasks.md` + `specs` de OpenSpec en un solo paso (**Phase 2** de `qa-pr-review`). Ver sección [`testmatrix.md` = `tasks.md` de QA](#testmatrixmd--tasksmd-de-qa).
 
 - **Leer** `qaspec/references/qase_test_case_rules.md` antes de redactar.
+- Leer **Affected capabilities** en `analisis.md` y `openspec/specs/<capability>/spec.md` cuando existan (baseline para MODIFIED).
 - Redactar `testmatrix.md` con **checkboxes obligatorios** por suite/caso (`- [ ]`), no solo líneas sueltas.
+- Co-crear `specs/<capability>/spec.md` (delta ADDED/MODIFIED/…) alineados con los casos; trazabilidad opcional `<!-- req: capability/requirement-slug -->`.
 - Tipos de caso, BVA explícito, texto observable para testers.
 - **Dos analistas en paralelo → fusión** — por defecto en `/qas:matrix`.
-- Si el usuario pide cambios tras el halt, el agente **actualiza `testmatrix.md` en chat** (sin `/qas:revise-matrix`).
+- Si el usuario pide cambios tras el halt, el agente **actualiza `testmatrix.md` y `specs/**/*.md` en chat** (sin `/qas:revise-matrix`).
 
-**Artefacto:** `testmatrix.md`  
-**Halt:** Aprobación de la lista (incluye todos los checks en estado pendiente `[ ]`).
+**Artefactos:** `testmatrix.md` + `specs/**/*.md`  
+**Halt:** Una pregunta que aprueba **matriz y requisitos** juntos (checks en `[ ]`).
 
 ---
 
@@ -224,7 +227,7 @@ Retomar un change: el usuario lo indica al agente; el agente usa `qaspec status`
 |---------|------|----------|
 | `/qas:explore` | — (exploración) | Pensar e investigar sin artefactos obligatorios; no sustituye halts del ciclo formal |
 | `/qas:analyze` | 1 | `analisis.md`; `historical_bugs.md`; dual-analyst; halt |
-| `/qas:matrix` | 2 | `testmatrix.md` (formato tasks/checkboxes); reglas Qase; dual-analyst; halt; iteración por chat |
+| `/qas:matrix` | 2 | `testmatrix.md` + `specs/**/*.md`; reglas Qase; leer main specs; dual-analyst; halt único; iteración por chat en ambos archivos |
 | `/qas:publish` | 3 | Resolver prerrequisitos Qase (artefactos o pregunta al usuario); validar matriz; MCP; `publish-log.md` (+ opcional `execution-context.md`) |
 | `/qas:archive` | Cierre | Guía de cierre + `qaspec archive` |
 
@@ -256,10 +259,10 @@ Retomar un change: el usuario lo indica al agente; el agente usa `qaspec status`
 
 ```text
 analisis.md          ← qaspec/references/historical_bugs.md
-    ↓
-testmatrix.md        ← qaspec/references/qase_test_case_rules.md; checkboxes = tasks de QA
-    ↓
-publish              ← prerrequisitos Qase; MCP; opcional tracks testmatrix.md
+    ├── testmatrix.md   ← qaspec/references/qase_test_case_rules.md; checkboxes = tasks de QA
+    └── specs/**/*.md   ← delta specs; leer openspec/specs/<capability>/ como baseline
+            ↓
+publish (requires test-matrix + specs)  ← prerrequisitos Qase; MCP; tracks testmatrix.md
     →  publish-log.md
     →  execution-context.md (opcional, escrito por publish si recogió datos nuevos)
 ```
@@ -288,7 +291,7 @@ publish              ← prerrequisitos Qase; MCP; opcional tracks testmatrix.md
 
 - Plantillas `qas-*` migradas desde `qa-pr-review/SKILL.md` (contenido de Phase 3 y validación → skill `qas-publish`).
 - `qaspec init`: instala familia `qas-*` y `/qas:*` en agentes; escribe `qaspec/references/`.
-- Schema `qaspec-pr-review`: tres artefactos en el grafo (`analyze`, `test-matrix`, `publish`); plantilla `testmatrix.md` con formato checkbox; `publish.tracks: testmatrix.md` (recomendado); sin `tasks.md` duplicado ni `intake` obligatorio.
+- Schema `qaspec-pr-review`: cuatro nodos en el grafo (`analyze`, `test-matrix`, `specs`, `publish`); `test-matrix` y `specs` son hermanos bajo `analyze`; `apply.requires: [test-matrix, specs]`; plantilla `testmatrix.md` con formato checkbox; `publish.tracks: testmatrix.md`; sin `tasks.md` duplicado ni `intake` obligatorio.
 
 ---
 
