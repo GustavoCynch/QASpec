@@ -1,6 +1,6 @@
 # Roadmap: mapeo skill `qa-pr-review` → artefactos
 
-**Fases y comandos `qas` (propuesta de producto):** ver [11-proposed-workflow-phases.md](./11-proposed-workflow-phases.md). La skill abajo **migra** a esos comandos; referencias del proyecto → `qaspec/references/`.
+**Fases y comandos (propuesta):** ver [11-proposed-workflow-phases.md](./11-proposed-workflow-phases.md) — CLI `qaspec`, agentes `/qas:*`. La skill abajo **migra** a esos comandos; referencias → `qaspec/references/`.
 
 Origen en migración: `.agents/skills/qa-pr-review/SKILL.md`
 
