@@ -36,6 +36,16 @@ Generated agent commands SHALL expose `/qas:<workflow>` (colon form) for tools t
 - **THEN** command files are named `qas-<workflow>.md` under `.cursor/commands/`
 - **AND** frontmatter `name` is `/qas:<workflow>` (e.g. `/qas:analyze`)
 
+### Requirement: Project language for workflow output
+
+QASpec workflow skills SHALL instruct agents to use the language from `openspec/config.yaml` `context` and per-artifact `rules` for all user-facing artifact text and halt messages. Skill bodies in `src/` remain English.
+
+#### Scenario: Spanish QA project
+
+- **WHEN** project config declares Spanish in `context`
+- **THEN** `/qas:analyze` produces `analisis.md` in Spanish
+- **AND** the skill source file under `src/core/templates/workflows/` is still maintained in English
+
 ### Requirement: Analyze workflow behavior
 
 The `qas-analyze` skill and `/qas:analyze` command SHALL produce `analisis.md`, require reading `qaspec/references/historical_bugs.md`, use dual blind analyst synthesis by default, and end with exactly one halt question before matrix work in the same turn.

@@ -59,6 +59,26 @@ New projects get `schema: qaspec-pr-review` in `openspec/config.yaml`. This repo
 
 Mirror `spec-driven` `tasks.md` instruction block in `test-matrix` artifact `instruction` so agents and validators agree on `- [ ]` format.
 
+### 7. English implementation, localized user templates
+
+Two layers — do not mix them in the same files:
+
+| Layer | Language | Examples |
+|-------|----------|----------|
+| **Implementation** | English only | `src/**/*.ts`, tests, CLI help, `src/core/templates/workflows/*.ts` bodies shipped in the package, schema `instruction` fields that are agent constraints (may reference "use project language" in English) |
+| **User / project** | From `openspec/config.yaml` | `context` + per-artifact `rules`; seeded `qaspec/references/*.md`; generated `analisis.md`, `testmatrix.md`, `publish-log.md`; halt questions shown to testers |
+
+**Mechanism (reuse OpenSpec):** `openspec instructions` already injects `context` and `rules` into the agent payload. QASpec workflow templates SHALL instruct agents to write change artifacts and user-visible halt text in the project language declared there — not hardcode Spanish or any locale in `src/`.
+
+**Init defaults:**
+
+- Generated `openspec/config.yaml` includes a `Language:` line in `context` (English placeholder until the user edits, or set from an optional init prompt).
+- Reference scaffolds (`historical_bugs.md`, `qase_test_case_rules.md`) are written in that same language on first init (bundled locale strings or LLM-free static copies per supported locale in a follow-up; v1 minimum: English seed + document that users set `context` and re-run init/update references manually, **or** init asks language once and picks a static seed file).
+
+**Remove from qa-pr-review migration:** do not port "plain-language Spanish mandatory" into core templates; move locale choice to project `rules` (e.g. `rules.analyze`, `rules.test-matrix`).
+
+**This repo (dogfooding):** `openspec/config.yaml` stays English for CLI/tooling changes; QA consumer projects set Spanish (or other) in their own config.
+
 ## Risks / Trade-offs
 
 | Risk | Mitigation |
@@ -67,6 +87,7 @@ Mirror `spec-driven` `tasks.md` instruction block in `test-matrix` artifact `ins
 | Users with existing `opsx-*` commands | `openspec update` regenerates; legacy cleanup removes stale `opsx-*` when configured |
 | Partial MODIFIED specs in delta | Prefer ADDED blocks where possible; full copy for `cli-init` AI Tool Configuration |
 | Dual profile confusion (dev vs QA) | Document in README: internal changes use `spec-driven`; QA projects use `qaspec-pr-review` |
+| Hardcoded locale in workflow templates | English-only `src/`; artifact language only via injected `context`/`rules` |
 
 ## Migration Plan
 

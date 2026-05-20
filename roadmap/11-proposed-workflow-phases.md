@@ -248,7 +248,7 @@ Retomar un change: el usuario lo indica al agente; el agente usa `qaspec status`
 - PR vía `gh` cuando aplique.
 - Dual source of truth: intención (chat / notas) vs diff.
 - Un mensaje por fase con artefacto; una pregunta por halt.
-- Parámetros de idioma/profundidad vía `openspec/config.yaml` `rules`.
+- **Language:** fork code and bundled agent templates in `src/` are **English**; project artifacts (`analisis.md`, `testmatrix.md`, references, halts) follow the user language via `openspec/config.yaml` `context` and `rules` (see `docs/multi-language.md`).
 
 ---
 
