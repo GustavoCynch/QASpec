@@ -12,11 +12,8 @@ The command SHALL display progress indicators during initialization to provide c
 
 - **WHEN** executing initialization steps
 - **THEN** validate environment silently in background (no output unless error)
-- **AND** display progress with ora spinners:
-  - Show spinner: "⠋ Creating OpenSpec structure..."
-  - Then success: "✔ OpenSpec structure created"
-  - Show spinner: "⠋ Configuring AI tools..."
-  - Then success: "✔ AI tools configured"
+- **AND** display progress with ora spinners using QASpec-branded labels (e.g. "Creating QASpec structure...")
+- **AND** then success: "✔ QASpec structure created" (or equivalent)
 
 ### Requirement: Directory Creation
 
