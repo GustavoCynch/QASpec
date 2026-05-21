@@ -563,21 +563,50 @@ describe('InitCommand - profile and detection features', () => {
   });
 
   it('should auto-cleanup legacy artifacts in non-interactive mode without --force', async () => {
-    // Create legacy OpenCode command files (singular 'command' path)
+    // Create legacy OpenCode command files (singular 'command' path, pre-skill openspec-* format)
     const legacyDir = path.join(testDir, '.opencode', 'command');
     await fs.mkdir(legacyDir, { recursive: true });
-    await fs.writeFile(path.join(legacyDir, 'opsx-propose.md'), 'legacy content');
+    await fs.writeFile(path.join(legacyDir, 'openspec-propose.md'), 'legacy content');
 
     // Run init in non-interactive mode without --force
     const initCommand = new InitCommand({ tools: 'opencode' });
     await initCommand.execute(testDir);
 
     // Legacy files should be cleaned up automatically
-    expect(await fileExists(path.join(legacyDir, 'opsx-propose.md'))).toBe(false);
+    expect(await fileExists(path.join(legacyDir, 'openspec-propose.md'))).toBe(false);
 
     // New commands should be at the correct plural path
     const newCommandsDir = path.join(testDir, '.opencode', 'commands');
     expect(await directoryExists(newCommandsDir)).toBe(true);
+  });
+
+  it('should not cleanup upstream OpenSpec when openspec is already installed', async () => {
+    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
+    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), '# OpenSpec agents\n');
+
+    const cursorCommandsDir = path.join(testDir, '.cursor', 'commands');
+    await fs.mkdir(cursorCommandsDir, { recursive: true });
+    const opsxFiles = ['opsx-propose.md', 'opsx-apply.md', 'opsx-archive.md', 'opsx-explore.md'];
+    for (const fileName of opsxFiles) {
+      await fs.writeFile(path.join(cursorCommandsDir, fileName), 'upstream openspec');
+    }
+
+    const consoleLogSpy = vi.spyOn(console, 'log');
+    const initCommand = new InitCommand({ tools: 'cursor' });
+    await initCommand.execute(testDir);
+
+    for (const fileName of opsxFiles) {
+      expect(await fileExists(path.join(cursorCommandsDir, fileName))).toBe(true);
+    }
+    expect(await fileExists(path.join(testDir, 'openspec', 'AGENTS.md'))).toBe(true);
+
+    const logCalls = consoleLogSpy.mock.calls.map((call) => String(call[0] ?? ''));
+    expect(logCalls.some((line) => line.includes('Upgrading to the new OpenSpec'))).toBe(false);
+    expect(logCalls.some((line) => line.includes('Cleaning up old QASpec setup'))).toBe(false);
+    expect(confirmMock).not.toHaveBeenCalled();
+
+    expect(await directoryExists(path.join(testDir, 'qaspec'))).toBe(true);
   });
 
   it('should preselect configured tools but not directory-detected tools in extend mode', async () => {

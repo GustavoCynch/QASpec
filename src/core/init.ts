@@ -226,7 +226,7 @@ export class InitCommand {
     // Interactive mode: prompt for confirmation
     const { confirm } = await import('@inquirer/prompts');
     const shouldCleanup = await confirm({
-      message: 'Upgrade and clean up legacy files?',
+      message: 'Clean up old QASpec files and continue setup?',
       default: true,
     });
 

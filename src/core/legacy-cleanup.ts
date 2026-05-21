@@ -7,7 +7,18 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import chalk from 'chalk';
 import { FileSystemUtils, removeMarkerBlock as removeMarkerBlockUtil } from '../utils/file-system.js';
-import { OPENSPEC_MARKERS } from './config.js';
+import { AI_TOOLS, OPENSPEC_DIR_NAME, OPENSPEC_MARKERS } from './config.js';
+import { SKILL_NAMES } from './shared/tool-detection.js';
+
+/** Skill directory names installed by upstream OpenSpec (not QASpec). */
+const UPSTREAM_OPENSPEC_SKILL_NAMES = SKILL_NAMES.filter((name) => name.startsWith('openspec-'));
+
+/** Directories that may contain upstream OpenSpec `opsx-*` slash command files. */
+const UPSTREAM_OPSX_COMMAND_DIRS = [
+  '.cursor/commands',
+  '.junie/commands',
+  path.join('.opencode', 'command'),
+] as const;
 
 /**
  * Legacy config file names from the old ToolRegistry.
@@ -42,7 +53,7 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   // File-based: individual openspec-*.md files in a commands/workflows/prompts folder
   'cursor': {
     type: 'files',
-    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/opsx-*.md', '.cursor/commands/openspec-*.md'],
+    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/openspec-*.md'],
   },
   'windsurf': { type: 'files', pattern: '.windsurf/workflows/openspec-*.md' },
   'kilocode': { type: 'files', pattern: '.kilocode/workflows/openspec-*.md' },
@@ -53,11 +64,11 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   'roocode': { type: 'files', pattern: '.roo/commands/openspec-*.md' },
   'auggie': { type: 'files', pattern: '.augment/commands/openspec-*.md' },
   'factory': { type: 'files', pattern: '.factory/commands/openspec-*.md' },
-  'opencode': { type: 'files', pattern: ['.opencode/command/opsx-*.md', '.opencode/command/openspec-*.md'] },
+  'opencode': { type: 'files', pattern: '.opencode/command/openspec-*.md' },
   'continue': { type: 'files', pattern: '.continue/prompts/openspec-*.prompt' },
   'antigravity': { type: 'files', pattern: '.agent/workflows/openspec-*.md' },
   'iflow': { type: 'files', pattern: '.iflow/commands/openspec-*.md' },
-  'junie': { type: 'files', pattern: ['.junie/commands/opsx-*.md', '.junie/commands/openspec-*.md'] },
+  'junie': { type: 'files', pattern: '.junie/commands/openspec-*.md' },
   'qwen': { type: 'files', pattern: '.qwen/commands/openspec-*.toml' },
   'codex': { type: 'files', pattern: '.codex/prompts/openspec-*.md' },
 };
@@ -94,7 +105,77 @@ export interface LegacyDetectionResult {
 }
 
 /**
- * Detects all legacy OpenSpec artifacts in a project.
+ * Returns true when the repo has an active upstream OpenSpec install that QASpec must not modify.
+ */
+export async function hasActiveUpstreamOpenSpec(projectRoot: string): Promise<boolean> {
+  const openspecDir = path.join(projectRoot, OPENSPEC_DIR_NAME);
+  if (!(await FileSystemUtils.directoryExists(openspecDir))) {
+    return false;
+  }
+
+  if (await hasOpenspecPlanningConfig(projectRoot)) {
+    return true;
+  }
+  if (await hasUpstreamOpsxSlashCommands(projectRoot)) {
+    return true;
+  }
+  if (await hasUpstreamOpenspecSkills(projectRoot)) {
+    return true;
+  }
+
+  return false;
+}
+
+async function hasOpenspecPlanningConfig(projectRoot: string): Promise<boolean> {
+  const configYaml = path.join(projectRoot, OPENSPEC_DIR_NAME, 'config.yaml');
+  const configYml = path.join(projectRoot, OPENSPEC_DIR_NAME, 'config.yml');
+  return (
+    (await FileSystemUtils.fileExists(configYaml)) ||
+    (await FileSystemUtils.fileExists(configYml))
+  );
+}
+
+async function hasUpstreamOpsxSlashCommands(projectRoot: string): Promise<boolean> {
+  for (const relativeDir of UPSTREAM_OPSX_COMMAND_DIRS) {
+    const dirPath = path.join(projectRoot, relativeDir);
+    if (!(await FileSystemUtils.directoryExists(dirPath))) {
+      continue;
+    }
+    try {
+      const entries = await fs.readdir(dirPath);
+      if (
+        entries.some(
+          (entry) =>
+            entry.startsWith('opsx-') &&
+            (entry.endsWith('.md') || entry.endsWith('.toml'))
+        )
+      ) {
+        return true;
+      }
+    } catch {
+      // unreadable directory — skip
+    }
+  }
+  return false;
+}
+
+async function hasUpstreamOpenspecSkills(projectRoot: string): Promise<boolean> {
+  for (const tool of AI_TOOLS) {
+    if (!tool.skillsDir) {
+      continue;
+    }
+    for (const skillName of UPSTREAM_OPENSPEC_SKILL_NAMES) {
+      const skillPath = path.join(projectRoot, tool.skillsDir, 'skills', skillName, 'SKILL.md');
+      if (await FileSystemUtils.fileExists(skillPath)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Detects all legacy QASpec artifacts in a project (not upstream OpenSpec).
  *
  * @param projectPath - The root path of the project
  * @returns Detection result with all found legacy artifacts
@@ -102,6 +183,8 @@ export interface LegacyDetectionResult {
 export async function detectLegacyArtifacts(
   projectPath: string
 ): Promise<LegacyDetectionResult> {
+  const upstreamOpenSpecActive = await hasActiveUpstreamOpenSpec(projectPath);
+
   const result: LegacyDetectionResult = {
     configFiles: [],
     configFilesToUpdate: [],
@@ -124,7 +207,7 @@ export async function detectLegacyArtifacts(
   result.slashCommandFiles = slashResult.files;
 
   // Detect legacy structure files
-  const structureResult = await detectLegacyStructureFiles(projectPath);
+  const structureResult = await detectLegacyStructureFiles(projectPath, upstreamOpenSpecActive);
   result.hasOpenspecAgents = structureResult.hasOpenspecAgents;
   result.hasProjectMd = structureResult.hasProjectMd;
   result.hasRootAgentsWithMarkers = structureResult.hasRootAgentsWithMarkers;
@@ -268,7 +351,8 @@ async function findLegacySlashCommandFiles(
  * @returns Object with detection results for structure files
  */
 export async function detectLegacyStructureFiles(
-  projectPath: string
+  projectPath: string,
+  upstreamOpenSpecActive = false
 ): Promise<{
   hasOpenspecAgents: boolean;
   hasProjectMd: boolean;
@@ -278,13 +362,15 @@ export async function detectLegacyStructureFiles(
   let hasProjectMd = false;
   let hasRootAgentsWithMarkers = false;
 
-  // Check for openspec/AGENTS.md
-  const openspecAgentsPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'AGENTS.md');
-  hasOpenspecAgents = await FileSystemUtils.fileExists(openspecAgentsPath);
+  if (!upstreamOpenSpecActive) {
+    // Check for openspec/AGENTS.md (legacy QASpec/OpenSpec migration only)
+    const openspecAgentsPath = path.join(projectPath, OPENSPEC_DIR_NAME, 'AGENTS.md');
+    hasOpenspecAgents = await FileSystemUtils.fileExists(openspecAgentsPath);
 
-  // Check for openspec/project.md (for migration messaging, not deleted)
-  const projectMdPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'project.md');
-  hasProjectMd = await FileSystemUtils.fileExists(projectMdPath);
+    // Check for openspec/project.md (for migration messaging, not deleted)
+    const projectMdPath = path.join(projectPath, OPENSPEC_DIR_NAME, 'project.md');
+    hasProjectMd = await FileSystemUtils.fileExists(projectMdPath);
+  }
 
   // Check for root AGENTS.md with OpenSpec markers
   const rootAgentsPath = FileSystemUtils.joinPath(projectPath, 'AGENTS.md');
@@ -548,12 +634,11 @@ export function formatDetectionSummary(detection: LegacyDetectionResult): string
     return '';
   }
 
-  // Header - welcoming upgrade message
-  lines.push(chalk.bold('Upgrading to the new OpenSpec'));
+  // Header - QASpec legacy migration (separate from upstream OpenSpec)
+  lines.push(chalk.bold('Cleaning up old QASpec setup'));
   lines.push('');
-  lines.push('OpenSpec now uses agent skills, the emerging standard across coding');
-  lines.push('agents. This simplifies your setup while keeping everything working');
-  lines.push('as before.');
+  lines.push('QASpec now uses agent skills and /qas:* commands. Legacy slash commands');
+  lines.push('and marker blocks from earlier QASpec versions can be removed safely.');
   lines.push('');
 
   // Section 1: Files to remove (no user content to preserve)

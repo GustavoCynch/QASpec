@@ -8,6 +8,7 @@ import {
   detectLegacyConfigFiles,
   detectLegacySlashCommands,
   detectLegacyStructureFiles,
+  hasActiveUpstreamOpenSpec,
   hasOpenSpecMarkers,
   isOnlyOpenSpecContent,
   removeMarkerBlock,
@@ -336,13 +337,13 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.files).toContain('.continue/prompts/openspec-apply.prompt');
     });
 
-    it('should detect legacy OpenCode opsx-* command files', async () => {
+    it('should not treat upstream opsx-* command files as legacy', async () => {
       const dirPath = path.join(testDir, '.opencode', 'command');
       await fs.mkdir(dirPath, { recursive: true });
       await fs.writeFile(path.join(dirPath, 'opsx-propose.md'), 'content');
 
       const result = await detectLegacySlashCommands(testDir);
-      expect(result.files).toContain('.opencode/command/opsx-propose.md');
+      expect(result.files).not.toContain('.opencode/command/opsx-propose.md');
     });
 
     it('should detect legacy OpenCode openspec-* command files', async () => {
@@ -354,25 +355,59 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.files).toContain('.opencode/command/openspec-new.md');
     });
 
-    it('should detect both opsx-* and openspec-* OpenCode command files', async () => {
+    it('should detect openspec-* but not opsx-* OpenCode command files', async () => {
       const dirPath = path.join(testDir, '.opencode', 'command');
       await fs.mkdir(dirPath, { recursive: true });
       await fs.writeFile(path.join(dirPath, 'opsx-propose.md'), 'content');
       await fs.writeFile(path.join(dirPath, 'openspec-new.md'), 'content');
 
       const result = await detectLegacySlashCommands(testDir);
-      expect(result.files).toContain('.opencode/command/opsx-propose.md');
+      expect(result.files).not.toContain('.opencode/command/opsx-propose.md');
       expect(result.files).toContain('.opencode/command/openspec-new.md');
     });
   });
 
+  describe('hasActiveUpstreamOpenSpec', () => {
+    it('should return false when only an empty openspec directory exists', async () => {
+      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(false);
+    });
+
+    it('should return true when openspec config.yaml exists', async () => {
+      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(true);
+    });
+
+    it('should return true when cursor opsx slash commands exist', async () => {
+      const commandsDir = path.join(testDir, '.cursor', 'commands');
+      await fs.mkdir(commandsDir, { recursive: true });
+      await fs.writeFile(path.join(commandsDir, 'opsx-propose.md'), 'content');
+      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(true);
+    });
+
+    it('should return true when openspec-propose skill exists', async () => {
+      const skillDir = path.join(testDir, '.cursor', 'skills', 'openspec-propose');
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), '---\nname: openspec-propose\n---\n');
+      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(true);
+    });
+  });
+
   describe('detectLegacyStructureFiles', () => {
-    it('should detect openspec/AGENTS.md', async () => {
+    it('should detect openspec/AGENTS.md when upstream OpenSpec is not active', async () => {
       const agentsPath = path.join(testDir, 'openspec', 'AGENTS.md');
       await fs.writeFile(agentsPath, '# AGENTS.md content');
 
-      const result = await detectLegacyStructureFiles(testDir);
+      const result = await detectLegacyStructureFiles(testDir, false);
       expect(result.hasOpenspecAgents).toBe(true);
+    });
+
+    it('should not flag openspec/AGENTS.md when upstream OpenSpec is active', async () => {
+      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+      await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), '# AGENTS.md content');
+
+      const result = await detectLegacyStructureFiles(testDir, true);
+      expect(result.hasOpenspecAgents).toBe(false);
+      expect(result.hasProjectMd).toBe(false);
     });
 
     it('should detect openspec/project.md', async () => {
@@ -437,6 +472,23 @@ ${OPENSPEC_MARKERS.end}`);
       const result = await detectLegacyArtifacts(testDir);
       expect(result.hasLegacyArtifacts).toBe(true);
       expect(result.hasOpenspecAgents).toBe(true);
+    });
+
+    it('should ignore upstream OpenSpec artifacts when OpenSpec is active', async () => {
+      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+      await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), 'content');
+      await fs.writeFile(path.join(testDir, 'openspec', 'project.md'), 'content');
+
+      const commandsDir = path.join(testDir, '.cursor', 'commands');
+      await fs.mkdir(commandsDir, { recursive: true });
+      await fs.writeFile(path.join(commandsDir, 'opsx-propose.md'), 'content');
+      await fs.writeFile(path.join(commandsDir, 'opsx-apply.md'), 'content');
+
+      const result = await detectLegacyArtifacts(testDir);
+      expect(result.hasLegacyArtifacts).toBe(false);
+      expect(result.hasOpenspecAgents).toBe(false);
+      expect(result.hasProjectMd).toBe(false);
+      expect(result.slashCommandFiles).not.toContain('.cursor/commands/opsx-propose.md');
     });
 
     it('should detect project.md for migration hint (it is preserved, not deleted)', async () => {
@@ -701,9 +753,9 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatDetectionSummary(detection);
-      expect(summary).toContain('Upgrading to the new OpenSpec');
+      expect(summary).toContain('Cleaning up old QASpec setup');
       expect(summary).toContain('agent skills');
-      expect(summary).toContain('keeping everything working');
+      expect(summary).toContain('/qas:*');
     });
 
     it('should format config files as files to update (never remove)', () => {
@@ -924,7 +976,6 @@ ${OPENSPEC_MARKERS.end}`);
         type: 'files',
         pattern: [
           '.cursor/commands/qas-*.md',
-          '.cursor/commands/opsx-*.md',
           '.cursor/commands/openspec-*.md',
         ],
       });
@@ -1091,12 +1142,12 @@ ${OPENSPEC_MARKERS.end}`);
       expect(tools).toHaveLength(1);
     });
 
-    it('should handle opencode opsx-* legacy files', () => {
+    it('should handle opencode openspec-* legacy files via pattern map', () => {
       const detection = {
         configFiles: [],
         configFilesToUpdate: [],
         slashCommandDirs: [],
-        slashCommandFiles: ['.opencode/command/opsx-propose.md'],
+        slashCommandFiles: ['.opencode/command/openspec-new.md'],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,

@@ -882,7 +882,7 @@ ${OPENSPEC_MARKERS.end}
 
       // Should show v1 upgrade message
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Upgrading to the new OpenSpec')
+        expect.stringContaining('Cleaning up old QASpec setup')
       );
 
       // Should show marker removal message (config files are never deleted, only have markers removed)
@@ -929,7 +929,7 @@ ${OPENSPEC_MARKERS.end}
 
       // Should show v1 upgrade message
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Upgrading to the new OpenSpec')
+        expect.stringContaining('Cleaning up old QASpec setup')
       );
 
       // Should show warning about --force
@@ -1045,7 +1045,7 @@ ${OPENSPEC_MARKERS.end}
         call.map(arg => String(arg)).join(' ')
       );
       const hasLegacyMessage = calls.some(call =>
-        call.includes('Upgrading to the new OpenSpec')
+        call.includes('Cleaning up old QASpec setup')
       );
       expect(hasLegacyMessage).toBe(false);
 
