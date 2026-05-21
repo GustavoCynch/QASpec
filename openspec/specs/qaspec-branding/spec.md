@@ -15,32 +15,43 @@ QASpec SHALL use a consistent product naming matrix for all user-facing copy.
 #### Scenario: CLI command references
 
 - **WHEN** instructing users to run the primary tool
-- **THEN** messages SHALL reference the **`qaspec`** command (or document legacy **`openspec`** only as deprecated shim when shim exists)
+- **THEN** messages SHALL reference only the **`qaspec`** command
 
-#### Scenario: Upstream OpenSpec references
+#### Scenario: Agent slash command references
 
-- **WHEN** describing detection of the original OpenSpec tool, coexistence, or migration from upstream artifacts
-- **THEN** the text MAY use **OpenSpec** explicitly with qualifier **upstream** or **legacy**
+- **WHEN** documentation instructs users to run the default installed agent workflow
+- **THEN** it SHALL reference **`/qas:*`** commands only
+
+#### Scenario: Repository spec history paths
+
+- **WHEN** maintainer or internal docs reference the in-repo specification tree
+- **THEN** they MAY use the literal path segment `openspec/specs/` or `openspec/changes/` as a **directory name**
+- **AND** prose SHALL NOT describe that directory as "the OpenSpec product"
 
 #### Scenario: Lineage attribution
 
-- **WHEN** README or docs mention project origin
-- **THEN** a single lineage attribution to OpenSpec (openspec.dev) MAY remain
-- **AND** the rest of the document SHALL not present OpenSpec as the name of this product
+- **WHEN** README mentions project origin
+- **THEN** at most one short lineage attribution to upstream may remain
+- **AND** the rest of the document SHALL present QASpec as the product
 
 ### Requirement: Branding regression guard
 
-The repository SHALL include an automated check that prevents new inappropriate **OpenSpec** product strings in active product surfaces.
+The repository SHALL include automated checks that prevent new inappropriate **OpenSpec** product strings and `openspec <subcommand>` examples in guarded surfaces.
 
-#### Scenario: Failing on mis-branded CLI source
+#### Scenario: Failing on mis-branded docs
 
-- **WHEN** a contributor adds user-facing text containing `OpenSpec` under `src/` without an allowlisted pattern
+- **WHEN** a contributor adds user-facing text containing unallowlisted `OpenSpec` under `docs/`
 - **THEN** the branding guard test SHALL fail
+
+#### Scenario: Failing on openspec CLI examples in docs
+
+- **WHEN** a contributor adds `openspec init` to `docs/cli.md`
+- **THEN** the documentation command guard SHALL fail
 
 #### Scenario: Allowlisted upstream references
 
-- **WHEN** source code contains `upstream OpenSpec`, marker-detection identifiers, or migration comments required for coexistence
-- **THEN** the branding guard SHALL allow those matches
+- **WHEN** source code contains allowlisted migration-detection identifiers required for legacy project support
+- **THEN** the branding guard SHALL allow those matches per `branding.ts` allowlist
 
 ### Requirement: Fork project links
 
@@ -50,4 +61,3 @@ User-facing "learn more" and feedback links for this product SHALL target the QA
 
 - **WHEN** `qaspec init` completes and displays documentation links
 - **THEN** URLs SHALL point to this fork's GitHub (or published docs site), not `Fission-AI/OpenSpec` unless explicitly labeled as upstream lineage
-
