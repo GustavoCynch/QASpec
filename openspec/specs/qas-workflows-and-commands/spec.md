@@ -102,12 +102,13 @@ The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md
 
 ### Requirement: Matrix workflow behavior
 
-The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, and halt once for human approval of **both** the case list and the requirements.
+The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes and, for each case, preconditions plus steps with action and expected result built from sources in hand, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, and halt once for human approval of **both** the case list and the requirements.
 
 #### Scenario: Matrix format
 
 - **WHEN** matrix output is written
 - **THEN** each test case is a single `- [ ]` line with observable title text under a `##` suite heading
+- **AND** immediately below that line the case includes **Preconditions** and **Steps** blocks per the schema template
 
 #### Scenario: Co-produced delta specs
 
@@ -138,9 +139,16 @@ The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md
 - **WHEN** the user clarifies defect vs expected behavior or other agreed facts after matrix draft
 - **THEN** the agent updates `analisis.md` (especially **Validated clarifications**) before updating `testmatrix.md` and affected `specs/**/*.md`
 
+#### Scenario: No invented vague steps
+
+- **WHEN** the agent drafts case steps
+- **THEN** each action and expected result uses concrete UI labels, URLs, data, or API behavior found in sources read for this change
+- **AND** generic placeholder steps are used only when sources lack actionable detail
+- **AND** the agent self-audits before halt that no step is untraceable to a source unless marked as a documented gap
+
 ### Requirement: Publish workflow behavior
 
-The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve Qase prerequisites from existing artifacts or one halt question, write or update `execution-context.md` and `publish-plan.md` for user review, halt once for the user to edit those files or confirm publish, and only after explicit confirmation validate the matrix, call Qase via MCP when configured, write `publish-log.md`, and mark published rows in `testmatrix.md`.
+The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve Qase prerequisites from existing artifacts or one halt question, write or update `execution-context.md` and `publish-plan.md` for user review using preconditions and steps from each case block in `testmatrix.md`, halt once for the user to edit those files or confirm publish, and only after explicit confirmation validate the matrix, call Qase via MCP when configured, write `publish-log.md`, and mark published rows in `testmatrix.md`.
 
 #### Scenario: Prerequisites before MCP
 
@@ -158,7 +166,7 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 
 - **WHEN** Qase prerequisites are known or collected and the matrix is approved
 - **THEN** the agent writes or updates `execution-context.md` with project code, role, and base URL
-- **AND** the agent writes `publish-plan.md` summarizing suites and cases to create from `testmatrix.md` (unchecked rows only)
+- **AND** the agent writes `publish-plan.md` from unchecked cases in `testmatrix.md`, including each case's **Preconditions** and **Steps** when present
 - **AND** the agent does not invoke Qase MCP in the same message
 
 #### Scenario: Single halt before publish
@@ -171,6 +179,7 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 
 - **WHEN** the user confirms publish after the prepare-and-halt step
 - **THEN** the agent re-reads `execution-context.md`, `publish-plan.md`, and `testmatrix.md`
+- **AND** the agent maps matrix case **Preconditions** and **Steps** to Qase fields per `qase_test_case_rules.md` without replacing steps with newly invented steps based only on titles
 - **AND** the agent invokes Qase MCP, writes `publish-log.md`, and marks each published row `- [x]` in `testmatrix.md`
 
 #### Scenario: User edits plan before confirm

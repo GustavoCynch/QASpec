@@ -64,14 +64,21 @@ artifacts:
 
       **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this change for testable behavior introduced or changed. Align requirements and scenarios with cases in `testmatrix.md` (no orphan requirements). Use the `specs` artifact instructions and `templates/spec.md` delta format.
 
-      **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]`.
+      **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]` only on checkbox lines; enriched case detail lives **below** each checkbox line.
+
+      **Enriched case body (mandatory for new drafts):** Under each `- [ ] N.N Title` line, include:
+      - **Preconditions:** standard environment and role prefix (per `qase_test_case_rules.md`) plus case-specific setup from sources
+      - **Steps:** table or numbered list with **Action** and **Expected** per step; step 1 is navigation when a URL is known; empty Expected only for transition steps
+
+      **Build from sources — do not invent:** Derive preconditions and steps from `analisis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from code or docs read for this change. Do not use vague invented flows (e.g. "add an item via any available flow") unless sources lack actionable detail — then use one explicit generic step and document the gap (`<!-- gap: ... -->` or self-audit before halt).
 
       Guidelines:
       - Group under `## Suite: <name>` headings
-      - One case = one checkbox: `- [ ] 1.1 Observable case title`
+      - One case = one checkbox: `- [ ] 1.1 Observable case title`, then Preconditions and Steps blocks
       - Optional traceability: `<!-- req: capability/requirement-slug -->` on a case line
-      - Use plain-language titles (tester-observable); no code identifiers in case text
+      - Use plain-language titles (tester-observable); no code identifiers in preconditions, steps, or expected results
       - Include explicit BVA, negative, regression, and resilience cases per `analisis.md` and config rules
+      - Self-audit before halt: every step traceable to a source unless marked as a documented gap
 
       End with exactly **one** approval question covering **both** the case list and the delta specs (halt). Do not publish to Qase in this step.
     requires:
@@ -129,12 +136,14 @@ apply:
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
     - Read completed `specs/**/*.md` for context when files exist
     - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist to `execution-context.md`
-    - Write or update `publish-plan.md` listing suites and unchecked cases from `testmatrix.md` (use template `templates/publish-plan.md`)
+    - Write or update `publish-plan.md` from unchecked cases in `testmatrix.md`, including each case's **Preconditions** and **Steps** when present (use template `templates/publish-plan.md`)
     - End with **exactly one** confirmation halt: user may edit `execution-context.md` and `publish-plan.md` or confirm publish
     - **Do not invoke Qase MCP** in the same message as initial creation of `execution-context.md` and `publish-plan.md`
+    - If an approved case has no **Steps** block, warn the user to complete matrix before MCP (legacy title-only rows are not sufficient for Qase upload)
 
     After user confirms:
     - Re-read `execution-context.md`, `publish-plan.md`, and `testmatrix.md`
+    - Read **Preconditions** and **Steps** under each case to publish; do not re-generate steps from titles alone when a **Steps** block exists
     - Read Qase MCP tool schemas before the first call
     - Validate matrix against rules; upload via MCP; write `publish-log.md` with suite/case trace
     - Mark each published case `- [x]` in `testmatrix.md`

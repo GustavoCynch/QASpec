@@ -51,6 +51,41 @@ describe('qa-config-seed', () => {
     expect(applyRules).toMatch(/do not upload in the same message/i);
   });
 
+  it('test-matrix seed rules require enriched case bodies', () => {
+    const seed = getQaspecPrReviewConfigSeed();
+    const matrixRules = seed.rules!['test-matrix'].join('\n');
+
+    expect(matrixRules).toMatch(/Preconditions/i);
+    expect(matrixRules).toMatch(/Steps/i);
+    expect(matrixRules).toMatch(/do not invent vague flows/i);
+  });
+
+  it('testmatrix template includes Preconditions and Steps blocks', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..');
+    const templatePath = path.join(
+      repoRoot,
+      'schemas',
+      'qaspec-pr-review',
+      'templates',
+      'testmatrix.md'
+    );
+    const content = fs.readFileSync(templatePath, 'utf-8');
+
+    expect(content).toContain('**Preconditions:**');
+    expect(content).toContain('**Steps:**');
+    expect(content).toMatch(/\| # \| Action \| Expected \|/);
+  });
+
+  it('qaspec-pr-review schema test-matrix instruction requires enriched case body', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..');
+    const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
+    const content = fs.readFileSync(schemaPath, 'utf-8');
+
+    expect(content).toMatch(/Enriched case body/i);
+    expect(content).toMatch(/Preconditions/i);
+    expect(content).toMatch(/Build from sources/i);
+  });
+
   it('qaspec-pr-review schema apply instruction requires prepare and confirm before MCP', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../..');
     const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
@@ -59,6 +94,7 @@ describe('qa-config-seed', () => {
     expect(content).toContain('publish-plan.md');
     expect(content).toMatch(/confirmation halt/i);
     expect(content).toMatch(/Do not invoke Qase MCP/i);
+    expect(content).toMatch(/Preconditions.*Steps/s);
 
     const planTemplate = path.join(
       repoRoot,

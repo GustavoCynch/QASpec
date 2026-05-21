@@ -25,10 +25,10 @@ ${getQasAnalystPromptBlock('matrix')}
 4. For each capability in \`analisis.md\`, read \`qaspec/specs/<capability>/spec.md\` when present (baseline for MODIFIED deltas).
 5. Run **two parallel blind Task** subagents; paste the **full** \`analisis.md\` into each prompt under **Validated analysis (binding)**; then fetch PR/diff per analyst brief. Merge into one matrix and aligned delta specs per \`rules.test-matrix\` and \`rules.specs\`.
 6. **Merge rules:** union by intent; dedupe only when behavior and boundaries match — not when titles merely look similar. Drop any analyst draft that contradicts \`analisis.md\`.
-7. **Self-audit before output:** every case and requirement traceable to \`analisis.md\`; defects test corrected behavior; explicit BVA; no comma/group explosion; readable narrative; API blocking when applicable.
-8. Format matrix: \`## Suite: <name>\` then \`- [ ] 1.1 Observable title\` per case. Optional: \`<!-- req: capability/requirement-slug -->\`.
+7. **Self-audit before output:** every case and requirement traceable to \`analisis.md\`; defects test corrected behavior; explicit BVA; no comma/group explosion; readable narrative; API blocking when applicable; every step traceable to a read source unless marked as a documented gap.
+8. Format matrix: \`## Suite: <name>\` then per case \`- [ ] N.N Observable title\`, then **Preconditions** and **Steps** (Action + Expected table) indented below the checkbox line per \`templates/testmatrix.md\` and \`qase_test_case_rules.md\`. Build steps from sources in hand — not invented vague flows. Optional: \`<!-- req: capability/requirement-slug -->\` or \`<!-- gap: ... -->\` when detail is missing.
 9. Format specs: \`specs/<capability>/spec.md\` using ADDED/MODIFIED/REMOVED/RENAMED delta sections; align with matrix cases and validated analysis (not raw diff alone).
-10. End with **exactly one** approval halt covering **both** the case list and requirements. Do NOT publish to Qase in this step.
+10. End with **exactly one** approval halt covering **both** the case list, preconditions/steps, and requirements. Do NOT publish to Qase in this step.
 
 User-requested edits after halt: if the change affects agreed behavior or defect vs expected, update \`analisis.md\` first, then \`testmatrix.md\` and affected \`specs/**/*.md\` in the same conversation.`;
 

@@ -53,12 +53,31 @@ Read before \`/qsx:matrix\` and again before \`/qsx:publish\`.
 - Titles and steps: tester-observable behavior in the **project language** (see \`qaspec/config.yaml\`).
 - No code identifiers (camelCase fields, selectors, file paths) in Qase-bound text unless shown in the UI.
 - One checkbox in \`testmatrix.md\` maps to one Qase case after publish.
+- Under each checkbox line, matrix phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for \`create_case\` — do not re-generate from the title alone.
+
+## Matrix case structure
+
+\`\`\`markdown
+- [ ] 1.1 Observable title
+
+  **Preconditions:**
+  1. Environment access
+  2. Role and tenant
+  3. Case-specific setup from sources
+
+  **Steps:**
+  | # | Action | Expected |
+  | 1 | Navigate to [base URL] | |
+  | 2 | ... | ... |
+\`\`\`
+
+Build steps from \`analisis.md\`, diff, requirements, and specs — not invented vague flows.
 
 ## Preconditions template
 
 1. Environment access (name your staging/dev environment).
 2. Role and tenant (e.g. logged in as [ROLE] in [ORG]).
-3. Case-specific data setup.
+3. Case-specific data setup from sources read for the change.
 
 ## Customize
 

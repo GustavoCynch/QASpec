@@ -9,10 +9,10 @@ exports[`skill templates split parity > preserves QASpec template function paylo
   "getQasArchiveSkillTemplate": "2243191bf1b514c6e529c7e5d3f9ccff4016b757275eb1961936b5f86b0cef05",
   "getQasExploreCommandTemplate": "42d13954d48015e16dc500ff57508e34bfa68b996d82455f7cf83e98c543d6f4",
   "getQasExploreSkillTemplate": "40b39bc05f9c3a06c96d11add724cc2cae68d995b43f911a392dc9d23e3ca1a2",
-  "getQasMatrixCommandTemplate": "c8562433a01b5fe7d74f6b4269c70b4382de08f794134d00169a1e3ce6082593",
-  "getQasMatrixSkillTemplate": "5570ed25091f357e32af2292524685650af58d842a5e8deb8ce33e2e1a1df129",
-  "getQasPublishCommandTemplate": "97d9dadace93d7f2ec7eb87ccc1fbb4ffd12c3869ca554ba4bf5a5aba4ec79e9",
-  "getQasPublishSkillTemplate": "63bc374dfbdc652c559245b17f0db3453c1953c498d62b0f4bbafbd1df171a5b",
+  "getQasMatrixCommandTemplate": "4cd88cbf0b3577ea4789ad2eb84ce83b9cb6ed94bf6090f9f57dc8c1da700a25",
+  "getQasMatrixSkillTemplate": "5dc3fbcbce5ea6da5e391ddd51155e03f9af2d785183e99fb924cda86c7a9a0d",
+  "getQasPublishCommandTemplate": "795b1292ed75690f65469c35289d97e2bc3ffe970b69999f38e092f1e3b77984",
+  "getQasPublishSkillTemplate": "94eca4abde21e3ee80c94cda2988dadc8d7f91d1e183d3f4e21cca234f02d5ba",
 }
 `;
 
@@ -21,7 +21,7 @@ exports[`skill templates split parity > preserves generated QASpec skill file co
   "qaspec-analyze": "7199fc28968e743277917bb88dc9686b429b922e765f3720a06c88c6303cacbf",
   "qaspec-archive": "f0c515c73de891ae7a74e1b04a9679cc7920100a1475d509f4e3a99b4a16bf9c",
   "qaspec-explore": "4c6154002a3505bf001991a1b381302374bce52b4d4ab4afc2b978662925b17e",
-  "qaspec-matrix": "986d0f444a32a62ecfddf30310196820fef9a37dcda4af7236a4d71dbf169dc5",
-  "qaspec-publish": "83cdfe6dd1f1e1badc30c65edd43cd59a9bb60e8e0cc4389d3847e1696984ce8",
+  "qaspec-matrix": "29bc2b0b9a346d501bb455e54009f920248acaecd1d24e76a811c9eee719c852",
+  "qaspec-publish": "e6247f1cce7ba7e6cf505e2c7543dbb116a079790f3dad0b84c7f85b8eafc46d",
 }
 `;

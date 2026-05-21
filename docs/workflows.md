@@ -22,7 +22,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 |----|---------------|--------|
 | `explore` | `/qsx:explore` | Investigation (no required artifact) |
 | `analyze` | `/qsx:analyze` | `analisis.md` |
-| `matrix` | `/qsx:matrix` | `testmatrix.md` + delta specs |
+| `matrix` | `/qsx:matrix` | `testmatrix.md` (preconditions + steps per case) + delta specs |
 | `publish` | `/qsx:publish` | `execution-context.md`, `publish-plan.md`, then TCMS upload after confirm |
 | `archive` | `/qsx:archive` | Archived change |
 
@@ -36,7 +36,7 @@ Typical happy path:
 ### Halts and prerequisites
 
 - **Analyze → matrix:** `analisis.md` is the validated source of truth for matrix (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; matrix reads it before the PR diff and overrides the diff when they conflict.
-- **Matrix → publish:** Publish requires approved matrix and deltas; matrix halts for case and requirement approval.
+- **Matrix → publish:** Publish requires approved matrix and deltas; matrix halts for case and requirement approval. Each case in `testmatrix.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
 - **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs Qase MCP only after confirmation.
 - **Explore → matrix without analyze:** Matrix still enforces artifact rules from `qaspec instructions matrix --json`.
 
@@ -73,6 +73,29 @@ Use when stakeholders need `analisis.md` before committing to a full matrix.
 ```
 
 Skip explore when scope is already defined in a ticket or PR description.
+
+### Enriched test matrix format
+
+Each case keeps one progress checkbox, with detail nested below:
+
+```markdown
+## Suite: Export
+
+- [ ] 1.1 Export respects active filters
+
+  **Preconditions:**
+  1. On the staging environment
+  2. Logged in as Analyst in Acme Corp
+  3. At least ten records exist with filter "Status = Open" applied
+
+  **Steps:**
+  | # | Action | Expected |
+  | 1 | Navigate to https://app.example/reports | |
+  | 2 | Click "Export CSV" | Download starts |
+  | 3 | Open the downloaded file | Row count matches the filtered list only |
+```
+
+Agents build preconditions and steps from `analisis.md`, the diff, requirements, and specs. Generic steps are allowed only when sources lack actionable detail (document with `<!-- gap: ... -->` or self-audit). Publish maps these blocks to Qase — it does not re-generate steps from titles alone.
 
 ### Custom profile (subset)
 
