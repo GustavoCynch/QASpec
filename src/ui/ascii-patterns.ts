@@ -1,137 +1,39 @@
 /**
- * ASCII art animation patterns for the welcome screen.
- * QASpec logo animation - diamond/rhombus shape with hollow center "O".
+ * Typographic wordmark for the QASpec welcome screen (Option A).
+ * Boxed "QA · Spec" — no block-letter ASCII art.
  */
 
-// Detect if full Unicode is supported
 const supportsUnicode =
   process.platform !== 'win32' ||
   !!process.env.WT_SESSION || // Windows Terminal
   !!process.env.TERM_PROGRAM; // Modern terminal
 
-// Character set based on Unicode support
-// Block characters for pixel-art aesthetic
-const CHARS = supportsUnicode
-  ? { full: '██', dim: '░░', empty: '  ' }
-  : { full: '##', dim: '++', empty: '  ' };
+/** Label inside the welcome box */
+export const QA_SPEC_LABEL = 'QA  ·  Spec';
 
-const _ = CHARS.empty;
-const F = CHARS.full;
-const D = CHARS.dim;
+/** Inner width between vertical borders (padding included) */
+const BOX_INNER_WIDTH = 29;
 
-/**
- * Welcome animation frames - QASpec logo building from center
- * 7 rows × 6 columns diamond with hollow center "O"
- * Center bar is 2 cols × 3 rows (rows 3,4,5 cols 3,4)
- * Each frame is an array of strings (lines of ASCII art)
- * Grid: 6 cols × 2 chars = 12 chars wide
- */
-export const WELCOME_ANIMATION = {
-  interval: 120,
-  frames: [
-    // Frame 1: Empty
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-    ],
-    // Frame 2: Center blocks appear (dim) - 2x3 center bar
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${D}${D}${_}${_}`,
-      `${_}${_}${_}${_}${D}${D}${_}${_}`,
-      `${_}${_}${_}${_}${D}${D}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-    ],
-    // Frame 3: Center blocks solidify
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-    ],
-    // Frame 4: Top and bottom points appear
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${D}${D}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${_}${_}${_}${_}`,
-      `${_}${_}${_}${_}${D}${D}${_}${_}`,
-    ],
-    // Frame 5: Inner ring forming
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${D}${_}${_}${D}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${D}${_}${_}${D}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-    ],
-    // Frame 6: Outer ring appearing
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${D}${_}${F}${F}${_}${D}`,
-      `${_}${_}${D}${_}${F}${F}${_}${D}`,
-      `${_}${_}${D}${_}${F}${F}${_}${D}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-    ],
-    // Frame 7: Full logo
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-    ],
-    // Frame 8: Hold complete logo
-    [
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 1
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 2
-      `${_}${_}${_}${_}${_}${_}${_}${_}`, // padding row 3
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${F}${_}${F}${F}${_}${F}`,
-      `${_}${_}${_}${F}${_}${_}${F}${_}`,
-      `${_}${_}${_}${_}${F}${F}${_}${_}`,
-    ],
-  ],
-};
+const BOX_CHARS = supportsUnicode
+  ? { tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│' }
+  : { tl: '+', tr: '+', bl: '+', br: '+', h: '-', v: '|' };
+
+function centerLabel(label: string, width: number): string {
+  const padTotal = Math.max(0, width - label.length);
+  const padLeft = Math.floor(padTotal / 2);
+  const padRight = padTotal - padLeft;
+  return `${' '.repeat(padLeft)}${label}${' '.repeat(padRight)}`;
+}
+
+/** Three-line boxed wordmark with 2-space left margin */
+export function getQaSpecWordmarkLines(): string[] {
+  const { tl, tr, bl, br, h, v } = BOX_CHARS;
+  const inner = centerLabel(QA_SPEC_LABEL, BOX_INNER_WIDTH);
+  const horizontal = h.repeat(BOX_INNER_WIDTH);
+
+  return [
+    `  ${tl}${horizontal}${tr}`,
+    `  ${v}${inner}${v}`,
+    `  ${bl}${horizontal}${br}`,
+  ];
+}

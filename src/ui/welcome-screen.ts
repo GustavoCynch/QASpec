@@ -4,20 +4,15 @@
  */
 
 import chalk from 'chalk';
-import { WELCOME_ANIMATION } from './ascii-patterns.js';
-
-/** Fully drawn logo frame */
-const LOGO_FRAME = WELCOME_ANIMATION.frames[6];
+import { getQaSpecWordmarkLines } from './ascii-patterns.js';
 
 function printWelcomeContent(): void {
   console.log();
   console.log(chalk.white.bold('Welcome to QASpec'));
   console.log(chalk.dim('Agree on what to test before you run — specs live in the repo.'));
   console.log();
-  for (const line of LOGO_FRAME) {
-    if (line.trim().length > 0) {
-      console.log(chalk.cyan(line));
-    }
+  for (const line of getQaSpecWordmarkLines()) {
+    console.log(chalk.cyan(line));
   }
   console.log();
   console.log(chalk.white('This setup will configure:'));

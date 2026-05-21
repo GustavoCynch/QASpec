@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { showWelcomeScreen } from '../../src/ui/welcome-screen.js';
+import { getQaSpecWordmarkLines, QA_SPEC_LABEL } from '../../src/ui/ascii-patterns.js';
 
 function setTty(isTty: boolean): void {
   Object.defineProperty(process.stdout, 'isTTY', { value: isTty, configurable: true });
@@ -29,6 +30,21 @@ describe('showWelcomeScreen', () => {
     const output = vi.mocked(console.log).mock.calls.flat().join('\n');
     const matches = output.match(/Welcome to QASpec/g) ?? [];
     expect(matches.length).toBe(1);
+  });
+
+  it('prints boxed QA · Spec wordmark', async () => {
+    setTty(false);
+    await showWelcomeScreen();
+
+    const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+
+    for (const line of getQaSpecWordmarkLines()) {
+      expect(output).toContain(line);
+    }
+
+    expect(output).toContain(QA_SPEC_LABEL);
+    expect(output).not.toMatch(/[█#]{3}.*[█#]{3}/);
+    expect(output).not.toContain('  QA                    Spec');
   });
 
   it('prints QASpec tagline', async () => {
