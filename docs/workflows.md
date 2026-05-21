@@ -23,7 +23,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 | `explore` | `/qsx:explore` | Investigation (no required artifact) |
 | `analyze` | `/qsx:analyze` | `analisis.md` |
 | `matrix` | `/qsx:matrix` | `testmatrix.md` + delta specs |
-| `publish` | `/qsx:publish` | TCMS upload |
+| `publish` | `/qsx:publish` | `execution-context.md`, `publish-plan.md`, then TCMS upload after confirm |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
@@ -37,6 +37,7 @@ Typical happy path:
 
 - **Analyze → matrix:** Matrix instructions expect `analisis.md` (or explicit user override). Analyze ends with a halt before matrix in the same session.
 - **Matrix → publish:** Publish requires approved matrix and deltas; matrix halts for case and requirement approval.
+- **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs Qase MCP only after confirmation.
 - **Explore → matrix without analyze:** Matrix still enforces artifact rules from `qaspec instructions matrix --json`.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`). Generated `qaspec-*` skills stay thin and load policy via:
@@ -52,7 +53,7 @@ Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_t
 ### Exploratory PR review
 
 ```text
-/qsx:explore ──► /qsx:analyze ──► /qsx:matrix ──► (approve) ──► /qsx:publish
+/qsx:explore ──► /qsx:analyze ──► /qsx:matrix ──► (approve) ──► /qsx:publish ──► (confirm plan) ──► Qase upload
 ```
 
 Use when a PR or requirement doc needs structured risk analysis before cases are written.

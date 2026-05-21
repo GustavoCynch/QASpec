@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import {
@@ -7,7 +9,6 @@ import {
 import { serializeConfig } from '../../src/core/config-prompts.js';
 import { validateConfigRules } from '../../src/core/project-config.js';
 import { resolveSchema } from '../../src/core/artifact-graph/resolver.js';
-import path from 'path';
 
 describe('qa-config-seed', () => {
   it('seed rules keys match qaspec-pr-review artifact ids', () => {
@@ -39,5 +40,33 @@ describe('qa-config-seed', () => {
     expect(parsed.rules['test-matrix'].length).toBeGreaterThan(0);
     expect(parsed.rules.specs.length).toBeGreaterThan(0);
     expect(parsed.rules.apply.length).toBeGreaterThan(0);
+  });
+
+  it('apply seed rules require publish-plan and confirmation before MCP', () => {
+    const seed = getQaspecPrReviewConfigSeed();
+    const applyRules = seed.rules!.apply.join('\n');
+
+    expect(applyRules).toContain('publish-plan.md');
+    expect(applyRules).toMatch(/confirmation halt/i);
+    expect(applyRules).toMatch(/do not upload in the same message/i);
+  });
+
+  it('qaspec-pr-review schema apply instruction requires prepare and confirm before MCP', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..');
+    const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
+    const content = fs.readFileSync(schemaPath, 'utf-8');
+
+    expect(content).toContain('publish-plan.md');
+    expect(content).toMatch(/confirmation halt/i);
+    expect(content).toMatch(/Do not invoke Qase MCP/i);
+
+    const planTemplate = path.join(
+      repoRoot,
+      'schemas',
+      'qaspec-pr-review',
+      'templates',
+      'publish-plan.md'
+    );
+    expect(fs.existsSync(planTemplate)).toBe(true);
   });
 });

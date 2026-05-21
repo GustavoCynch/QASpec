@@ -105,15 +105,24 @@ apply:
   instruction: |
     Publish the approved matrix to Qase (MCP) and update tracking.
 
-    **Language:** Write `publish-log.md`, `execution-context.md`, and user-facing halt text in the project language from config.
+    **Language:** Write `publish-log.md`, `execution-context.md`, `publish-plan.md`, and user-facing halt text in the project language from config.
 
-    Before MCP:
+    Prepare (no Qase MCP in this phase):
     - Re-read `qaspec/references/qase_test_case_rules.md`
     - Confirm `testmatrix.md` is approved and checkbox-formatted
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
-    - Read completed `specs/**/*.md` for context before MCP when files exist
-    - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist new values to `execution-context.md` when collected
-    - Write `publish-log.md` with suite/case creation trace
+    - Read completed `specs/**/*.md` for context when files exist
+    - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist to `execution-context.md`
+    - Write or update `publish-plan.md` listing suites and unchecked cases from `testmatrix.md` (use template `templates/publish-plan.md`)
+    - End with **exactly one** confirmation halt: user may edit `execution-context.md` and `publish-plan.md` or confirm publish
+    - **Do not invoke Qase MCP** in the same message as initial creation of `execution-context.md` and `publish-plan.md`
+
+    After user confirms:
+    - Re-read `execution-context.md`, `publish-plan.md`, and `testmatrix.md`
+    - Read Qase MCP tool schemas before the first call
+    - Validate matrix against rules; upload via MCP; write `publish-log.md` with suite/case trace
     - Mark each published case `- [x]` in `testmatrix.md`
+
+    User edits after the confirm halt: update the prepare files in chat, then ask again for confirm before MCP.
 
     Do not modify application source code under test. Stop on PII/secrets.

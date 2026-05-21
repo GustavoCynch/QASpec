@@ -81,7 +81,10 @@ AI:  Creates testmatrix.md and delta specs under the change
 ```text
 You: /qsx:publish
 
-AI:  Uploads approved cases via configured MCP (e.g. Qase) when rules allow.
+AI:  Writes execution-context.md and publish-plan.md, halts for your edit or confirm.
+You: Confirm (or edit the plan files first).
+
+AI:  Uploads approved cases via configured MCP (e.g. Qase), updates publish-log.md and checkboxes.
 ```
 
 ### 5. Archive

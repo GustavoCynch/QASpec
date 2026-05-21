@@ -11,8 +11,8 @@ exports[`skill templates split parity > preserves QASpec template function paylo
   "getQasExploreSkillTemplate": "40b39bc05f9c3a06c96d11add724cc2cae68d995b43f911a392dc9d23e3ca1a2",
   "getQasMatrixCommandTemplate": "8378e4317dee6eb1789599e0edbfb7d29d2d2b8c092d5ad4c1631a8480ac7f57",
   "getQasMatrixSkillTemplate": "64b090a340004c71c49da0a756882bc7f9bca7814cb26c5c3d91fd748dda5c48",
-  "getQasPublishCommandTemplate": "bb10261dd39c82cc602c5501282f168aa241310005e9eda09e8a6a68130054c2",
-  "getQasPublishSkillTemplate": "0039236b1d4c1444f43e8f2c8803f236b13163507214e45fdfa4238912116d67",
+  "getQasPublishCommandTemplate": "97d9dadace93d7f2ec7eb87ccc1fbb4ffd12c3869ca554ba4bf5a5aba4ec79e9",
+  "getQasPublishSkillTemplate": "63bc374dfbdc652c559245b17f0db3453c1953c498d62b0f4bbafbd1df171a5b",
 }
 `;
 
@@ -22,6 +22,6 @@ exports[`skill templates split parity > preserves generated QASpec skill file co
   "qaspec-archive": "f0c515c73de891ae7a74e1b04a9679cc7920100a1475d509f4e3a99b4a16bf9c",
   "qaspec-explore": "4c6154002a3505bf001991a1b381302374bce52b4d4ab4afc2b978662925b17e",
   "qaspec-matrix": "0ac45e902dd7c17aba1e0025a7e7103fe69255f8ab065c92bf02c2d41a72719d",
-  "qaspec-publish": "416e6c54bf04de4f11d0f4469c530a1ff59060ba04b7788562a9b68bf1655d77",
+  "qaspec-publish": "83cdfe6dd1f1e1badc30c65edd43cd59a9bb60e8e0cc4389d3847e1696984ce8",
 }
 `;

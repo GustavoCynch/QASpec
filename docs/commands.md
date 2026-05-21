@@ -95,7 +95,7 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 ## `/qsx:publish`
 
-Upload **approved** test cases from `testmatrix.md` to the configured test management system (Qase MCP when enabled).
+Prepare and upload **approved** test cases from `testmatrix.md` to the configured test management system (Qase MCP when enabled).
 
 **Syntax:**
 
@@ -107,6 +107,12 @@ Upload **approved** test cases from `testmatrix.md` to the configured test manag
 
 - Approved `testmatrix.md` and delta specs from `/qsx:matrix`
 - Agent directs you back to `/qsx:matrix` if artifacts are missing
+
+**What it does:**
+
+1. Writes or updates `execution-context.md` (Qase project, role, base URL) and `publish-plan.md` (suites and unchecked cases to upload).
+2. Halts once so you can edit those files or confirm publish — **no TCMS upload in that message**.
+3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testmatrix.md`.
 
 ---
 
