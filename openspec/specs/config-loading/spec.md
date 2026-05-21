@@ -108,6 +108,26 @@ The system SHALL NOT validate artifact IDs in rules during config load time. Val
 - **WHEN** instructions are loaded for any artifact and config has unknown artifact IDs in rules
 - **THEN** warnings are emitted about unknown artifact IDs (see rules-injection spec for details)
 
+### Requirement: Parse workflow multipleSubagents flags
+
+The system SHALL parse optional `workflow.multipleSubagents.review` and `workflow.multipleSubagents.matrix` as booleans from project config using resilient field-by-field validation.
+
+#### Scenario: Valid workflow flags
+
+- **WHEN** config contains `workflow.multipleSubagents.review: false` and `matrix: true`
+- **THEN** returned ProjectConfig includes those boolean values for instruction loading
+
+#### Scenario: Omitted workflow block
+
+- **WHEN** config lacks `workflow.multipleSubagents`
+- **THEN** instruction loading treats both review and matrix as **false** for subagent mode injection
+
+#### Scenario: Invalid workflow flag type
+
+- **WHEN** config contains `workflow.multipleSubagents.review: "yes"`
+- **THEN** a warning is logged
+- **AND** that field is omitted from parsed config (phase falls back to default false)
+
 ### Requirement: Gracefully handle config errors without halting
 
 The system SHALL continue operation with default values when config loading or parsing fails.

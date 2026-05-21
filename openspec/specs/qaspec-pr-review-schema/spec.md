@@ -40,7 +40,7 @@ The schema SHALL define artifact `specs` that generates `specs/**/*.md`, require
 
 ### Requirement: Analyze artifact
 
-The schema SHALL define artifact `analyze` that generates `analisis.md` with no upstream dependencies.
+The schema SHALL define artifact `analyze` that generates `analisis.md` with no upstream dependencies, and artifact instructions SHALL defer dual blind Task delegations to `workflow.multipleSubagents.review` in project config (orchestrator-only when false, dual analysts when true).
 
 #### Scenario: First artifact in a new change
 
@@ -54,9 +54,16 @@ The schema SHALL define artifact `analyze` that generates `analisis.md` with no 
 - **THEN** the artifact includes an **Affected capabilities** section with kebab-case capability names
 - **AND** instructions state that delta specs are not written in the analyze step
 
+#### Scenario: Analyze instructions respect subagent flag
+
+- **WHEN** `qaspec instructions analyze --json` is run for a project with `workflow.multipleSubagents.review: false`
+- **THEN** enriched instructions tell the agent not to use Task subagents for analyze
+- **WHEN** the same command runs with `review: true`
+- **THEN** enriched instructions require dual blind parallel Task delegations and synthesis notes
+
 ### Requirement: Test matrix artifact with checkbox template
 
-The schema SHALL define artifact `test-matrix` that generates `testmatrix.md`, requires `analyze`, instructs agents to produce or update change delta specs in the same phase as the matrix, and SHALL require each test case to include preconditions and numbered steps with action and expected result derived from available sources (not invented).
+The schema SHALL define artifact `test-matrix` that generates `testmatrix.md`, requires `analyze`, instructs agents to produce or update change delta specs in the same phase as the matrix, SHALL require each test case to include preconditions and numbered steps with action and expected result derived from available sources (not invented), and artifact instructions SHALL defer dual blind Task delegations for draft lists to `workflow.multipleSubagents.matrix` in project config (orchestrator-only when false, dual analysts when true).
 
 #### Scenario: Matrix depends on analysis
 
@@ -94,6 +101,13 @@ The schema SHALL define artifact `test-matrix` that generates `testmatrix.md`, r
 - **WHEN** a maintainer opens `schemas/qaspec-pr-review/templates/testmatrix.md`
 - **THEN** the template shows at least one full example case with **Preconditions** and **Steps** under a checkbox line
 - **AND** the example aligns with `qaspec/references/qase_test_case_rules.md` narrative rules
+
+#### Scenario: Matrix instructions respect subagent flag
+
+- **WHEN** `qaspec instructions test-matrix --json` runs for a project with `workflow.multipleSubagents.matrix: false`
+- **THEN** enriched instructions tell the agent not to use Task subagents for matrix drafting
+- **WHEN** the same command runs with `matrix: true`
+- **THEN** enriched instructions require dual blind parallel Task delegations for draft lists before merge
 
 ### Requirement: Publish artifact and tracking
 

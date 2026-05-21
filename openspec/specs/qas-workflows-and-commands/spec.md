@@ -81,7 +81,7 @@ QASpec workflow skills SHALL instruct agents to use the language from `openspec/
 
 ### Requirement: Analyze workflow behavior
 
-The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md`, require reading `qaspec/references/historical_bugs.md`, use dual blind analyst synthesis by default, include an **Affected capabilities** section in `analisis.md` using kebab-case names, SHALL NOT write `specs/**/*.md` in the analyze step, and end with exactly one halt question before matrix work in the same turn.
+The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md`, require reading `qaspec/references/historical_bugs.md`, honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis only when that flag is **true**, otherwise perform the analyze phase entirely in the orchestrator without Task subagents, include an **Affected capabilities** section in `analisis.md` using kebab-case names, SHALL NOT write `specs/**/*.md` in the analyze step, and end with exactly one halt question before matrix work in the same turn.
 
 #### Scenario: Analyze references path
 
@@ -100,9 +100,21 @@ The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md
 - **THEN** the agent updates `analisis.md` **Validated clarifications** (and intent vs implementation when needed)
 - **AND** does not rely on chat-only text as the input for `/qsx:matrix`
 
+#### Scenario: Dual analysts when review flag true
+
+- **WHEN** `workflow.multipleSubagents.review` is **true** and the Task tool is available
+- **THEN** the agent runs two parallel blind Task subagents with identical analyst briefs before writing user-visible `analisis.md`
+- **AND** **Synthesis notes** document Agreed / Single-analyst / Contradiction merge
+
+#### Scenario: Orchestrator-only when review flag false
+
+- **WHEN** `workflow.multipleSubagents.review` is **false** or omitted (default)
+- **THEN** the orchestrator fetches the change set and writes `analisis.md` without invoking Task subagents
+- **AND** the workflow does not delegate to a single subagent as a substitute
+
 ### Requirement: Matrix workflow behavior
 
-The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes and, for each case, preconditions plus steps with action and expected result built from sources in hand, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, and halt once for human approval of **both** the case list and the requirements.
+The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes and, for each case, preconditions plus steps with action and expected result built from sources in hand, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, honor `workflow.multipleSubagents.matrix` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis for draft lists only when that flag is **true**, otherwise draft matrix and specs in the orchestrator without Task subagents, and halt once for human approval of **both** the case list and the requirements.
 
 #### Scenario: Matrix format
 
@@ -145,6 +157,27 @@ The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md
 - **THEN** each action and expected result uses concrete UI labels, URLs, data, or API behavior found in sources read for this change
 - **AND** generic placeholder steps are used only when sources lack actionable detail
 - **AND** the agent self-audits before halt that no step is untraceable to a source unless marked as a documented gap
+
+#### Scenario: Dual analysts when matrix flag true
+
+- **WHEN** `workflow.multipleSubagents.matrix` is **true** and the Task tool is available
+- **THEN** the agent runs two parallel blind Task subagents before merging drafts into `testmatrix.md` and delta specs
+
+#### Scenario: Orchestrator-only when matrix flag false
+
+- **WHEN** `workflow.multipleSubagents.matrix` is **false** or omitted (default)
+- **THEN** the orchestrator drafts matrix and specs without Task subagents
+- **AND** the workflow does not delegate to a single subagent as a substitute
+
+### Requirement: Workflow skills document multipleSubagents config
+
+Generated `qaspec-analyze` and `qaspec-matrix` skills SHALL instruct agents to read `workflow.multipleSubagents.review` and `workflow.multipleSubagents.matrix` from `qaspec/config.yaml` before choosing dual Task delegations versus orchestrator-only execution.
+
+#### Scenario: Skill body mentions config keys
+
+- **WHEN** `qaspec update` regenerates analyze and matrix skills
+- **THEN** each skill body references `workflow.multipleSubagents` with review and matrix keys
+- **AND** the skill states orchestrator-only behavior when the flag for that phase is false
 
 ### Requirement: Publish workflow behavior
 

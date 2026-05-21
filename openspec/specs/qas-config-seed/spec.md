@@ -17,6 +17,22 @@ The init seed for `rules.test-matrix` SHALL instruct agents to write preconditio
 - **AND** at least one active rule forbids inventing vague flows when concrete UI or requirement detail exists in sources
 - **AND** rules remain keyed as `test-matrix` for instruction injection
 
+### Requirement: Seed documents multipleSubagents defaults
+
+When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include `workflow.multipleSubagents` with `review: false` and `matrix: false` unless the user already supplied values.
+
+#### Scenario: Fresh init includes workflow block
+
+- **WHEN** init creates `qaspec/config.yaml` with `schema: qaspec-pr-review` and no prior config existed
+- **THEN** the file contains `workflow.multipleSubagents.review: false`
+- **AND** the file contains `workflow.multipleSubagents.matrix: false`
+- **AND** a short comment or context line explains that `true` enables dual blind Task analysts for that phase
+
+#### Scenario: Existing config is not overwritten
+
+- **WHEN** init runs in extend mode and config already exists
+- **THEN** the CLI does not replace existing `workflow` settings
+
 ### Requirement: Active QA config seed on first init
 
 When init creates a new project config with schema `qaspec-pr-review`, the CLI SHALL write an active (uncommented) `context` block and `rules` entries for artifact ids `analyze`, `test-matrix`, `specs`, and `apply` that encode the default QA role and phase rules ported from the reference `qa-pr-review` pack.
