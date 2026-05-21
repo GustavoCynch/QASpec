@@ -33,9 +33,3 @@
 - [x] 5.1 Temp dir: `qaspec init` → `qaspec/references/*`, `qaspec/config.yaml`, `qaspec/changes/archive/`
 - [x] 5.2 Temp dir: `qaspec new change smoke-qa --schema qaspec-pr-review` + `qaspec status --json`
 - [x] 5.3 Fixture repo with only `openspec/`: `qaspec status` still resolves
-
-## 6. Explicitly not in this change
-
-- [ ] N/A Migrate this fork’s `openspec/changes/` tree to `qaspec/changes/` (optional follow-up)
-- [ ] N/A Commit `.cursor/commands/qas-*.md` in the fork repository
-- [ ] N/A Remove `openspec` shim binary

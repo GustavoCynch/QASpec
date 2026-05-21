@@ -4,6 +4,24 @@
 
 Replace the default OpenSpec **core** agent surface with QASpec QA commands and skills for end users of the fork.
 ## Requirements
+### Requirement: Upstream OpenSpec workflow artifacts are not replaced
+
+When upstream OpenSpec is active in a project, QASpec init and update SHALL install only the QASpec core (`qas-*`) workflow surface and SHALL leave upstream `openspec-*` skills and `opsx-*` commands unchanged.
+
+#### Scenario: Core profile beside upstream OpenSpec
+
+- **GIVEN** upstream OpenSpec is active with `openspec-propose` and `openspec-apply-change` skills already installed
+- **WHEN** the user runs `qaspec init` with the QASpec core profile
+- **THEN** `qas-explore`, `qas-analyze`, `qas-matrix`, `qas-publish`, and `qas-archive` skills are created or updated
+- **AND** `openspec-propose` and `openspec-apply-change` skill files are not modified by QASpec
+
+#### Scenario: Custom profile with legacy OpenSpec workflows
+
+- **GIVEN** upstream OpenSpec is active
+- **WHEN** the user selects a custom profile that includes `propose`, `apply`, or other `openspec-*` workflow ids
+- **THEN** QASpec still does not overwrite existing upstream `openspec-*` skills or `opsx-*` commands
+- **AND** QASpec `qas-*` skills for enabled QASpec workflows are still installed
+
 ### Requirement: Legacy custom profile upgrades to QASpec core
 
 When global configuration still reflects the pre-QASpec OpenSpec core workflow set, the CLI SHALL migrate it to the QASpec `core` profile before installing workflow artifacts.

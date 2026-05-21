@@ -42,15 +42,45 @@ QASpec conventions SHALL keep specs lightweight by default and scale rigor only 
 - **WHEN** a change is cross-team, cross-repo, API-contract breaking, migration-heavy, or security/privacy sensitive
 - **THEN** authors increase detail and explicit validation expectations proportionally
 
+### Requirement: QASpec planning home layout
+
+A QASpec project SHALL use `qaspec/` as the canonical planning root for config, specs, and changes.
+
+#### Scenario: Greenfield project layout
+
+- **WHEN** a QASpec project is initialized for QA workflow use
+- **THEN** the planning root directory name is `qaspec/`
+- **AND** config lives at `qaspec/config.yaml`
+
+#### Scenario: Legacy OpenSpec layout compatibility
+
+- **WHEN** only `openspec/` exists at project root with valid config
+- **THEN** tooling SHALL resolve that directory as the planning home
+- **AND** authors MAY continue working until they optionally migrate to `qaspec/`
+
 ### Requirement: Project Structure
 
 A QASpec project SHALL maintain a consistent directory structure for specifications and changes under the resolved planning home.
 
 #### Scenario: Initializing project structure
 
-- **WHEN** a QASpec project is initialized (greenfield, after planning-home rename)
-- **THEN** it SHALL use the canonical planning layout under `qaspec/` as defined by the planning-home capability
-- **AND** legacy `openspec/` layouts remain valid when only the legacy directory exists
+- **WHEN** a QASpec project is initialized (greenfield)
+- **THEN** it SHALL have this structure:
+```
+qaspec/
+├── config.yaml           # Project context, schema, rules
+├── specs/                # Current deployed capabilities
+│   └── [capability]/
+│       └── spec.md
+└── changes/
+    ├── [change-name]/
+    └── archive/
+```
+
+#### Scenario: Optional reference directory
+
+- **WHEN** init runs for a QASpec consumer project
+- **THEN** `qaspec/references/` MAY exist alongside the planning tree for QA reference files (separate from planning home root name)
 
 ### Requirement: Structured Format for Behavioral Specs
 

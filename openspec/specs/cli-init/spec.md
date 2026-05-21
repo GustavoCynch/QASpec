@@ -20,17 +20,29 @@ The `qaspec init` command SHALL display progress indicators during initializatio
 
 ### Requirement: Directory Creation
 
-The command SHALL create the planning directory structure with config file using QASpec-branded user messages.
+The command SHALL create the QASpec planning directory structure with config file.
 
-#### Scenario: Creating planning structure
+#### Scenario: Creating QASpec structure
 
-- **WHEN** `qaspec init` is executed
-- **THEN** user-visible progress and errors SHALL name **QASpec**, not OpenSpec, when describing this product's scaffold
-- **AND** create the standard planning directory layout under the resolved planning home
+- **WHEN** `qaspec init` is executed on a project without an existing planning home
+- **THEN** create the following directory structure:
+```
+qaspec/
+├── config.yaml
+├── specs/
+└── changes/
+    └── archive/
+```
+
+#### Scenario: Legacy openspec directory preserved
+
+- **WHEN** a project already has `openspec/` with `config.yaml` and no `qaspec/`
+- **THEN** init and other commands resolve the legacy layout without requiring rename in that session
+- **AND** re-init does not delete or move `openspec/` automatically
 
 ### Requirement: QASpec reference scaffolding on init
 
-The `openspec init` command SHALL scaffold `qaspec/references/historical_bugs.md` and `qaspec/references/qase_test_case_rules.md` when missing, without overwriting existing files.
+The `qaspec init` command SHALL scaffold `qaspec/references/historical_bugs.md` and `qaspec/references/qase_test_case_rules.md` when missing, without overwriting existing files.
 
 #### Scenario: References created on first init
 
@@ -58,13 +70,14 @@ Before resolving workflows for skill and command generation, `qaspec init` SHALL
 
 ### Requirement: QASpec core workflow messaging
 
-Upon successful init with the QASpec core profile—or any active profile whose workflows include QASpec QA ids (`analyze`, `matrix`, or `publish`)—success output SHALL mention `/qas:explore`, `/qas:analyze`, `/qas:matrix`, and `/qas:publish` as primary next steps instead of `/opsx:propose` and `/opsx:apply`.
+Upon successful init with the QASpec core profile—or any active profile whose workflows include QASpec QA ids (`analyze`, `matrix`, or `publish`)—success output SHALL mention `/qas:explore`, `/qas:analyze`, `/qas:matrix`, and `/qas:publish` as primary next steps instead of `/opsx:propose` and `/opsx:apply`, and SHALL reference `qaspec` CLI commands (not `openspec`) in next-step hints.
 
 #### Scenario: Post-init guidance after legacy migration
 
 - **WHEN** init finishes configuring at least one AI tool
 - **AND** the effective profile is `core` (including after legacy global-config migration)
 - **THEN** the CLI prints next-step hints using `/qas:*` command names including `/qas:publish`
+- **AND** printed examples use `qaspec` as the CLI name
 
 #### Scenario: Post-init guidance for partial QAS workflows
 
@@ -216,43 +229,41 @@ The command SHALL support non-interactive operation through command-line options
 
 ### Requirement: Skill Generation
 
-The command SHALL generate Agent Skills for selected AI tools.
+The command SHALL generate Agent Skills for selected AI tools. When upstream OpenSpec is active in the target project, the command SHALL generate only `qas-*` skills and SHALL skip all `openspec-*` skill directories.
 
 #### Scenario: Generating skills for a tool
 
 - **WHEN** a tool is selected during initialization
-- **THEN** create 9 skill directories under `.<tool>/skills/`:
-  - `openspec-explore/SKILL.md`
-  - `openspec-new-change/SKILL.md`
-  - `openspec-continue-change/SKILL.md`
-  - `openspec-apply-change/SKILL.md`
-  - `openspec-ff-change/SKILL.md`
-  - `openspec-verify-change/SKILL.md`
-  - `openspec-sync-specs/SKILL.md`
-  - `openspec-archive-change/SKILL.md`
-  - `openspec-bulk-archive-change/SKILL.md`
+- **AND** upstream OpenSpec is not active
+- **THEN** create skill directories under `.<tool>/skills/` for each workflow in the active profile (including `openspec-*` dirs when those workflows are selected)
 - **AND** each SKILL.md SHALL contain YAML frontmatter with name and description
 - **AND** each SKILL.md SHALL contain the skill instructions
 
+#### Scenario: Generating skills with upstream OpenSpec present
+
+- **WHEN** a tool is selected during initialization
+- **AND** upstream OpenSpec is active
+- **THEN** create or update only `qas-*` skill directories for workflows in the active profile
+- **AND** SHALL NOT write to any `openspec-*` skill path that exists or would be managed by upstream OpenSpec
+
 ### Requirement: Slash Command Generation
 
-The command SHALL generate opsx slash commands only for selected tools that have a registered command adapter, while keeping adapterless tools valid for skill generation.
+The command SHALL generate slash commands only for selected tools that have a registered command adapter, while keeping adapterless tools valid for skill generation. When upstream OpenSpec is active, the command SHALL NOT write `opsx-*` command files.
 
 #### Scenario: Generating slash commands for a tool with a registered adapter
 
 - **WHEN** a tool with a registered command adapter is selected during initialization
-- **THEN** create 9 slash command files using the tool's command adapter:
-  - `/opsx:explore`
-  - `/opsx:new`
-  - `/opsx:continue`
-  - `/opsx:apply`
-  - `/opsx:ff`
-  - `/opsx:verify`
-  - `/opsx:sync`
-  - `/opsx:archive`
-  - `/opsx:bulk-archive`
-- **AND** use tool-specific path conventions (e.g., `.claude/commands/opsx/` for Claude)
+- **AND** upstream OpenSpec is not active
+- **THEN** create slash command files for workflows in the active profile using the tool's command adapter
+- **AND** use tool-specific path conventions (e.g., `.claude/commands/qas/` for Claude)
 - **AND** include tool-specific frontmatter format
+
+#### Scenario: Generating slash commands with upstream OpenSpec present
+
+- **WHEN** a tool with a registered command adapter is selected during initialization
+- **AND** upstream OpenSpec is active
+- **THEN** create or update only `qas-*` command files for QASpec workflows in the active profile
+- **AND** SHALL NOT overwrite existing `opsx-*` command files
 
 #### Scenario: Selected tool has no command adapter
 
