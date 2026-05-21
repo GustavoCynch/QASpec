@@ -51,12 +51,13 @@ import {
   getCoexistenceSkillTemplates,
   getCommandContents,
   generateSkillContent,
+  usesQasWorkflowSurface,
   type ToolSkillStatus,
 } from './shared/index.js';
 import { getGlobalConfig, type Delivery, type Profile } from './global-config.js';
 import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
-import { migrateIfNeeded } from './migration.js';
+import { migrateIfNeeded, migrateLegacyCoreProfileIfNeeded } from './migration.js';
 import { scaffoldQaspecReferences } from './reference-scaffold.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 
@@ -126,6 +127,9 @@ export class InitCommand {
 
     // Validation happens silently in the background
     const extendMode = await this.validate(projectPath, openspecPath);
+
+    // Upgrade stale global custom profiles before reading workflows for generation
+    migrateLegacyCoreProfileIfNeeded();
 
     // Check for legacy artifacts and handle cleanup
     await this.handleLegacyCleanup(projectPath, extendMode);
@@ -756,7 +760,7 @@ export class InitCommand {
     const activeProfile: Profile = (this.profileOverride as Profile) ?? globalCfg.profile ?? 'core';
     const activeWorkflows = [...getProfileWorkflows(activeProfile, globalCfg.workflows)];
     console.log();
-    if (activeWorkflows.includes('analyze')) {
+    if (usesQasWorkflowSurface(activeWorkflows)) {
       console.log(chalk.bold('Getting started:'));
       console.log('  qaspec new change <name>   Create a QA change');
       console.log('  /qas:explore                 Think before the formal cycle');

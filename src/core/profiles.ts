@@ -14,6 +14,23 @@ import type { Profile } from './global-config.js';
 export const CORE_WORKFLOWS = ['explore', 'analyze', 'matrix', 'publish', 'archive'] as const;
 
 /**
+ * Legacy OpenSpec core workflow set (pre-QASpec). Global configs still on this
+ * custom profile should auto-migrate to {@link CORE_WORKFLOWS}.
+ */
+export const OLD_CORE_WORKFLOWS = ['propose', 'explore', 'apply', 'archive'] as const;
+
+/**
+ * Returns true when workflows are exactly the legacy OpenSpec core set (order-independent).
+ */
+export function isLegacyCoreWorkflowSet(workflows: readonly string[] | undefined): boolean {
+  if (!workflows || workflows.length !== OLD_CORE_WORKFLOWS.length) {
+    return false;
+  }
+  const set = new Set(workflows);
+  return OLD_CORE_WORKFLOWS.every((workflow) => set.has(workflow));
+}
+
+/**
  * All available workflows in the system.
  */
 export const ALL_WORKFLOWS = [

@@ -151,6 +151,30 @@ describe('InitCommand', () => {
       }
     });
 
+    it('migrates legacy global custom profile and installs qas-publish', async () => {
+      saveGlobalConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['propose', 'explore', 'apply', 'archive'],
+      });
+
+      const initCommand = new InitCommand({ tools: 'cursor', force: true });
+      await initCommand.execute(testDir);
+
+      expect(getGlobalConfig().profile).toBe('core');
+
+      const publishSkill = path.join(testDir, '.cursor', 'skills', 'qas-publish', 'SKILL.md');
+      const publishCommand = path.join(testDir, '.cursor', 'commands', 'qas-publish.md');
+      expect(await fileExists(publishSkill)).toBe(true);
+      expect(await fileExists(publishCommand)).toBe(true);
+
+      const logCalls = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls
+        .flat()
+        .map(String);
+      expect(logCalls.some((entry) => entry.includes('/qas:publish'))).toBe(true);
+    });
+
     it('should create skills in Cursor skills directory', async () => {
       const initCommand = new InitCommand({ tools: 'cursor', force: true });
 

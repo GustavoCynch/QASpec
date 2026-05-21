@@ -110,7 +110,7 @@ const LEGACY_COMMAND_ENTRIES: CommandTemplateEntry[] = [
   { template: getOpsxProposeCommandTemplate(), id: 'propose' },
 ];
 
-function usesQasWorkflowSurface(workflowFilter?: readonly string[]): boolean {
+export function usesQasWorkflowSurface(workflowFilter?: readonly string[]): boolean {
   if (!workflowFilter) return false;
   const set = new Set(workflowFilter);
   return set.has('analyze') || set.has('matrix') || set.has('publish');

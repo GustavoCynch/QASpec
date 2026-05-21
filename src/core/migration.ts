@@ -5,10 +5,11 @@
  * Called by both init and update commands before profile resolution.
  */
 
+import chalk from 'chalk';
 import type { AIToolOption } from './config.js';
 import { getGlobalConfig, getGlobalConfigPath, saveGlobalConfig, type Delivery } from './global-config.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
-import { ALL_WORKFLOWS } from './profiles.js';
+import { ALL_WORKFLOWS, isLegacyCoreWorkflowSet } from './profiles.js';
 import { SKILL_NAMES } from './shared/tool-detection.js';
 import { workflowIdForSkillDir } from './skill-paths.js';
 import path from 'path';
@@ -82,6 +83,30 @@ function inferDelivery(artifacts: InstalledWorkflowArtifacts): Delivery {
     return 'commands';
   }
   return 'skills';
+}
+
+/**
+ * Upgrades global `custom` profiles frozen on the legacy OpenSpec core workflow set
+ * to the current QASpec `core` profile.
+ *
+ * @returns true when config was migrated and saved
+ */
+export function migrateLegacyCoreProfileIfNeeded(): boolean {
+  const config = getGlobalConfig();
+  if (config.profile !== 'custom' || !isLegacyCoreWorkflowSet(config.workflows)) {
+    return false;
+  }
+
+  config.profile = 'core';
+  delete config.workflows;
+  saveGlobalConfig(config);
+
+  console.log(
+    chalk.dim(
+      'Migrated global profile from legacy OpenSpec core to QASpec core (explore, analyze, matrix, publish, archive).'
+    )
+  );
+  return true;
 }
 
 /**

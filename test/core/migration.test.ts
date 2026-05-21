@@ -7,7 +7,11 @@ import { promises as fsp } from 'node:fs';
 import { AI_TOOLS, type AIToolOption } from '../../src/core/config.js';
 import { CommandAdapterRegistry } from '../../src/core/command-generation/index.js';
 import { saveGlobalConfig, getGlobalConfigPath } from '../../src/core/global-config.js';
-import { migrateIfNeeded, scanInstalledWorkflows } from '../../src/core/migration.js';
+import {
+  migrateIfNeeded,
+  migrateLegacyCoreProfileIfNeeded,
+  scanInstalledWorkflows,
+} from '../../src/core/migration.js';
 
 const CLAUDE_TOOL = AI_TOOLS.find((tool) => tool.value === 'claude') as AIToolOption | undefined;
 
@@ -147,6 +151,50 @@ describe('migration', () => {
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
     expect(fs.existsSync(getGlobalConfigPath())).toBe(false);
+  });
+
+  it('migrates legacy custom core profile to QASpec core', () => {
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'custom',
+      delivery: 'both',
+      workflows: ['propose', 'explore', 'apply', 'archive'],
+    });
+
+    const migrated = migrateLegacyCoreProfileIfNeeded();
+
+    expect(migrated).toBe(true);
+    const config = readRawConfig();
+    expect(config.profile).toBe('core');
+    expect(config.workflows).toBeUndefined();
+  });
+
+  it('does not migrate custom profile with non-legacy workflow mix', () => {
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'custom',
+      delivery: 'both',
+      workflows: ['propose', 'explore'],
+    });
+
+    const migrated = migrateLegacyCoreProfileIfNeeded();
+
+    expect(migrated).toBe(false);
+    const config = readRawConfig();
+    expect(config.profile).toBe('custom');
+    expect(config.workflows).toEqual(['propose', 'explore']);
+  });
+
+  it('does not migrate when profile is already core', () => {
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'core',
+      delivery: 'both',
+    });
+
+    const migrated = migrateLegacyCoreProfileIfNeeded();
+
+    expect(migrated).toBe(false);
   });
 
   it('ignores unknown custom skill and command files when scanning workflows', async () => {

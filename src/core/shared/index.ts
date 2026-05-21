@@ -28,4 +28,5 @@ export {
   getCommandTemplates,
   getCommandContents,
   generateSkillContent,
+  usesQasWorkflowSurface,
 } from './skill-generation.js';

@@ -59,6 +59,18 @@ const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
     name: 'Explore ideas',
     description: 'Investigate a problem before implementation',
   },
+  analyze: {
+    name: 'Analyze',
+    description: 'Create analysis artifact (analisis.md)',
+  },
+  matrix: {
+    name: 'Test matrix',
+    description: 'Build test matrix and delta specs (testmatrix.md)',
+  },
+  publish: {
+    name: 'Publish to Qase',
+    description: 'Upload approved matrix to Qase via MCP',
+  },
   new: {
     name: 'New change',
     description: 'Create a new change scaffold quickly',
