@@ -149,7 +149,7 @@ rules:
     - Releer qase_test_case_rules.md antes del primer MCP
 ```
 
-New projects initialized with `qaspec-pr-review` receive an **active** English `context` and `rules` seed (editable). Change `Language:` and stack/domain before your first `/qas:analyze` run.
+New projects initialized with `qaspec-pr-review` receive an **active** `context` and `rules` seed with `(edit — …)` placeholders for language, stack, and domain. Replace those lines with your project details before the first `/qas:analyze` run.
 
 ## Related Documentation
 

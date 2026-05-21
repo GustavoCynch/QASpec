@@ -6,6 +6,17 @@ const CONFIG_HEADER = `# QASpec project config
 # Edit context and rules for your team. See docs/customization.md and docs/multi-language.md
 `;
 
+/** OpenSpec-style hints appended after the active qaspec-pr-review seed (not injected into prompts). */
+const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
+# Extend context above with your own details (shown to AI on every artifact):
+#   - Tech stack, architectures, integrations, test tools
+#   - Conventions, style guides, environment names, doc links
+#   - Domain knowledge and high-risk areas for this product
+# Example (add inside context: | or replace the Stack/Domain lines):
+#   Stack: TypeScript monorepo, REST APIs, Playwright, Qase
+#   Domain: billing and subscriptions — stress refunds and proration
+`;
+
 /**
  * Serialize config to YAML string with helpful comments.
  *
@@ -31,7 +42,8 @@ export function serializeConfig(config: Partial<ProjectConfig>): string {
     if (merged.rules) {
       body.rules = merged.rules;
     }
-    return CONFIG_HEADER + stringifyYaml(body);
+    const yaml = CONFIG_HEADER + stringifyYaml(body);
+    return schema === 'qaspec-pr-review' ? yaml + QASPEC_PR_REVIEW_CONFIG_FOOTER : yaml;
   }
 
   const lines: string[] = [];

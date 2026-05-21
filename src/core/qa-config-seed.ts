@@ -7,14 +7,13 @@ import type { ProjectConfig } from './project-config.js';
 export function getQaspecPrReviewConfigSeed(): Pick<ProjectConfig, 'context' | 'rules'> {
   return {
     context: `Role: Senior QA Architect and test engineer — read-only on application source under test.
-Outputs: analysis artifacts, test matrix, delta specs, and Qase upload only. Never create, modify, or delete app code.
+Outputs: analysis artifacts, test matrix, delta specs, and TCMS publish only. Never create, modify, or delete app code.
 
-Language: English
-All QA artifacts, reference scaffolds, halt messages, and case narrative use the language declared here.
-See docs/multi-language.md to switch (e.g. Spanish, Portuguese).
+Language: (edit — set your project language for all QA artifacts, reference scaffolds, and halt messages)
+See docs/multi-language.md for examples.
 
-Stack: <!-- e.g. Angular SPA, REST APIs, Qase TCMS — edit for your product -->
-Domain: <!-- e.g. ERP, inventory, billing — note high-risk flows (payments, warranties) -->
+Stack: (edit — add your tech stack: frameworks, APIs, databases, test tools, TCMS, CI, etc.)
+Domain: (edit — add your product domain, conventions, and flows that need extra QA attention)
 
 Dual source of truth:
 - Functional intent: developer notes and change description (WHAT & WHY)

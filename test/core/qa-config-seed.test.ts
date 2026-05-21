@@ -33,6 +33,8 @@ describe('qa-config-seed', () => {
 
     expect(parsed.schema).toBe('qaspec-pr-review');
     expect(parsed.context).toContain('read-only');
+    expect(parsed.context).toContain('Language: (edit');
+    expect(parsed.context).not.toContain('<!--');
     expect(parsed.rules.analyze.length).toBeGreaterThan(0);
     expect(parsed.rules['test-matrix'].length).toBeGreaterThan(0);
     expect(parsed.rules.specs.length).toBeGreaterThan(0);

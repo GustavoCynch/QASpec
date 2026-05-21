@@ -75,7 +75,9 @@ describe('InitCommand', () => {
 
       const content = await fs.readFile(configPath, 'utf-8');
       expect(content).toContain('schema: qaspec-pr-review');
-      expect(content).toContain('Language: English');
+      expect(content).toContain('Language: (edit');
+      expect(content).toContain('Stack: (edit');
+      expect(content).toContain('Domain: (edit');
       expect(content).toContain('read-only');
       expect(content).toContain('rules:');
       expect(content).toContain('analyze:');
