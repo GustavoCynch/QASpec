@@ -12,7 +12,7 @@ const LOGO_FRAME = WELCOME_ANIMATION.frames[6];
 function printWelcomeContent(): void {
   console.log();
   console.log(chalk.white.bold('Welcome to QASpec'));
-  console.log(chalk.dim('A lightweight spec-driven framework'));
+  console.log(chalk.dim('Agree on what to test before you run — specs live in the repo.'));
   console.log();
   for (const line of LOGO_FRAME) {
     if (line.trim().length > 0) {
@@ -21,8 +21,9 @@ function printWelcomeContent(): void {
   }
   console.log();
   console.log(chalk.white('This setup will configure:'));
-  console.log(chalk.dim('  • Agent Skills for AI tools'));
-  console.log(chalk.dim('  • /qas:* slash commands (QA workflow)'));
+  console.log(chalk.dim('  • QA workflow skills for your AI assistant'));
+  console.log(chalk.dim('  • /qas:* slash commands'));
+  console.log(chalk.dim('  • qaspec/references/ project seeds'));
   console.log();
   console.log(chalk.white('Quick start after setup:'));
   console.log(`  ${chalk.yellow('/qas:explore')}   ${chalk.dim('Think before the formal cycle')}`);

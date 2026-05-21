@@ -31,6 +31,16 @@ describe('showWelcomeScreen', () => {
     expect(matches.length).toBe(1);
   });
 
+  it('prints QASpec tagline', async () => {
+    setTty(false);
+    await showWelcomeScreen();
+
+    const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+    expect(output).toContain('Agree on what to test before you run');
+    expect(output).toContain('specs live in the repo');
+    expect(output).not.toContain('lightweight spec-driven framework');
+  });
+
   it('does not write terminal redraw escape sequences to stdout', async () => {
     setTty(false);
     const stdoutWrites: string[] = [];
