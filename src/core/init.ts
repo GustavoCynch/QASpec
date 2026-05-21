@@ -24,7 +24,7 @@ import { PALETTE } from './styles/palette.js';
 import { isInteractive } from '../utils/interactive.js';
 import { serializeConfig } from './config-prompts.js';
 import {
-  generateCommands,
+  generateCommand,
   CommandAdapterRegistry,
 } from './command-generation/index.js';
 import {
@@ -32,14 +32,23 @@ import {
   cleanupLegacyArtifacts,
   formatCleanupSummary,
   formatDetectionSummary,
+  hasActiveUpstreamOpenSpec,
   type LegacyDetectionResult,
 } from './legacy-cleanup.js';
+import {
+  shouldSkipUpstreamSkillWrite,
+  shouldSkipUpstreamCommandWrite,
+  formatUpstreamCoexistenceSummary,
+  isUpstreamOpenspecSkillDir,
+  isUpstreamLegacyWorkflow,
+} from './upstream-coexistence.js';
 import {
   SKILL_NAMES,
   getToolsWithSkillsDir,
   getToolSkillStatus,
   getToolStates,
   getSkillTemplates,
+  getCoexistenceSkillTemplates,
   getCommandContents,
   generateSkillContent,
   type ToolSkillStatus,
@@ -49,6 +58,7 @@ import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.j
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
 import { scaffoldQaspecReferences } from './reference-scaffold.js';
+import { resolveEffectiveDelivery } from './delivery-resolve.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -520,14 +530,27 @@ export class InitCommand {
     // Read global config for profile and delivery settings (use --profile override if set)
     const globalConfig = getGlobalConfig();
     const profile: Profile = this.resolveProfileOverride() ?? globalConfig.profile ?? 'core';
-    const delivery: Delivery = globalConfig.delivery ?? 'both';
     const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+    const toolIds = tools.map((t) => t.value);
+    const delivery = await resolveEffectiveDelivery(
+      projectPath,
+      globalConfig.delivery ?? 'both',
+      workflows,
+      toolIds
+    );
 
     // Get skill and command templates filtered by profile workflows
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows) : [];
+    const upstreamOpenSpecActive = await hasActiveUpstreamOpenSpec(projectPath);
+    const skillTemplates = shouldGenerateSkills
+      ? upstreamOpenSpecActive
+        ? getCoexistenceSkillTemplates(workflows)
+        : getSkillTemplates(workflows)
+      : [];
     const commandContents = shouldGenerateCommands ? getCommandContents(workflows) : [];
+    let preservedUpstreamSkills = 0;
+    let preservedUpstreamCommands = 0;
 
     // Process each tool
     for (const tool of tools) {
@@ -544,6 +567,11 @@ export class InitCommand {
             const skillDir = path.join(skillsDir, dirName);
             const skillFile = path.join(skillDir, 'SKILL.md');
 
+            if (await shouldSkipUpstreamSkillWrite(skillFile, dirName, upstreamOpenSpecActive)) {
+              preservedUpstreamSkills++;
+              continue;
+            }
+
             // Generate SKILL.md content with YAML frontmatter including generatedBy
             // Use hyphen-based command references for tools where filename = command name
             const transformer = (tool.value === 'opencode' || tool.value === 'pi') ? transformToHyphenCommands : undefined;
@@ -553,27 +581,37 @@ export class InitCommand {
             await FileSystemUtils.writeFile(skillFile, skillContent);
           }
         }
-        if (!shouldGenerateSkills) {
+        if (!shouldGenerateSkills && !upstreamOpenSpecActive) {
           const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
-          removedSkillCount += await this.removeSkillDirs(skillsDir);
+          removedSkillCount += await this.removeSkillDirs(skillsDir, false);
         }
 
         // Generate commands if delivery includes commands
         if (shouldGenerateCommands) {
           const adapter = CommandAdapterRegistry.get(tool.value);
           if (adapter) {
-            const generatedCommands = generateCommands(commandContents, adapter);
+            for (const content of commandContents) {
+              const generated = generateCommand(content, adapter);
+              const commandFile = path.isAbsolute(generated.path)
+                ? generated.path
+                : path.join(projectPath, generated.path);
 
-            for (const cmd of generatedCommands) {
-              const commandFile = path.isAbsolute(cmd.path) ? cmd.path : path.join(projectPath, cmd.path);
-              await FileSystemUtils.writeFile(commandFile, cmd.fileContent);
+              if (await shouldSkipUpstreamCommandWrite(commandFile, content.id, upstreamOpenSpecActive)) {
+                preservedUpstreamCommands++;
+                continue;
+              }
+              await FileSystemUtils.writeFile(commandFile, generated.fileContent);
             }
           } else {
             commandsSkipped.push(tool.value);
           }
         }
         if (!shouldGenerateCommands) {
-          removedCommandCount += await this.removeCommandFiles(projectPath, tool.value);
+          removedCommandCount += await this.removeCommandFiles(
+            projectPath,
+            tool.value,
+            upstreamOpenSpecActive
+          );
         }
 
         spinner.succeed(`Setup complete for ${tool.name}`);
@@ -587,6 +625,14 @@ export class InitCommand {
         spinner.fail(`Failed for ${tool.name}`);
         failedTools.push({ name: tool.name, error: error as Error });
       }
+    }
+
+    const coexistenceSummary = formatUpstreamCoexistenceSummary(
+      preservedUpstreamSkills,
+      preservedUpstreamCommands
+    );
+    if (coexistenceSummary) {
+      console.log(chalk.dim(coexistenceSummary));
     }
 
     return {
@@ -750,12 +796,13 @@ export class InitCommand {
     }).start();
   }
 
-  private async removeSkillDirs(skillsDir: string): Promise<number> {
+  private async removeSkillDirs(skillsDir: string, upstreamOpenSpecActive = false): Promise<number> {
     let removed = 0;
 
     for (const workflow of ALL_WORKFLOWS) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
+      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
 
       const skillDir = path.join(skillsDir, dirName);
       try {
@@ -771,12 +818,17 @@ export class InitCommand {
     return removed;
   }
 
-  private async removeCommandFiles(projectPath: string, toolId: string): Promise<number> {
+  private async removeCommandFiles(
+    projectPath: string,
+    toolId: string,
+    upstreamOpenSpecActive = false
+  ): Promise<number> {
     let removed = 0;
     const adapter = CommandAdapterRegistry.get(toolId);
     if (!adapter) return 0;
 
     for (const workflow of ALL_WORKFLOWS) {
+      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 

@@ -190,6 +190,80 @@ Old instructions content
         expect(exists).toBe(false);
       }
     });
+
+    it('should not overwrite upstream openspec-propose and openspec-apply-change on update', async () => {
+      const upstreamMarker = 'UPSTREAM_OPENSPEC_SKILL_CONTENT_DO_NOT_REPLACE';
+
+      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+
+      const skillsDir = path.join(testDir, '.claude', 'skills');
+      await fs.mkdir(path.join(skillsDir, 'qas-explore'), { recursive: true });
+      await fs.writeFile(
+        path.join(skillsDir, 'qas-explore', 'SKILL.md'),
+        '---\nname: qas-explore\nmetadata:\n  author: qaspec\n  generatedBy: "0.0.1"\n---\n\nold qas content\n'
+      );
+
+      for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
+        const skillDir = path.join(skillsDir, skillName);
+        await fs.mkdir(skillDir, { recursive: true });
+        await fs.writeFile(
+          path.join(skillDir, 'SKILL.md'),
+          `---\nname: ${skillName}\nmetadata:\n  author: openspec\n---\n\n${upstreamMarker}\n`
+        );
+      }
+
+      setMockConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['explore', 'propose', 'apply'],
+      });
+
+      const forceUpdate = new UpdateCommand({ force: true });
+      await forceUpdate.execute(testDir);
+
+      for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
+        const content = await fs.readFile(path.join(skillsDir, skillName, 'SKILL.md'), 'utf-8');
+        expect(content).toContain(upstreamMarker);
+      }
+
+      const exploreContent = await fs.readFile(
+        path.join(skillsDir, 'qas-explore', 'SKILL.md'),
+        'utf-8'
+      );
+      expect(exploreContent).not.toContain('old qas content');
+    });
+
+    it('should create missing upstream skills on update without overwriting existing', async () => {
+      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+
+      const skillsDir = path.join(testDir, '.claude', 'skills');
+      await fs.mkdir(path.join(skillsDir, 'qas-explore'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qas-explore', 'SKILL.md'), '---\nname: qas-explore\n---\n');
+
+      const existingMarker = 'EXISTING_SYNC_SKILL';
+      await fs.mkdir(path.join(skillsDir, 'openspec-sync-specs'), { recursive: true });
+      await fs.writeFile(
+        path.join(skillsDir, 'openspec-sync-specs', 'SKILL.md'),
+        `---\nname: openspec-sync-specs\n---\n\n${existingMarker}\n`
+      );
+
+      setMockConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['explore', 'sync', 'propose', 'apply'],
+      });
+
+      const forceUpdate = new UpdateCommand({ force: true });
+      await forceUpdate.execute(testDir);
+
+      expect(await fs.readFile(path.join(skillsDir, 'openspec-sync-specs', 'SKILL.md'), 'utf-8')).toContain(
+        existingMarker
+      );
+      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-propose', 'SKILL.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-apply-change', 'SKILL.md'))).toBe(true);
+    });
   });
 
   describe('command updates', () => {

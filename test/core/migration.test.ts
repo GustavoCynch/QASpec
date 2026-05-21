@@ -85,6 +85,20 @@ describe('migration', () => {
     expect(config.workflows).toEqual(['explore', 'archive']);
   });
 
+  it('migrates to both delivery when upstream openspec skills and opsx commands coexist', async () => {
+    await writeSkill(projectDir, 'openspec-explore');
+    await writeSkill(projectDir, 'openspec-archive-change');
+    await writeManagedCommand(projectDir, 'propose');
+    await writeManagedCommand(projectDir, 'apply');
+
+    migrateIfNeeded(projectDir, [ensureClaudeTool()]);
+
+    const config = readRawConfig();
+    expect(config.profile).toBe('custom');
+    expect(config.delivery).toBe('both');
+    expect(config.workflows).toEqual(expect.arrayContaining(['explore', 'archive', 'propose', 'apply']));
+  });
+
   it('migrates to custom both delivery when managed skills and commands are detected', async () => {
     await writeSkill(projectDir, 'qas-explore');
     await writeManagedCommand(projectDir, 'apply');

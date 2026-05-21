@@ -40,6 +40,7 @@ import {
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
+import { CORE_WORKFLOWS } from '../profiles.js';
 
 /**
  * Skill template with directory name and workflow ID mapping.
@@ -64,6 +65,17 @@ const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
   { template: getQasMatrixSkillTemplate(), dirName: 'qas-matrix', workflowId: 'matrix' },
   { template: getQasPublishSkillTemplate(), dirName: 'qas-publish', workflowId: 'publish' },
   { template: getQasArchiveSkillTemplate(), dirName: 'qas-archive', workflowId: 'archive' },
+];
+
+/** explore/archive for legacy OpenSpec profiles (opsx surface, not QAS). */
+const LEGACY_SHARED_SKILL_ENTRIES: SkillTemplateEntry[] = [
+  { template: getExploreSkillTemplate(), dirName: 'openspec-explore', workflowId: 'explore' },
+  { template: getArchiveChangeSkillTemplate(), dirName: 'openspec-archive-change', workflowId: 'archive' },
+];
+
+const LEGACY_SHARED_COMMAND_ENTRIES: CommandTemplateEntry[] = [
+  { template: getOpsxExploreCommandTemplate(), id: 'explore' },
+  { template: getOpsxArchiveCommandTemplate(), id: 'archive' },
 ];
 
 const LEGACY_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
@@ -122,10 +134,31 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
   }
 
   const legacy = pick(LEGACY_WORKFLOW_ENTRIES);
-  const qasShared = pick(
-    QAS_WORKFLOW_ENTRIES.filter((e) => e.workflowId === 'explore' || e.workflowId === 'archive')
+  const legacyShared = pick(LEGACY_SHARED_SKILL_ENTRIES);
+  return [...legacyShared, ...legacy];
+}
+
+/**
+ * Profile skill templates plus QASpec `qas-*` skills when upstream OpenSpec is installed.
+ *
+ * Legacy/custom profiles only list `openspec-*` skills; coexistence must still install
+ * `qas-*` from the core profile without overwriting existing upstream skills.
+ */
+export function getCoexistenceSkillTemplates(
+  profileWorkflows: readonly string[]
+): SkillTemplateEntry[] {
+  const primary = getSkillTemplates(profileWorkflows);
+  const qasEntries = getSkillTemplates([...CORE_WORKFLOWS]).filter((entry) =>
+    entry.dirName.startsWith('qas-')
   );
-  return [...qasShared, ...legacy];
+  const byDir = new Map<string, SkillTemplateEntry>();
+  for (const entry of primary) {
+    byDir.set(entry.dirName, entry);
+  }
+  for (const entry of qasEntries) {
+    byDir.set(entry.dirName, entry);
+  }
+  return [...byDir.values()];
 }
 
 /**
@@ -146,10 +179,8 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
   }
 
   const legacy = pickCmd(LEGACY_COMMAND_ENTRIES);
-  const qasShared = pickCmd(
-    QAS_COMMAND_ENTRIES.filter((e) => e.id === 'explore' || e.id === 'archive')
-  );
-  return [...qasShared, ...legacy];
+  const legacyShared = pickCmd(LEGACY_SHARED_COMMAND_ENTRIES);
+  return [...legacyShared, ...legacy];
 }
 
 /**

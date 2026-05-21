@@ -8,8 +8,9 @@
 import type { AIToolOption } from './config.js';
 import { getGlobalConfig, getGlobalConfigPath, saveGlobalConfig, type Delivery } from './global-config.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
-import { WORKFLOW_TO_SKILL_DIR } from './profile-sync-drift.js';
 import { ALL_WORKFLOWS } from './profiles.js';
+import { SKILL_NAMES } from './shared/tool-detection.js';
+import { workflowIdForSkillDir } from './skill-paths.js';
 import path from 'path';
 import * as fs from 'fs';
 
@@ -31,12 +32,15 @@ function scanInstalledWorkflowArtifacts(
     if (!tool.skillsDir) continue;
     const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
 
-    for (const workflowId of ALL_WORKFLOWS) {
-      const skillDirName = WORKFLOW_TO_SKILL_DIR[workflowId];
+    for (const skillDirName of SKILL_NAMES) {
       const skillFile = path.join(skillsDir, skillDirName, 'SKILL.md');
-      if (fs.existsSync(skillFile)) {
+      if (!fs.existsSync(skillFile)) {
+        continue;
+      }
+      hasSkills = true;
+      const workflowId = workflowIdForSkillDir(skillDirName);
+      if (workflowId) {
         installed.add(workflowId);
-        hasSkills = true;
       }
     }
 

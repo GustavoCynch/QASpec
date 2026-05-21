@@ -16,12 +16,13 @@ import { AI_TOOLS } from './config.js';
 import { DOCS_URL } from './branding.js';
 import { getPlanningDir } from './planning-dir.js';
 import {
-  generateCommands,
+  generateCommand,
   CommandAdapterRegistry,
 } from './command-generation/index.js';
 import {
   getToolVersionStatus,
   getSkillTemplates,
+  getCoexistenceSkillTemplates,
   getCommandContents,
   generateSkillContent,
   getToolsWithSkillsDir,
@@ -33,12 +34,21 @@ import {
   formatCleanupSummary,
   formatDetectionSummary,
   getToolsFromLegacyArtifacts,
+  hasActiveUpstreamOpenSpec,
   type LegacyDetectionResult,
 } from './legacy-cleanup.js';
+import {
+  shouldSkipUpstreamSkillWrite,
+  shouldSkipUpstreamCommandWrite,
+  formatUpstreamCoexistenceSummary,
+  isUpstreamOpenspecSkillDir,
+  isUpstreamLegacyWorkflow,
+} from './upstream-coexistence.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getGlobalConfig, type Delivery, type Profile } from './global-config.js';
 import { getProfileWorkflows, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
+import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import {
   WORKFLOW_TO_SKILL_DIR,
   getCommandConfiguredTools,
@@ -104,8 +114,7 @@ export class UpdateCommand {
     const desiredWorkflows = profileWorkflows.filter((workflow): workflow is (typeof ALL_WORKFLOWS)[number] =>
       (ALL_WORKFLOWS as readonly string[]).includes(workflow)
     );
-    const shouldGenerateSkills = delivery !== 'commands';
-    const shouldGenerateCommands = delivery !== 'skills';
+    const upstreamOpenSpecActive = await hasActiveUpstreamOpenSpec(resolvedProjectPath);
 
     // 4. Detect and handle legacy artifacts + upgrade legacy tools using effective config
     const newlyConfiguredTools = await this.handleLegacyCleanup(
@@ -122,6 +131,16 @@ export class UpdateCommand {
       console.log(chalk.dim('Run "qaspec init" to set up tools.'));
       return;
     }
+
+    const toolsForDelivery = [...new Set([...configuredTools, ...newlyConfiguredTools])];
+    const effectiveDelivery = await resolveEffectiveDelivery(
+      resolvedProjectPath,
+      delivery,
+      desiredWorkflows,
+      toolsForDelivery
+    );
+    const shouldGenerateSkills = effectiveDelivery !== 'commands';
+    const shouldGenerateCommands = effectiveDelivery !== 'skills';
 
     // 6. Check version status for all configured tools
     const commandConfiguredTools = getCommandConfiguredTools(resolvedProjectPath);
@@ -171,8 +190,14 @@ export class UpdateCommand {
     console.log();
 
     // 9. Determine what to generate based on delivery
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
+    const skillTemplates = shouldGenerateSkills
+      ? upstreamOpenSpecActive
+        ? getCoexistenceSkillTemplates(desiredWorkflows)
+        : getSkillTemplates(desiredWorkflows)
+      : [];
     const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
+    let preservedUpstreamSkills = 0;
+    let preservedUpstreamCommands = 0;
 
     // 10. Update tools (all if force, otherwise only those needing update)
     const toolsToUpdate = this.force ? configuredTools : [...toolsToUpdateSet];
@@ -198,42 +223,62 @@ export class UpdateCommand {
             const skillDir = path.join(skillsDir, dirName);
             const skillFile = path.join(skillDir, 'SKILL.md');
 
+            if (await shouldSkipUpstreamSkillWrite(skillFile, dirName, upstreamOpenSpecActive)) {
+              preservedUpstreamSkills++;
+              continue;
+            }
+
             // Use hyphen-based command references for OpenCode
             const transformer = (tool.value === 'opencode' || tool.value === 'pi') ? transformToHyphenCommands : undefined;
             const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
             await FileSystemUtils.writeFile(skillFile, skillContent);
           }
 
-          removedDeselectedSkillCount += await this.removeUnselectedSkillDirs(skillsDir, desiredWorkflows);
+          removedDeselectedSkillCount += await this.removeUnselectedSkillDirs(
+            skillsDir,
+            desiredWorkflows,
+            upstreamOpenSpecActive
+          );
         }
 
-        // Delete skill directories if delivery is commands-only
-        if (!shouldGenerateSkills) {
-          removedSkillCount += await this.removeSkillDirs(skillsDir);
+        // Delete skill directories if delivery is commands-only (never strip upstream skills)
+        if (!shouldGenerateSkills && !upstreamOpenSpecActive) {
+          removedSkillCount += await this.removeSkillDirs(skillsDir, false);
         }
 
         // Generate commands if delivery includes commands
         if (shouldGenerateCommands) {
           const adapter = CommandAdapterRegistry.get(tool.value);
           if (adapter) {
-            const generatedCommands = generateCommands(commandContents, adapter);
+            for (const content of commandContents) {
+              const generated = generateCommand(content, adapter);
+              const commandFile = path.isAbsolute(generated.path)
+                ? generated.path
+                : path.join(resolvedProjectPath, generated.path);
 
-            for (const cmd of generatedCommands) {
-              const commandFile = path.isAbsolute(cmd.path) ? cmd.path : path.join(resolvedProjectPath, cmd.path);
-              await FileSystemUtils.writeFile(commandFile, cmd.fileContent);
+              if (await shouldSkipUpstreamCommandWrite(commandFile, content.id, upstreamOpenSpecActive)) {
+                preservedUpstreamCommands++;
+                continue;
+              }
+              await FileSystemUtils.writeFile(commandFile, generated.fileContent);
             }
 
             removedDeselectedCommandCount += await this.removeUnselectedCommandFiles(
               resolvedProjectPath,
               toolId,
-              desiredWorkflows
+              desiredWorkflows,
+              upstreamOpenSpecActive
             );
           }
         }
 
         // Delete command files if delivery is skills-only
         if (!shouldGenerateCommands) {
-          removedCommandCount += await this.removeCommandFiles(resolvedProjectPath, toolId);
+          removedCommandCount += await this.removeCommandFiles(
+            resolvedProjectPath,
+            toolId,
+            upstreamOpenSpecActive
+          );
         }
 
         spinner.succeed(`Updated ${tool.name}`);
@@ -245,6 +290,14 @@ export class UpdateCommand {
           error: error instanceof Error ? error.message : String(error)
         });
       }
+    }
+
+    const coexistenceSummary = formatUpstreamCoexistenceSummary(
+      preservedUpstreamSkills,
+      preservedUpstreamCommands
+    );
+    if (coexistenceSummary) {
+      console.log(chalk.dim(coexistenceSummary));
     }
 
     // 11. Summary
@@ -411,12 +464,13 @@ export class UpdateCommand {
    * Removes skill directories for workflows when delivery changed to commands-only.
    * Returns the number of directories removed.
    */
-  private async removeSkillDirs(skillsDir: string): Promise<number> {
+  private async removeSkillDirs(skillsDir: string, upstreamOpenSpecActive = false): Promise<number> {
     let removed = 0;
 
     for (const workflow of ALL_WORKFLOWS) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
+      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
 
       const skillDir = path.join(skillsDir, dirName);
       try {
@@ -438,7 +492,8 @@ export class UpdateCommand {
    */
   private async removeUnselectedSkillDirs(
     skillsDir: string,
-    desiredWorkflows: readonly (typeof ALL_WORKFLOWS)[number][]
+    desiredWorkflows: readonly (typeof ALL_WORKFLOWS)[number][],
+    upstreamOpenSpecActive = false
   ): Promise<number> {
     const desiredSet = new Set(desiredWorkflows);
     let removed = 0;
@@ -447,6 +502,7 @@ export class UpdateCommand {
       if (desiredSet.has(workflow)) continue;
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
+      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
 
       const skillDir = path.join(skillsDir, dirName);
       try {
@@ -469,6 +525,7 @@ export class UpdateCommand {
   private async removeCommandFiles(
     projectPath: string,
     toolId: string,
+    upstreamOpenSpecActive = false
   ): Promise<number> {
     let removed = 0;
 
@@ -476,6 +533,7 @@ export class UpdateCommand {
     if (!adapter) return 0;
 
     for (const workflow of ALL_WORKFLOWS) {
+      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 
@@ -499,7 +557,8 @@ export class UpdateCommand {
   private async removeUnselectedCommandFiles(
     projectPath: string,
     toolId: string,
-    desiredWorkflows: readonly (typeof ALL_WORKFLOWS)[number][]
+    desiredWorkflows: readonly (typeof ALL_WORKFLOWS)[number][],
+    upstreamOpenSpecActive = false
   ): Promise<number> {
     let removed = 0;
 
@@ -510,6 +569,7 @@ export class UpdateCommand {
 
     for (const workflow of ALL_WORKFLOWS) {
       if (desiredSet.has(workflow)) continue;
+      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 
@@ -685,7 +745,12 @@ export class UpdateCommand {
     const newlyConfigured: string[] = [];
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
+    const upstreamOpenSpecActive = await hasActiveUpstreamOpenSpec(projectPath);
+    const skillTemplates = shouldGenerateSkills
+      ? upstreamOpenSpecActive
+        ? getCoexistenceSkillTemplates(desiredWorkflows)
+        : getSkillTemplates(desiredWorkflows)
+      : [];
     const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
 
     for (const toolId of selectedTools) {
@@ -703,6 +768,10 @@ export class UpdateCommand {
             const skillDir = path.join(skillsDir, dirName);
             const skillFile = path.join(skillDir, 'SKILL.md');
 
+            if (await shouldSkipUpstreamSkillWrite(skillFile, dirName, upstreamOpenSpecActive)) {
+              continue;
+            }
+
             // Use hyphen-based command references for OpenCode
             const transformer = (tool.value === 'opencode' || tool.value === 'pi') ? transformToHyphenCommands : undefined;
             const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
@@ -714,11 +783,16 @@ export class UpdateCommand {
         if (shouldGenerateCommands) {
           const adapter = CommandAdapterRegistry.get(tool.value);
           if (adapter) {
-            const generatedCommands = generateCommands(commandContents, adapter);
+            for (const content of commandContents) {
+              const generated = generateCommand(content, adapter);
+              const commandFile = path.isAbsolute(generated.path)
+                ? generated.path
+                : path.join(projectPath, generated.path);
 
-            for (const cmd of generatedCommands) {
-              const commandFile = path.isAbsolute(cmd.path) ? cmd.path : path.join(projectPath, cmd.path);
-              await FileSystemUtils.writeFile(commandFile, cmd.fileContent);
+              if (await shouldSkipUpstreamCommandWrite(commandFile, content.id, upstreamOpenSpecActive)) {
+                continue;
+              }
+              await FileSystemUtils.writeFile(commandFile, generated.fileContent);
             }
           }
         }

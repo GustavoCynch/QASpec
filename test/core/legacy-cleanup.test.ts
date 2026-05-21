@@ -384,6 +384,19 @@ ${OPENSPEC_MARKERS.end}`);
       expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(true);
     });
 
+    it('should return true for opsx commands without an openspec planning directory', async () => {
+      const isolatedDir = path.join(os.tmpdir(), `openspec-upstream-${randomUUID()}`);
+      await fs.mkdir(isolatedDir, { recursive: true });
+      try {
+        const commandsDir = path.join(isolatedDir, '.cursor', 'commands');
+        await fs.mkdir(commandsDir, { recursive: true });
+        await fs.writeFile(path.join(commandsDir, 'opsx-apply.md'), 'content');
+        expect(await hasActiveUpstreamOpenSpec(isolatedDir)).toBe(true);
+      } finally {
+        await fs.rm(isolatedDir, { recursive: true, force: true });
+      }
+    });
+
     it('should return true when openspec-propose skill exists', async () => {
       const skillDir = path.join(testDir, '.cursor', 'skills', 'openspec-propose');
       await fs.mkdir(skillDir, { recursive: true });

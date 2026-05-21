@@ -4,7 +4,7 @@ import { AI_TOOLS } from './config.js';
 import type { Delivery } from './global-config.js';
 import { ALL_WORKFLOWS } from './profiles.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
-import { COMMAND_IDS, getConfiguredTools } from './shared/index.js';
+import { COMMAND_IDS, getConfiguredTools, getSkillTemplates } from './shared/index.js';
 
 type WorkflowId = (typeof ALL_WORKFLOWS)[number];
 
@@ -105,8 +105,8 @@ export function hasToolProfileOrDeliveryDrift(
   const shouldGenerateCommands = delivery !== 'skills';
 
   if (shouldGenerateSkills) {
-    for (const workflow of knownDesiredWorkflows) {
-      const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+    const desiredSkillDirs = getSkillTemplates(desiredWorkflows).map((entry) => entry.dirName);
+    for (const dirName of desiredSkillDirs) {
       const skillFile = path.join(skillsDir, dirName, 'SKILL.md');
       if (!fs.existsSync(skillFile)) {
         return true;

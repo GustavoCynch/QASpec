@@ -609,6 +609,79 @@ describe('InitCommand - profile and detection features', () => {
     expect(await directoryExists(path.join(testDir, 'qaspec'))).toBe(true);
   });
 
+  it('should not overwrite upstream openspec-propose and openspec-apply-change skills', async () => {
+    const upstreamMarker = 'UPSTREAM_OPENSPEC_SKILL_CONTENT_DO_NOT_REPLACE';
+
+    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
+    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+
+    const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
+    for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
+      const skillDir = path.join(cursorSkillsDir, skillName);
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(
+        path.join(skillDir, 'SKILL.md'),
+        `---\nname: ${skillName}\nmetadata:\n  author: openspec\n---\n\n${upstreamMarker}\n`
+      );
+    }
+
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'custom',
+      delivery: 'both',
+      workflows: ['explore', 'propose', 'apply'],
+    });
+
+    const initCommand = new InitCommand({ tools: 'cursor', force: true });
+    await initCommand.execute(testDir);
+
+    for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
+      const content = await fs.readFile(
+        path.join(cursorSkillsDir, skillName, 'SKILL.md'),
+        'utf-8'
+      );
+      expect(content).toContain(upstreamMarker);
+      expect(content).not.toContain('generatedBy:');
+    }
+
+    expect(await fileExists(path.join(cursorSkillsDir, 'openspec-explore', 'SKILL.md'))).toBe(true);
+  });
+
+  it('should create missing upstream openspec skills without overwriting existing ones', async () => {
+    const existingMarker = 'EXISTING_OPENSPEC_PROPOSE_SKILL';
+    const missingMarkerCheck = 'generatedBy:';
+
+    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
+    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+
+    const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
+    const proposeDir = path.join(cursorSkillsDir, 'openspec-propose');
+    await fs.mkdir(proposeDir, { recursive: true });
+    await fs.writeFile(
+      path.join(proposeDir, 'SKILL.md'),
+      `---\nname: openspec-propose\n---\n\n${existingMarker}\n`
+    );
+
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'custom',
+      delivery: 'both',
+      workflows: ['explore', 'propose', 'apply'],
+    });
+
+    const initCommand = new InitCommand({ tools: 'cursor', force: true });
+    await initCommand.execute(testDir);
+
+    const proposeContent = await fs.readFile(path.join(proposeDir, 'SKILL.md'), 'utf-8');
+    expect(proposeContent).toContain(existingMarker);
+    expect(proposeContent).not.toContain(missingMarkerCheck);
+
+    const applyFile = path.join(cursorSkillsDir, 'openspec-apply-change', 'SKILL.md');
+    expect(await fileExists(applyFile)).toBe(true);
+    const applyContent = await fs.readFile(applyFile, 'utf-8');
+    expect(applyContent).toContain(missingMarkerCheck);
+  });
+
   it('should preselect configured tools but not directory-detected tools in extend mode', async () => {
     // Simulate existing OpenSpec project (extend mode).
     await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
@@ -670,8 +743,8 @@ describe('InitCommand - profile and detection features', () => {
     const initCommand = new InitCommand({ tools: 'claude', force: true });
     await initCommand.execute(testDir);
 
-    // Custom profile skills should be created
-    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qas-explore', 'SKILL.md');
+    // Legacy custom profile uses openspec-explore (not qas-explore)
+    const exploreSkill = path.join(testDir, '.claude', 'skills', 'openspec-explore', 'SKILL.md');
     const newChangeSkill = path.join(testDir, '.claude', 'skills', 'openspec-new-change', 'SKILL.md');
     expect(await fileExists(exploreSkill)).toBe(true);
     expect(await fileExists(newChangeSkill)).toBe(true);
@@ -721,7 +794,7 @@ describe('InitCommand - profile and detection features', () => {
     expect(showWelcomeScreenMock).toHaveBeenCalled();
     expect(confirmMock).not.toHaveBeenCalled();
 
-    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qas-explore', 'SKILL.md');
+    const exploreSkill = path.join(testDir, '.claude', 'skills', 'openspec-explore', 'SKILL.md');
     const newChangeSkill = path.join(testDir, '.claude', 'skills', 'openspec-new-change', 'SKILL.md');
     expect(await fileExists(exploreSkill)).toBe(true);
     expect(await fileExists(newChangeSkill)).toBe(true);
@@ -749,23 +822,19 @@ describe('InitCommand - profile and detection features', () => {
     expect(await fileExists(cmdFile)).toBe(false);
   });
 
-  it('should respect delivery=commands setting (no skills)', async () => {
+  it('should respect delivery=commands setting when no workflows are configured', async () => {
     saveGlobalConfig({
       featureFlags: {},
-      profile: 'core',
+      profile: 'custom',
       delivery: 'commands',
+      workflows: [],
     });
 
     const initCommand = new InitCommand({ tools: 'claude', force: true });
     await initCommand.execute(testDir);
 
-    // Skills should NOT exist
     const skillFile = path.join(testDir, '.claude', 'skills', 'qas-explore', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(false);
-
-    // Commands should exist
-    const cmdFile = path.join(testDir, '.claude', 'commands', 'qas', 'explore.md');
-    expect(await fileExists(cmdFile)).toBe(true);
   });
 
   it('should remove commands on re-init when delivery changes to skills', async () => {

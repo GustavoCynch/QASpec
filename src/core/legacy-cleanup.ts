@@ -8,10 +8,7 @@ import { promises as fs } from 'fs';
 import chalk from 'chalk';
 import { FileSystemUtils, removeMarkerBlock as removeMarkerBlockUtil } from '../utils/file-system.js';
 import { AI_TOOLS, OPENSPEC_DIR_NAME, OPENSPEC_MARKERS } from './config.js';
-import { SKILL_NAMES } from './shared/tool-detection.js';
-
-/** Skill directory names installed by upstream OpenSpec (not QASpec). */
-const UPSTREAM_OPENSPEC_SKILL_NAMES = SKILL_NAMES.filter((name) => name.startsWith('openspec-'));
+import { UPSTREAM_OPENSPEC_SKILL_NAMES } from './upstream-coexistence.js';
 
 /** Directories that may contain upstream OpenSpec `opsx-*` slash command files. */
 const UPSTREAM_OPSX_COMMAND_DIRS = [
@@ -109,13 +106,13 @@ export interface LegacyDetectionResult {
  */
 export async function hasActiveUpstreamOpenSpec(projectRoot: string): Promise<boolean> {
   const openspecDir = path.join(projectRoot, OPENSPEC_DIR_NAME);
-  if (!(await FileSystemUtils.directoryExists(openspecDir))) {
-    return false;
+  if (await FileSystemUtils.directoryExists(openspecDir)) {
+    if (await hasOpenspecPlanningConfig(projectRoot)) {
+      return true;
+    }
   }
 
-  if (await hasOpenspecPlanningConfig(projectRoot)) {
-    return true;
-  }
+  // Coexistence signals work without openspec/ (e.g. qaspec-only projects with opsx commands).
   if (await hasUpstreamOpsxSlashCommands(projectRoot)) {
     return true;
   }

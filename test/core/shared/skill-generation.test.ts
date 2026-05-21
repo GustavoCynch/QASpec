@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CORE_WORKFLOWS } from '../../../src/core/profiles.js';
 import {
   getSkillTemplates,
+  getCoexistenceSkillTemplates,
   getCommandTemplates,
   getCommandContents,
   generateSkillContent,
@@ -65,16 +66,31 @@ describe('skill-generation', () => {
       expect(uniqueIds.size).toBe(templates.length);
     });
 
-    it('should filter legacy and shared QAS workflows when filter has no QASpec-only ids', () => {
+    it('should filter legacy and shared openspec workflows when filter has no QASpec-only ids', () => {
       const filtered = getSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       expect(filtered).toHaveLength(4);
       const dirNames = filtered.map((t) => t.dirName);
       expect(dirNames).toContain('openspec-propose');
-      expect(dirNames).toContain('qas-explore');
+      expect(dirNames).toContain('openspec-explore');
       expect(dirNames).toContain('openspec-apply-change');
-      expect(dirNames).toContain('qas-archive');
+      expect(dirNames).toContain('openspec-archive-change');
     });
+  });
 
+  describe('getCoexistenceSkillTemplates', () => {
+    it('merges legacy openspec skills with core qas skills', () => {
+      const merged = getCoexistenceSkillTemplates(['propose', 'explore', 'apply', 'archive']);
+      const dirNames = merged.map((t) => t.dirName);
+      expect(dirNames).toContain('openspec-propose');
+      expect(dirNames).toContain('openspec-explore');
+      expect(dirNames).toContain('qas-analyze');
+      expect(dirNames).toContain('qas-matrix');
+      expect(dirNames).toContain('qas-publish');
+      expect(merged.length).toBe(9);
+    });
+  });
+
+  describe('getSkillTemplates (continued)', () => {
     it('should return all templates when filter is undefined', () => {
       const all = getSkillTemplates();
       const noFilter = getSkillTemplates(undefined);
