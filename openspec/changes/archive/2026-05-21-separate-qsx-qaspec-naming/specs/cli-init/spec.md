@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Legacy global profile migration before generation
+### Requirement: Legacy global profile migration before init
 
 Before resolving workflows for skill and command generation, `qaspec init` SHALL upgrade a global `custom` profile whose workflows exactly match the legacy OpenSpec core set (`propose`, `explore`, `apply`, `archive`) to the QASpec `core` profile.
 

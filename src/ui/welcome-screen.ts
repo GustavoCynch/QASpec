@@ -17,14 +17,14 @@ function printWelcomeContent(): void {
   console.log();
   console.log(chalk.white('This setup will configure:'));
   console.log(chalk.dim('  • QA workflow skills for your AI assistant'));
-  console.log(chalk.dim('  • /qas:* slash commands'));
+  console.log(chalk.dim('  • /qsx:* slash commands'));
   console.log(chalk.dim('  • qaspec/references/ project seeds'));
   console.log();
   console.log(chalk.white('Quick start after setup:'));
-  console.log(`  ${chalk.yellow('/qas:explore')}   ${chalk.dim('Think before the formal cycle')}`);
-  console.log(`  ${chalk.yellow('/qas:analyze')}   ${chalk.dim('Analysis artifact')}`);
-  console.log(`  ${chalk.yellow('/qas:matrix')}    ${chalk.dim('Test matrix')}`);
-  console.log(`  ${chalk.yellow('/qas:publish')}   ${chalk.dim('Publish to Qase')}`);
+  console.log(`  ${chalk.yellow('/qsx:explore')}   ${chalk.dim('Think before the formal cycle')}`);
+  console.log(`  ${chalk.yellow('/qsx:analyze')}   ${chalk.dim('Analysis artifact')}`);
+  console.log(`  ${chalk.yellow('/qsx:matrix')}    ${chalk.dim('Test matrix')}`);
+  console.log(`  ${chalk.yellow('/qsx:publish')}   ${chalk.dim('Publish to Qase')}`);
   console.log();
   console.log(chalk.cyan('Press Enter to select tools...'));
 }

@@ -8,20 +8,20 @@ Enter QASpec explore mode. Think deeply about test strategy, risks, and scope be
 
 **IMPORTANT: Explore mode is for thinking, not implementing.** Read files and investigate; do NOT write application code under test. Do NOT publish to Qase. You MAY discuss or draft ideas without creating required cycle artifacts unless the user asks.
 
-**Does NOT replace:** halts for \`/qas:analyze\`, \`/qas:matrix\`, or \`/qas:publish\`.
+**Does NOT replace:** halts for \`/qsx:analyze\`, \`/qsx:matrix\`, or \`/qsx:publish\`.
 
 At start, optionally run \`qaspec list --json\` and read \`qaspec/references/\` when relevant.
 
 | Insight | Capture in |
 |---------|----------------|
-| Risk or scope note | conversation or later \`analisis.md\` via \`/qas:analyze\` |
-| Test idea | conversation or later \`testmatrix.md\` via \`/qas:matrix\` |
+| Risk or scope note | conversation or later \`analisis.md\` via \`/qsx:analyze\` |
+| Test idea | conversation or later \`testmatrix.md\` via \`/qsx:matrix\` |
 
-**Guardrails:** curious, visual, grounded in codebase/PR; no mandatory artifacts; offer \`/qas:analyze\` when ready for a formal cycle.`;
+**Guardrails:** curious, visual, grounded in codebase/PR; no mandatory artifacts; offer \`/qsx:analyze\` when ready for a formal cycle.`;
 
 export function getQasExploreSkillTemplate(): SkillTemplate {
   return {
-    name: 'qas-explore',
+    name: 'qaspec-explore',
     description:
       'QASpec explore mode — think through QA scope, risks, and strategy without required cycle artifacts.',
     instructions: QAS_EXPLORE_BODY,

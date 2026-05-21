@@ -60,7 +60,7 @@ describe('product documentation slash commands', () => {
     expect(
       violations,
       violations.length
-        ? `Primary docs must use /qas:* for default install guidance:\n${violations.join('\n')}`
+        ? `Primary docs must use /qsx:* for default install guidance:\n${violations.join('\n')}`
         : undefined
     ).toEqual([]);
   });

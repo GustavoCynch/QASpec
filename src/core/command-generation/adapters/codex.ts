@@ -10,6 +10,7 @@
 import os from 'os';
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Returns the Codex home directory.
@@ -22,14 +23,14 @@ function getCodexHome(): string {
 
 /**
  * Codex adapter for command generation.
- * File path: <CODEX_HOME>/prompts/qas-<id>.md (absolute, global)
+ * File path: <CODEX_HOME>/prompts/qsx-<id>.md (absolute, global)
  * Frontmatter: description, argument-hint
  */
 export const codexAdapter: ToolCommandAdapter = {
   toolId: 'codex',
 
   getFilePath(commandId: string): string {
-    return path.join(getCodexHome(), 'prompts', `qas-${commandId}.md`);
+    return path.join(getCodexHome(), 'prompts', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

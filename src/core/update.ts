@@ -344,10 +344,10 @@ export class UpdateCommand {
       if (activeWorkflows.length > 0) {
         console.log(chalk.bold('Getting started:'));
         console.log('  qaspec new change <name>   Create a QA change');
-        console.log('  /qas:explore                 Think before the formal cycle');
-        console.log('  /qas:analyze                 Analysis (analisis.md)');
-        console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
-        console.log('  /qas:publish                 Publish to Qase');
+        console.log('  /qsx:explore                 Think before the formal cycle');
+        console.log('  /qsx:analyze                 Analysis (analisis.md)');
+        console.log('  /qsx:matrix                  Test matrix (testmatrix.md)');
+        console.log('  /qsx:publish                 Publish to Qase');
       }
       console.log();
       console.log(`Learn more: ${chalk.cyan(DOCS_URL)}`);

@@ -33,7 +33,7 @@ ${getQasAnalystPromptBlock('analyze')}
 
 export function getQasAnalyzeSkillTemplate(): SkillTemplate {
   return {
-    name: 'qas-analyze',
+    name: 'qaspec-analyze',
     description: 'QASpec analyze — PR/requirements analysis and risks into analisis.md',
     instructions: QAS_ANALYZE_BODY,
     compatibility: 'Requires qaspec CLI; gh or git for diffs; Cursor Task for dual analysts.',

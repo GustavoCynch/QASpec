@@ -8,6 +8,7 @@ import { promises as fs } from 'fs';
 import chalk from 'chalk';
 import { FileSystemUtils, removeMarkerBlock as removeMarkerBlockUtil } from '../utils/file-system.js';
 import { AI_TOOLS, OPENSPEC_DIR_NAME, OPENSPEC_MARKERS } from './config.js';
+import { LEGACY_QAS_SKILL_DIR_NAMES } from './qaspec-commands.js';
 import { UPSTREAM_OPENSPEC_SKILL_NAMES } from './upstream-coexistence.js';
 
 /** Directories that may contain upstream OpenSpec `opsx-*` slash command files. */
@@ -50,9 +51,9 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   // File-based: individual openspec-*.md files in a commands/workflows/prompts folder
   'cursor': {
     type: 'files',
-    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/openspec-*.md', '.cursor/commands/opsx-*.md'],
+    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/openspec-*.md'],
   },
-  'windsurf': { type: 'files', pattern: '.windsurf/workflows/openspec-*.md' },
+  'windsurf': { type: 'files', pattern: ['.windsurf/workflows/qas-*.md', '.windsurf/workflows/openspec-*.md'] },
   'kilocode': { type: 'files', pattern: '.kilocode/workflows/openspec-*.md' },
   'kiro': { type: 'files', pattern: '.kiro/prompts/openspec-*.prompt.md' },
   'github-copilot': { type: 'files', pattern: '.github/prompts/openspec-*.prompt.md' },
@@ -91,6 +92,8 @@ export interface LegacyDetectionResult {
   slashCommandDirs: string[];
   /** Legacy slash command files found (for file-based tools) */
   slashCommandFiles: string[];
+  /** Legacy QASpec skill directories (bootstrap `qas-*` era) */
+  legacySkillDirs: string[];
   /** Whether openspec/AGENTS.md exists */
   hasOpenspecAgents: boolean;
   /** Whether openspec/project.md exists (preserved, migration hint only) */
@@ -184,6 +187,7 @@ export async function detectLegacyArtifacts(
     configFilesToUpdate: [],
     slashCommandDirs: [],
     slashCommandFiles: [],
+    legacySkillDirs: [],
     hasOpenspecAgents: false,
     hasProjectMd: false,
     hasRootAgentsWithMarkers: false,
@@ -202,6 +206,8 @@ export async function detectLegacyArtifacts(
     ? slashResult.files.filter((filePath) => !isUpstreamManagedSlashCommandPath(filePath))
     : slashResult.files;
 
+  result.legacySkillDirs = await detectLegacyQasSkillDirs(projectPath);
+
   // Detect legacy structure files
   const structureResult = await detectLegacyStructureFiles(projectPath, upstreamOpenSpecActive);
   result.hasOpenspecAgents = structureResult.hasOpenspecAgents;
@@ -213,11 +219,31 @@ export async function detectLegacyArtifacts(
     result.configFiles.length > 0 ||
     result.slashCommandDirs.length > 0 ||
     result.slashCommandFiles.length > 0 ||
+    result.legacySkillDirs.length > 0 ||
     result.hasOpenspecAgents ||
     result.hasRootAgentsWithMarkers ||
     result.hasProjectMd;
 
   return result;
+}
+
+async function detectLegacyQasSkillDirs(projectPath: string): Promise<string[]> {
+  const found: string[] = [];
+
+  for (const tool of AI_TOOLS) {
+    if (!tool.skillsDir) continue;
+    const skillsRoot = path.join(projectPath, tool.skillsDir, 'skills');
+    if (!(await FileSystemUtils.directoryExists(skillsRoot))) continue;
+
+    for (const dirName of LEGACY_QAS_SKILL_DIR_NAMES) {
+      const skillDir = path.join(skillsRoot, dirName);
+      if (await FileSystemUtils.directoryExists(skillDir)) {
+        found.push(path.join(tool.skillsDir, 'skills', dirName).replace(/\\/g, '/'));
+      }
+    }
+  }
+
+  return found;
 }
 
 /**
@@ -489,6 +515,16 @@ export async function cleanupLegacyArtifacts(
     }
   }
 
+  for (const dirPath of detection.legacySkillDirs) {
+    const fullPath = FileSystemUtils.joinPath(projectPath, dirPath);
+    try {
+      await fs.rm(fullPath, { recursive: true, force: true });
+      result.deletedDirs.push(dirPath);
+    } catch (error: any) {
+      result.errors.push(`Failed to delete skill directory ${dirPath}: ${error.message}`);
+    }
+  }
+
   // Delete legacy slash command files (these are 100% OpenSpec-managed)
   for (const filePath of detection.slashCommandFiles) {
     const fullPath = FileSystemUtils.joinPath(projectPath, filePath);
@@ -537,7 +573,7 @@ export function formatCleanupSummary(result: CleanupResult): string {
     }
 
     for (const dir of result.deletedDirs) {
-      lines.push(`  ✓ Removed ${dir}/ (replaced by /qas:*)`);
+      lines.push(`  ✓ Removed ${dir}/ (replaced by /qsx:*)`);
     }
 
     for (const file of result.modifiedFiles) {
@@ -585,7 +621,11 @@ function buildRemovalsList(detection: LegacyDetectionResult): Array<{ path: stri
 
   // Slash command files (these are 100% OpenSpec-managed)
   for (const file of detection.slashCommandFiles) {
-    removals.push({ path: file, explanation: 'replaced by skills/' });
+    removals.push({ path: file, explanation: 'replaced by qaspec-* skills and /qsx:* commands' });
+  }
+
+  for (const dir of detection.legacySkillDirs) {
+    removals.push({ path: dir + '/', explanation: 'replaced by qaspec-* skill directories' });
   }
 
   // openspec/AGENTS.md (inside openspec/, it's OpenSpec-managed)
@@ -638,7 +678,7 @@ export function formatDetectionSummary(detection: LegacyDetectionResult): string
   // Header - QASpec legacy migration (separate from upstream OpenSpec)
   lines.push(chalk.bold('Cleaning up old QASpec setup'));
   lines.push('');
-  lines.push('QASpec now uses agent skills and /qas:* commands. Legacy slash commands');
+  lines.push('QASpec now uses agent skills (qaspec-*) and /qsx:* commands. Legacy slash commands');
   lines.push('and marker blocks from earlier QASpec versions can be removed safely.');
   lines.push('');
 

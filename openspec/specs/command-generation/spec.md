@@ -34,7 +34,7 @@ The system SHALL define a `ToolCommandAdapter` interface for per-tool formatting
 
 - **WHEN** formatting a QASpec command for Claude Code
 - **THEN** the adapter SHALL output YAML frontmatter with `name`, `description`, `category`, `tags` fields
-- **AND** file path SHALL follow pattern `.claude/commands/qas/<id>.md`
+- **AND** file path SHALL follow pattern `.claude/commands/qsx/<id>.md`
 
 #### Scenario: Claude adapter formatting for legacy workflows
 
@@ -44,8 +44,8 @@ The system SHALL define a `ToolCommandAdapter` interface for per-tool formatting
 #### Scenario: Cursor adapter formatting for QASpec workflows
 
 - **WHEN** formatting a QASpec command for Cursor
-- **THEN** the adapter SHALL output YAML frontmatter with `name` as `/qas:<id>`, `id` as `qas-<id>`, `category`, `description` fields
-- **AND** file path SHALL follow pattern `.cursor/commands/qas-<id>.md`
+- **THEN** the adapter SHALL output YAML frontmatter with `name` as `/qsx:<id>`, `id` as `qsx-<id>`, `category`, `description` fields
+- **AND** file path SHALL follow pattern `.cursor/commands/qsx-<id>.md`
 
 #### Scenario: Cursor adapter formatting for legacy workflows
 
@@ -57,7 +57,7 @@ The system SHALL define a `ToolCommandAdapter` interface for per-tool formatting
 
 - **WHEN** formatting a QASpec command for Windsurf
 - **THEN** the adapter SHALL output YAML frontmatter with `name`, `description`, `category`, `tags` fields
-- **AND** file path SHALL follow pattern `.windsurf/workflows/qas-<id>.md`
+- **AND** file path SHALL follow pattern `.windsurf/workflows/qsx-<id>.md`
 
 #### Scenario: Windsurf adapter formatting for legacy workflows
 
@@ -112,18 +112,18 @@ The body content of commands SHALL be shared across all tools.
 
 ### Requirement: QASpec command id prefix
 
-When generating commands for QASpec workflows, adapters SHALL use the `qas-` file prefix and `/qas:` slash name prefix instead of `opsx-` and `/opsx:`.
+When generating commands for QASpec workflows, adapters SHALL use the `qsx-` file prefix and `/qsx:` slash name prefix instead of `opsx-` and `/opsx:`.
 
 #### Scenario: Cursor QASpec command path
 
 - **WHEN** generating the `analyze` command for Cursor with QASpec templates
-- **THEN** `getFilePath('analyze')` resolves to `.cursor/commands/qas-analyze.md` using path.join
-- **AND** formatted frontmatter `name` is `/qas:analyze`
+- **THEN** `getFilePath('analyze')` resolves to `.cursor/commands/qsx-analyze.md` using path.join
+- **AND** formatted frontmatter `name` is `/qsx:analyze`
 
 #### Scenario: Hyphen transform tools
 
 - **WHEN** generating commands for OpenCode or Pi with hyphen command syntax
-- **THEN** `transformToHyphenCommands` converts `/qas:` to `/qas-` in instruction bodies
+- **THEN** `transformToHyphenCommands` converts `/qsx:` to `/qsx-` in instruction bodies
 
 ### Requirement: QASpec command content registry
 
@@ -147,7 +147,7 @@ Generated command metadata SHALL use **QASpec** as the category for QA workflow 
 
 #### Scenario: QASpec workflow command
 
-- **WHEN** generating a `/qas:*` or QASpec-native slash command
+- **WHEN** generating a `/qsx:*` or QASpec-native slash command
 - **THEN** `category` SHALL be `QASpec` (not `OpenSpec`)
 
 #### Scenario: Legacy opsx command

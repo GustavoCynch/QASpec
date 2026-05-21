@@ -6,6 +6,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Qoder adapter for command generation.
@@ -16,7 +17,7 @@ export const qoderAdapter: ToolCommandAdapter = {
   toolId: 'qoder',
 
   getFilePath(commandId: string): string {
-    return path.join('.qoder', 'commands', 'qas', `${commandId}.md`);
+    return path.join('.qoder', 'commands', qasCommandSubdir(), `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

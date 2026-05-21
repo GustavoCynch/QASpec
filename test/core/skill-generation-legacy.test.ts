@@ -8,7 +8,7 @@ describe('QASpec-only profile templates', () => {
     const commands = getCommandTemplates(workflows);
 
     expect(skills.map((s) => s.dirName)).toEqual(
-      expect.arrayContaining(['qas-explore', 'qas-archive'])
+      expect.arrayContaining(['qaspec-explore', 'qaspec-archive'])
     );
     expect(skills.map((s) => s.dirName)).not.toContain('openspec-propose');
 

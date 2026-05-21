@@ -6,6 +6,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Lingma adapter for command generation.
@@ -16,7 +17,7 @@ export const lingmaAdapter: ToolCommandAdapter = {
   toolId: 'lingma',
 
   getFilePath(commandId: string): string {
-    return path.join('.lingma', 'commands', 'qas', `${commandId}.md`);
+    return path.join('.lingma', 'commands', qasCommandSubdir(), `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

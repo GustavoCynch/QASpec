@@ -324,9 +324,9 @@ describe('workspace command', () => {
       })
     );
 
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-archive', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-archive', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(false);
     expect(fs.existsSync(path.join(codexHome, 'prompts'))).toBe(false);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
     expect(fs.existsSync(path.join(api, '.codex'))).toBe(false);
@@ -381,8 +381,8 @@ describe('workspace command', () => {
     fs.mkdirSync(customSkillDir, { recursive: true });
     fs.writeFileSync(path.join(customSkillDir, 'README.md'), 'user-owned\n');
 
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
 
     writeGlobalConfig({
       profile: 'core',
@@ -427,12 +427,12 @@ describe('workspace command', () => {
         failed: [],
       })
     );
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-publish', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-archive', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-publish', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-archive', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(customSkillDir, 'README.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'prompts'))).toBe(false);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
@@ -468,8 +468,8 @@ describe('workspace command', () => {
     });
     const setup = await setupWorkspace('update-redirect', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(false);
 
     writeGlobalConfig({
       profile: 'core',
@@ -484,8 +484,8 @@ describe('workspace command', () => {
     expect(update.stdout).toContain('Workspace update complete');
     expect(update.stdout).toContain('update-redirect');
     expect(update.stdout).not.toContain('not recorded in the local workspace registry');
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
     expect(fs.existsSync(path.join(api, '.codex'))).toBe(false);
   });
@@ -515,8 +515,8 @@ describe('workspace command', () => {
     expect(update.stdout).toContain('Workspace update complete');
     expect(update.stdout).toContain('target-first');
     expect(update.stdout).not.toContain('Multiple QASpec workspaces are known');
-    expect(fs.existsSync(path.join(first.workspace.root, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(second.workspace.root, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(first.workspace.root, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(second.workspace.root, '.codex', 'skills', 'qaspec-explore', 'SKILL.md'))).toBe(false);
   });
 
   it('supports named and flag-selected workspace updates with explicit agent changes', async () => {
@@ -544,7 +544,7 @@ describe('workspace command', () => {
     expect(addPayload.workspace_skills.added).toEqual([
       expect.objectContaining({ tool_id: 'claude', workflow_ids: ['analyze'] }),
     ]);
-    expect(fs.existsSync(path.join(workspaceRoot, '.claude', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(readLocalState(workspaceRoot).workspace_skills?.selected_agents).toEqual(['codex', 'claude']);
 
     const removeAgent = await runCLI(
@@ -563,7 +563,7 @@ describe('workspace command', () => {
     expect(removePayload.workspace_skills.refreshed).toEqual([
       expect.objectContaining({ tool_id: 'claude', workflow_ids: ['analyze'] }),
     ]);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze'))).toBe(false);
     expect(fs.existsSync(path.join(userSkillDir, 'SKILL.md'))).toBe(true);
     expect(readLocalState(workspaceRoot).workspace_skills?.selected_agents).toEqual(['claude']);
   });
@@ -577,7 +577,7 @@ describe('workspace command', () => {
     });
     const setup = await setupWorkspace('unmanaged-collision', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix');
+    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix');
     fs.writeFileSync(path.join(collidingSkillDir, 'SKILL.md'), 'name: user-owned-matrix\n');
 
     const update = await runCLI(
@@ -600,7 +600,7 @@ describe('workspace command', () => {
     });
     const setup = await setupWorkspace('failed-update-state', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    const blockingSkillPath = path.join(workspaceRoot, '.codex', 'skills', 'qas-explore');
+    const blockingSkillPath = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-explore');
     fs.writeFileSync(blockingSkillPath, 'blocks generated skill directory\n');
 
     writeGlobalConfig({

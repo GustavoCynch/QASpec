@@ -95,19 +95,19 @@ describe('config profile interactive flow', () => {
 
   function setupDriftedProjectArtifacts(projectDir: string): void {
     fs.mkdirSync(path.join(projectDir, 'openspec'), { recursive: true });
-    const exploreSkillPath = path.join(projectDir, '.claude', 'skills', 'qas-explore', 'SKILL.md');
+    const exploreSkillPath = path.join(projectDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
     fs.mkdirSync(path.dirname(exploreSkillPath), { recursive: true });
-    fs.writeFileSync(exploreSkillPath, 'name: qas-explore\n', 'utf-8');
+    fs.writeFileSync(exploreSkillPath, 'name: qaspec-explore\n', 'utf-8');
   }
 
   function setupSyncedCoreBothArtifacts(projectDir: string): void {
     fs.mkdirSync(path.join(projectDir, 'openspec'), { recursive: true });
     const coreSkillDirs = [
-      'qas-explore',
-      'qas-analyze',
-      'qas-matrix',
-      'qas-publish',
-      'qas-archive',
+      'qaspec-explore',
+      'qaspec-analyze',
+      'qaspec-matrix',
+      'qaspec-publish',
+      'qaspec-archive',
     ];
     for (const dirName of coreSkillDirs) {
       const skillPath = path.join(projectDir, '.claude', 'skills', dirName, 'SKILL.md');
@@ -117,18 +117,18 @@ describe('config profile interactive flow', () => {
 
     const coreCommands = ['explore', 'analyze', 'matrix', 'publish', 'archive'];
     for (const commandId of coreCommands) {
-      const commandPath = path.join(projectDir, '.claude', 'commands', 'qas', `${commandId}.md`);
+      const commandPath = path.join(projectDir, '.claude', 'commands', 'qsx', `${commandId}.md`);
       fs.mkdirSync(path.dirname(commandPath), { recursive: true });
       fs.writeFileSync(commandPath, `# ${commandId}\n`, 'utf-8');
     }
   }
 
   function addExtraWorkflowArtifactsBeyondGlobal(projectDir: string): void {
-    const archiveSkillPath = path.join(projectDir, '.claude', 'skills', 'qas-archive', 'SKILL.md');
+    const archiveSkillPath = path.join(projectDir, '.claude', 'skills', 'qaspec-archive', 'SKILL.md');
     fs.mkdirSync(path.dirname(archiveSkillPath), { recursive: true });
-    fs.writeFileSync(archiveSkillPath, 'name: qas-archive\n', 'utf-8');
+    fs.writeFileSync(archiveSkillPath, 'name: qaspec-archive\n', 'utf-8');
 
-    const archiveCommandPath = path.join(projectDir, '.claude', 'commands', 'qas', 'archive.md');
+    const archiveCommandPath = path.join(projectDir, '.claude', 'commands', 'qsx', 'archive.md');
     fs.mkdirSync(path.dirname(archiveCommandPath), { recursive: true });
     fs.writeFileSync(archiveCommandPath, '# archive\n', 'utf-8');
   }

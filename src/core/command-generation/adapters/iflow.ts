@@ -6,23 +6,24 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * iFlow adapter for command generation.
- * File path: .iflow/commands/qas-<id>.md
+ * File path: .iflow/commands/qsx-<id>.md
  * Frontmatter: name, id, category, description
  */
 export const iflowAdapter: ToolCommandAdapter = {
   toolId: 'iflow',
 
   getFilePath(commandId: string): string {
-    return path.join('.iflow', 'commands', `qas-${commandId}.md`);
+    return path.join('.iflow', 'commands', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {
     return `---
-name: /qas:${content.id}
-id: qas-${content.id}
+name: ${qasSlashCommandName(content.id)}
+id: ${qasSlashCommandId(content.id)}
 category: ${content.category}
 description: ${content.description}
 ---

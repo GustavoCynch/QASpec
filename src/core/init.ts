@@ -1,7 +1,7 @@
 /**
  * Init Command
  *
- * Sets up QASpec with Agent Skills and /qas:* slash commands.
+ * Sets up QASpec with Agent Skills and /qsx:* slash commands.
  * This is the unified setup command that replaces both the old init and experimental commands.
  */
 
@@ -752,10 +752,10 @@ export class InitCommand {
     if (activeWorkflows.length > 0) {
       console.log(chalk.bold('Getting started:'));
       console.log('  qaspec new change <name>   Create a QA change');
-      console.log('  /qas:explore                 Think before the formal cycle');
-      console.log('  /qas:analyze                 Analysis (analisis.md)');
-      console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
-      console.log('  /qas:publish                 Publish to Qase');
+      console.log('  /qsx:explore                 Think before the formal cycle');
+      console.log('  /qsx:analyze                 Analysis (analisis.md)');
+      console.log('  /qsx:matrix                  Test matrix (testmatrix.md)');
+      console.log('  /qsx:publish                 Publish to Qase');
     } else {
       console.log("Done. Run 'qaspec config profile core' to enable QASpec workflows.");
     }

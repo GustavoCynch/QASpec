@@ -4,6 +4,7 @@ import { AI_TOOLS } from './config.js';
 import type { Delivery } from './global-config.js';
 import { ALL_WORKFLOWS } from './profiles.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
+import { qaspecSkillDirName } from './qaspec-commands.js';
 import { COMMAND_IDS, getConfiguredTools, getSkillTemplates } from './shared/index.js';
 
 type WorkflowId = (typeof ALL_WORKFLOWS)[number];
@@ -12,11 +13,11 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
  * Maps workflow IDs to their skill directory names.
  */
 export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
-  explore: 'qas-explore',
-  analyze: 'qas-analyze',
-  matrix: 'qas-matrix',
-  publish: 'qas-publish',
-  archive: 'qas-archive',
+  explore: qaspecSkillDirName('explore'),
+  analyze: qaspecSkillDirName('analyze'),
+  matrix: qaspecSkillDirName('matrix'),
+  publish: qaspecSkillDirName('publish'),
+  archive: qaspecSkillDirName('archive'),
 };
 
 function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {

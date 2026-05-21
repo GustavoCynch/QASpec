@@ -7,6 +7,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Escapes a string value for safe YAML output.
@@ -33,14 +34,14 @@ function formatTagsArray(tags: string[]): string {
 
 /**
  * Windsurf adapter for command generation.
- * File path: .windsurf/workflows/qas-<id>.md
+ * File path: .windsurf/workflows/qsx-<id>.md
  * Frontmatter: name, description, category, tags
  */
 export const windsurfAdapter: ToolCommandAdapter = {
   toolId: 'windsurf',
 
   getFilePath(commandId: string): string {
-    return path.join('.windsurf', 'workflows', `qas-${commandId}.md`);
+    return path.join('.windsurf', 'workflows', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

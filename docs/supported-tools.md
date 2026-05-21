@@ -6,8 +6,8 @@ QASpec works with many AI coding assistants. When you run `qaspec init`, QASpec 
 
 For each selected tool, QASpec can install:
 
-1. **Skills** (if delivery includes skills): `.../skills/qas-*/SKILL.md`
-2. **Commands** (if delivery includes commands): tool-specific `qas-*` or `qas/<id>` command files with `/qas:<id>` names
+1. **Skills** (if delivery includes skills): `.../skills/qaspec-*/SKILL.md`
+2. **Commands** (if delivery includes commands): tool-specific `qsx-*` or `qsx/<id>` command files with `/qsx:<id>` names
 
 By default, QASpec uses the **`core`** profile:
 
@@ -15,7 +15,7 @@ By default, QASpec uses the **`core`** profile:
 
 Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
 
-QASpec installs `qas-*` skills and `/qas:*` commands via `qaspec init` (not third-party upstream skill packs).
+QASpec installs `qaspec-*` skills and `/qsx:*` commands via `qaspec init` (not third-party upstream skill packs).
 
 ## Tool Directory Reference
 
@@ -23,35 +23,35 @@ Patterns below use `<id>` as one of: `explore`, `analyze`, `matrix`, `publish`, 
 
 | Tool (ID) | Skills path pattern | Command path pattern |
 |-----------|---------------------|----------------------|
-| Amazon Q Developer (`amazon-q`) | `.amazonq/skills/qas-*/SKILL.md` | `.amazonq/prompts/qas-<id>.md` |
-| Antigravity (`antigravity`) | `.agent/skills/qas-*/SKILL.md` | `.agent/workflows/qas-<id>.md` |
-| Auggie (`auggie`) | `.augment/skills/qas-*/SKILL.md` | `.augment/commands/qas-<id>.md` |
-| IBM Bob Shell (`bob`) | `.bob/skills/qas-*/SKILL.md` | `.bob/commands/qas-<id>.md` |
-| Claude Code (`claude`) | `.claude/skills/qas-*/SKILL.md` | `.claude/commands/qas/<id>.md` |
-| Cline (`cline`) | `.cline/skills/qas-*/SKILL.md` | `.clinerules/workflows/qas-<id>.md` |
-| CodeBuddy (`codebuddy`) | `.codebuddy/skills/qas-*/SKILL.md` | `.codebuddy/commands/qas/<id>.md` |
-| Codex (`codex`) | `.codex/skills/qas-*/SKILL.md` | `$CODEX_HOME/prompts/qas-<id>.md`\* |
-| ForgeCode (`forgecode`) | `.forge/skills/qas-*/SKILL.md` | Not generated (skills only) |
-| Continue (`continue`) | `.continue/skills/qas-*/SKILL.md` | `.continue/prompts/qas-<id>.prompt` |
-| CoStrict (`costrict`) | `.cospec/skills/qas-*/SKILL.md` | `.cospec/commands/qas-<id>.md` |
-| Crush (`crush`) | `.crush/skills/qas-*/SKILL.md` | `.crush/commands/qas/<id>.md` |
-| Cursor (`cursor`) | `.cursor/skills/qas-*/SKILL.md` | `.cursor/commands/qas-<id>.md` |
-| Factory Droid (`factory`) | `.factory/skills/qas-*/SKILL.md` | `.factory/commands/qas-<id>.md` |
-| Gemini CLI (`gemini`) | `.gemini/skills/qas-*/SKILL.md` | `.gemini/commands/qas/<id>.toml` |
-| GitHub Copilot (`github-copilot`) | `.github/skills/qas-*/SKILL.md` | `.github/prompts/qas-<id>.prompt.md`\*\* |
-| iFlow (`iflow`) | `.iflow/skills/qas-*/SKILL.md` | `.iflow/commands/qas-<id>.md` |
-| Junie (`junie`) | `.junie/skills/qas-*/SKILL.md` | `.junie/commands/qas-<id>.md` |
-| Kilo Code (`kilocode`) | `.kilocode/skills/qas-*/SKILL.md` | `.kilocode/workflows/qas-<id>.md` |
-| Kimi CLI (`kimi`) | `.kimi/skills/qas-*/SKILL.md` | Not generated (skills only) |
-| Kiro (`kiro`) | `.kiro/skills/qas-*/SKILL.md` | `.kiro/prompts/qas-<id>.prompt.md` |
-| Lingma (`lingma`) | `.lingma/skills/qas-*/SKILL.md` | `.lingma/commands/qas/<id>.md` |
-| OpenCode (`opencode`) | `.opencode/skills/qas-*/SKILL.md` | `.opencode/commands/qas-<id>.md` |
-| Pi (`pi`) | `.pi/skills/qas-*/SKILL.md` | `.pi/prompts/qas-<id>.md` |
-| Qoder (`qoder`) | `.qoder/skills/qas-*/SKILL.md` | `.qoder/commands/qas/<id>.md` |
-| Qwen Code (`qwen`) | `.qwen/skills/qas-*/SKILL.md` | `.qwen/commands/qas-<id>.toml` |
-| RooCode (`roocode`) | `.roo/skills/qas-*/SKILL.md` | `.roo/commands/qas-<id>.md` |
-| Trae (`trae`) | `.trae/skills/qas-*/SKILL.md` | Not generated (skills only) |
-| Windsurf (`windsurf`) | `.windsurf/skills/qas-*/SKILL.md` | `.windsurf/workflows/qas-<id>.md` |
+| Amazon Q Developer (`amazon-q`) | `.amazonq/skills/qaspec-*/SKILL.md` | `.amazonq/prompts/qas-<id>.md` |
+| Antigravity (`antigravity`) | `.agent/skills/qaspec-*/SKILL.md` | `.agent/workflows/qas-<id>.md` |
+| Auggie (`auggie`) | `.augment/skills/qaspec-*/SKILL.md` | `.augment/commands/qsx-<id>.md` |
+| IBM Bob Shell (`bob`) | `.bob/skills/qaspec-*/SKILL.md` | `.bob/commands/qsx-<id>.md` |
+| Claude Code (`claude`) | `.claude/skills/qaspec-*/SKILL.md` | `.claude/commands/qas/<id>.md` |
+| Cline (`cline`) | `.cline/skills/qaspec-*/SKILL.md` | `.clinerules/workflows/qas-<id>.md` |
+| CodeBuddy (`codebuddy`) | `.codebuddy/skills/qaspec-*/SKILL.md` | `.codebuddy/commands/qas/<id>.md` |
+| Codex (`codex`) | `.codex/skills/qaspec-*/SKILL.md` | `$CODEX_HOME/prompts/qas-<id>.md`\* |
+| ForgeCode (`forgecode`) | `.forge/skills/qaspec-*/SKILL.md` | Not generated (skills only) |
+| Continue (`continue`) | `.continue/skills/qaspec-*/SKILL.md` | `.continue/prompts/qas-<id>.prompt` |
+| CoStrict (`costrict`) | `.cospec/skills/qaspec-*/SKILL.md` | `.cospec/commands/qsx-<id>.md` |
+| Crush (`crush`) | `.crush/skills/qaspec-*/SKILL.md` | `.crush/commands/qas/<id>.md` |
+| Cursor (`cursor`) | `.cursor/skills/qaspec-*/SKILL.md` | `.cursor/commands/qsx-<id>.md` |
+| Factory Droid (`factory`) | `.factory/skills/qaspec-*/SKILL.md` | `.factory/commands/qsx-<id>.md` |
+| Gemini CLI (`gemini`) | `.gemini/skills/qaspec-*/SKILL.md` | `.gemini/commands/qas/<id>.toml` |
+| GitHub Copilot (`github-copilot`) | `.github/skills/qaspec-*/SKILL.md` | `.github/prompts/qas-<id>.prompt.md`\*\* |
+| iFlow (`iflow`) | `.iflow/skills/qaspec-*/SKILL.md` | `.iflow/commands/qsx-<id>.md` |
+| Junie (`junie`) | `.junie/skills/qaspec-*/SKILL.md` | `.junie/commands/qsx-<id>.md` |
+| Kilo Code (`kilocode`) | `.kilocode/skills/qaspec-*/SKILL.md` | `.kilocode/workflows/qas-<id>.md` |
+| Kimi CLI (`kimi`) | `.kimi/skills/qaspec-*/SKILL.md` | Not generated (skills only) |
+| Kiro (`kiro`) | `.kiro/skills/qaspec-*/SKILL.md` | `.kiro/prompts/qas-<id>.prompt.md` |
+| Lingma (`lingma`) | `.lingma/skills/qaspec-*/SKILL.md` | `.lingma/commands/qas/<id>.md` |
+| OpenCode (`opencode`) | `.opencode/skills/qaspec-*/SKILL.md` | `.opencode/commands/qsx-<id>.md` |
+| Pi (`pi`) | `.pi/skills/qaspec-*/SKILL.md` | `.pi/prompts/qas-<id>.md` |
+| Qoder (`qoder`) | `.qoder/skills/qaspec-*/SKILL.md` | `.qoder/commands/qas/<id>.md` |
+| Qwen Code (`qwen`) | `.qwen/skills/qaspec-*/SKILL.md` | `.qwen/commands/qsx-<id>.toml` |
+| RooCode (`roocode`) | `.roo/skills/qaspec-*/SKILL.md` | `.roo/commands/qsx-<id>.md` |
+| Trae (`trae`) | `.trae/skills/qaspec-*/SKILL.md` | Not generated (skills only) |
+| Windsurf (`windsurf`) | `.windsurf/skills/qaspec-*/SKILL.md` | `.windsurf/workflows/qas-<id>.md` |
 
 \* Codex commands are installed in the global Codex home (`$CODEX_HOME/prompts/` if set, otherwise `~/.codex/prompts/`), not your project directory.
 
@@ -81,13 +81,13 @@ Skill and command counts depend on profile and delivery (`skills`, `commands`, o
 
 When selected by profile, QASpec generates:
 
-- `qas-explore`
-- `qas-analyze`
-- `qas-matrix`
-- `qas-publish`
-- `qas-archive`
+- `qaspec-explore`
+- `qaspec-analyze`
+- `qaspec-matrix`
+- `qaspec-publish`
+- `qaspec-archive`
 
-Slash command frontmatter uses `/qas:<id>` (e.g. `/qas:analyze`). See [Commands](commands.md).
+Slash command frontmatter uses `/qsx:<id>` (e.g. `/qsx:analyze`). See [Commands](commands.md).
 
 ## Related
 

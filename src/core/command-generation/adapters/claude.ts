@@ -6,6 +6,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Escapes a string value for safe YAML output.
@@ -39,7 +40,7 @@ export const claudeAdapter: ToolCommandAdapter = {
   toolId: 'claude',
 
   getFilePath(commandId: string): string {
-    return path.join('.claude', 'commands', 'qas', `${commandId}.md`);
+    return path.join('.claude', 'commands', qasCommandSubdir(), `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

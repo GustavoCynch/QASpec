@@ -33,11 +33,11 @@ describe('upstream-coexistence per-file skip', () => {
     expect(await shouldSkipUpstreamSkillWrite(skillFile, 'openspec-apply-change', true)).toBe(false);
   });
 
-  it('always writes qas-* skills even when upstream is active', async () => {
-    const skillFile = path.join(testDir, 'qas-explore', 'SKILL.md');
+  it('always writes qaspec-* skills even when upstream is active', async () => {
+    const skillFile = path.join(testDir, 'qaspec-explore', 'SKILL.md');
     await fs.mkdir(path.dirname(skillFile), { recursive: true });
     await fs.writeFile(skillFile, 'existing');
-    expect(await shouldSkipUpstreamSkillWrite(skillFile, 'qas-explore', true)).toBe(false);
+    expect(await shouldSkipUpstreamSkillWrite(skillFile, 'qaspec-explore', true)).toBe(false);
   });
 
   it('skips write for existing opsx-propose command', async () => {

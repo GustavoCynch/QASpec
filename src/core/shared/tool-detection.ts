@@ -8,17 +8,19 @@ import path from 'path';
 import * as fs from 'fs';
 import { AI_TOOLS } from '../config.js';
 import { CORE_WORKFLOWS } from '../profiles.js';
+import { qaspecSkillDirName } from '../qaspec-commands.js';
 
 /**
  * Names of skill directories created by qaspec init.
  */
-export const SKILL_NAMES = [
-  'qas-explore',
-  'qas-analyze',
-  'qas-matrix',
-  'qas-publish',
-  'qas-archive',
-] as const;
+
+export const SKILL_NAMES = CORE_WORKFLOWS.map((id) => qaspecSkillDirName(id)) as [
+  'qaspec-explore',
+  'qaspec-analyze',
+  'qaspec-matrix',
+  'qaspec-publish',
+  'qaspec-archive',
+];
 
 export type SkillName = (typeof SKILL_NAMES)[number];
 

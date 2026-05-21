@@ -7,6 +7,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 import { transformToHyphenCommands } from '../../../utils/command-references.js';
 
 /**
@@ -26,14 +27,14 @@ function escapeYamlValue(value: string): string {
 
 /**
  * Bob Shell adapter for command generation.
- * File path: .bob/commands/qas-<id>.md
+ * File path: .bob/commands/qsx-<id>.md
  * Frontmatter: description, argument-hint
  */
 export const bobAdapter: ToolCommandAdapter = {
   toolId: 'bob',
 
   getFilePath(commandId: string): string {
-    return path.join('.bob', 'commands', `qas-${commandId}.md`);
+    return path.join('.bob', 'commands', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

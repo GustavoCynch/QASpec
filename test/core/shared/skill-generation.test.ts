@@ -21,11 +21,11 @@ describe('skill-generation', () => {
       const dirNames = templates.map((t) => t.dirName);
       expect(dirNames).toEqual(
         expect.arrayContaining([
-          'qas-explore',
-          'qas-analyze',
-          'qas-matrix',
-          'qas-publish',
-          'qas-archive',
+          'qaspec-explore',
+          'qaspec-analyze',
+          'qaspec-matrix',
+          'qaspec-publish',
+          'qaspec-archive',
         ])
       );
     });
@@ -67,8 +67,8 @@ describe('skill-generation', () => {
       const filtered = getSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       expect(filtered).toHaveLength(2);
       const dirNames = filtered.map((t) => t.dirName);
-      expect(dirNames).toContain('qas-explore');
-      expect(dirNames).toContain('qas-archive');
+      expect(dirNames).toContain('qaspec-explore');
+      expect(dirNames).toContain('qaspec-archive');
     });
   });
 
@@ -76,11 +76,11 @@ describe('skill-generation', () => {
     it('returns full QASpec core skill set regardless of legacy profile ids', () => {
       const merged = getCoexistenceSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       const dirNames = merged.map((t) => t.dirName);
-      expect(dirNames).toContain('qas-explore');
-      expect(dirNames).toContain('qas-analyze');
-      expect(dirNames).toContain('qas-matrix');
-      expect(dirNames).toContain('qas-publish');
-      expect(dirNames).toContain('qas-archive');
+      expect(dirNames).toContain('qaspec-explore');
+      expect(dirNames).toContain('qaspec-analyze');
+      expect(dirNames).toContain('qaspec-matrix');
+      expect(dirNames).toContain('qaspec-publish');
+      expect(dirNames).toContain('qaspec-archive');
       expect(merged).toHaveLength(5);
     });
   });
@@ -216,9 +216,9 @@ describe('skill-generation', () => {
       expect(content).toContain('Test instructions');
     });
 
-    it('qas-analyze template includes config preamble and dual analysts', () => {
+    it('qaspec-analyze template includes config preamble and dual analysts', () => {
       const templates = getSkillTemplates(CORE_WORKFLOWS);
-      const analyze = templates.find((t) => t.dirName === 'qas-analyze');
+      const analyze = templates.find((t) => t.dirName === 'qaspec-analyze');
       expect(analyze).toBeDefined();
       const body = analyze!.template.instructions;
       expect(body).toContain('instructions analyze');
@@ -231,15 +231,15 @@ describe('skill-generation', () => {
       const template = {
         name: 'transform-test',
         description: 'Test transform callback',
-        instructions: 'Use /qas:new to start and /qas:apply to implement.',
+        instructions: 'Use /qsx:new to start and /qsx:apply to implement.',
       };
 
-      const transformer = (text: string) => text.replace(/\/(qas|opsx):/g, '/$1-');
+      const transformer = (text: string) => text.replace(/\/(qsx|qas|opsx):/g, '/$1-');
       const content = generateSkillContent(template, '0.23.0', transformer);
 
-      expect(content).toContain('/qas-new');
-      expect(content).toContain('/qas-apply');
-      expect(content).not.toContain('/qas:new');
+      expect(content).toContain('/qsx-new');
+      expect(content).toContain('/qsx-apply');
+      expect(content).not.toContain('/qsx:new');
     });
   });
 });

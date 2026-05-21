@@ -15,7 +15,7 @@ export const REFERENCE_FILES = {
 const ENGLISH_HISTORICAL_BUGS = `# Historical bugs — project reference
 
 Document recurrent production bugs and risk patterns for your product.
-Agents read this file at the start of every \`/qas:analyze\` run (re-read each time; do not cache).
+Agents read this file at the start of every \`/qsx:analyze\` run (re-read each time; do not cache).
 
 ## How to use
 
@@ -41,7 +41,7 @@ Agents read this file at the start of every \`/qas:analyze\` run (re-read each t
 const ENGLISH_QASE_RULES = `# Qase test case rules (MCP)
 
 Rules for creating suites and cases in Qase via MCP (\`create_suite\`, \`create_case\`).
-Read before \`/qas:matrix\` and again before \`/qas:publish\`.
+Read before \`/qsx:matrix\` and again before \`/qsx:publish\`.
 
 ## Suites
 

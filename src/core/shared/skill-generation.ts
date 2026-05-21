@@ -19,6 +19,7 @@ import {
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
 import { CORE_WORKFLOWS } from '../profiles.js';
+import { qaspecSkillDirName } from '../qaspec-commands.js';
 
 /**
  * Skill template with directory name and workflow ID mapping.
@@ -38,11 +39,11 @@ export interface CommandTemplateEntry {
 }
 
 const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
-  { template: getQasExploreSkillTemplate(), dirName: 'qas-explore', workflowId: 'explore' },
-  { template: getQasAnalyzeSkillTemplate(), dirName: 'qas-analyze', workflowId: 'analyze' },
-  { template: getQasMatrixSkillTemplate(), dirName: 'qas-matrix', workflowId: 'matrix' },
-  { template: getQasPublishSkillTemplate(), dirName: 'qas-publish', workflowId: 'publish' },
-  { template: getQasArchiveSkillTemplate(), dirName: 'qas-archive', workflowId: 'archive' },
+  { template: getQasExploreSkillTemplate(), dirName: qaspecSkillDirName('explore'), workflowId: 'explore' },
+  { template: getQasAnalyzeSkillTemplate(), dirName: qaspecSkillDirName('analyze'), workflowId: 'analyze' },
+  { template: getQasMatrixSkillTemplate(), dirName: qaspecSkillDirName('matrix'), workflowId: 'matrix' },
+  { template: getQasPublishSkillTemplate(), dirName: qaspecSkillDirName('publish'), workflowId: 'publish' },
+  { template: getQasArchiveSkillTemplate(), dirName: qaspecSkillDirName('archive'), workflowId: 'archive' },
 ];
 
 const QAS_COMMAND_ENTRIES: CommandTemplateEntry[] = [

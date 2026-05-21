@@ -20,7 +20,7 @@ QASpec SHALL use a consistent product naming matrix for all user-facing copy.
 #### Scenario: Agent slash command references
 
 - **WHEN** documentation instructs users to run the default installed agent workflow
-- **THEN** it SHALL reference **`/qas:*`** commands only
+- **THEN** it SHALL reference **`/qsx:*`** slash commands only
 
 #### Scenario: Repository spec history paths
 
@@ -61,3 +61,4 @@ User-facing "learn more" and feedback links for this product SHALL target the QA
 
 - **WHEN** `qaspec init` completes and displays documentation links
 - **THEN** URLs SHALL point to this fork's GitHub (or published docs site), not `Fission-AI/OpenSpec` unless explicitly labeled as upstream lineage
+

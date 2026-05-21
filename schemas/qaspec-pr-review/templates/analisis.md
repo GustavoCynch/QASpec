@@ -45,7 +45,7 @@
 
 ## Risks for matrix phase
 
-<!-- What /qas:matrix must cover (BVA, API blocking, settings pairs, etc.) -->
+<!-- What /qsx:matrix must cover (BVA, API blocking, settings pairs, etc.) -->
 
 ## Synthesis notes
 

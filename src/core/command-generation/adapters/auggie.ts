@@ -6,17 +6,18 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Auggie adapter for command generation.
- * File path: .augment/commands/qas-<id>.md
+ * File path: .augment/commands/qsx-<id>.md
  * Frontmatter: description, argument-hint
  */
 export const auggieAdapter: ToolCommandAdapter = {
   toolId: 'auggie',
 
   getFilePath(commandId: string): string {
-    return path.join('.augment', 'commands', `qas-${commandId}.md`);
+    return path.join('.augment', 'commands', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

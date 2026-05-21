@@ -30,7 +30,7 @@ User-requested edits after halt: update \`testmatrix.md\` and affected \`specs/*
 
 export function getQasMatrixSkillTemplate(): SkillTemplate {
   return {
-    name: 'qas-matrix',
+    name: 'qaspec-matrix',
     description: 'QASpec test matrix and delta specs — testmatrix.md + specs/**/*.md',
     instructions: QAS_MATRIX_BODY,
     compatibility: 'Requires qaspec CLI; Cursor Task for dual analysts.',

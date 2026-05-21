@@ -39,7 +39,7 @@ When upstream OpenSpec is active, the QASpec CLI SHALL NOT delete, move, prompt 
 - **AND** the system SHALL NOT remove `openspec/AGENTS.md`
 - **AND** the system SHALL NOT overwrite existing `openspec-*` skill `SKILL.md` files under configured tool skills paths
 - **AND** the system SHALL NOT overwrite existing `opsx-*` command files under configured tool command paths
-- **AND** the system SHALL proceed to set up `qaspec/` and QASpec (`qas-*`) skills/commands
+- **AND** the system SHALL proceed to set up `qaspec/` and QASpec (`qaspec-*` skills, `qsx-*` commands)
 
 #### Scenario: Update with coexisting OpenSpec
 
@@ -60,7 +60,7 @@ When upstream OpenSpec is active, the QASpec CLI SHALL NOT delete, move, prompt 
 - **AND** upstream OpenSpec is active
 - **WHEN** the user runs `qaspec init` with Cursor selected and a profile that includes `propose` and `apply` workflows
 - **THEN** both skill files SHALL retain their pre-init byte content
-- **AND** QASpec `qas-*` skills for the selected profile SHALL still be created or updated
+- **AND** QASpec `qaspec-*` skills for the selected profile SHALL still be created or updated
 
 ### Requirement: Coexistence summary when skipping upstream writes
 

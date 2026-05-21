@@ -6,18 +6,19 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 import { transformToHyphenCommands } from '../../../utils/command-references.js';
 
 /**
  * OpenCode adapter for command generation.
- * File path: .opencode/commands/qas-<id>.md
+ * File path: .opencode/commands/qsx-<id>.md
  * Frontmatter: description
  */
 export const opencodeAdapter: ToolCommandAdapter = {
   toolId: 'opencode',
 
   getFilePath(commandId: string): string {
-    return path.join('.opencode', 'commands', `qas-${commandId}.md`);
+    return path.join('.opencode', 'commands', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

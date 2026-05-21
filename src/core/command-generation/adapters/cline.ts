@@ -7,17 +7,18 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Cline adapter for command generation.
- * File path: .clinerules/workflows/qas-<id>.md
+ * File path: .clinerules/workflows/qsx-<id>.md
  * Format: Markdown header with description
  */
 export const clineAdapter: ToolCommandAdapter = {
   toolId: 'cline',
 
   getFilePath(commandId: string): string {
-    return path.join('.clinerules', 'workflows', `qas-${commandId}.md`);
+    return path.join('.clinerules', 'workflows', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {

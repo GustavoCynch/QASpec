@@ -28,9 +28,9 @@ describe('command-generation/generator', () => {
       const result = generateCommand(sampleContent, cursorAdapter);
 
       expect(result.path).toContain('.cursor');
-      expect(result.path).toContain('qas-explore.md');
-      expect(result.fileContent).toContain('name: /qas:explore');
-      expect(result.fileContent).toContain('id: qas-explore');
+      expect(result.path).toContain('qsx-explore.md');
+      expect(result.fileContent).toContain('name: /qsx:explore');
+      expect(result.fileContent).toContain('id: qsx-explore');
       expect(result.fileContent).toContain('Command body here.');
     });
 

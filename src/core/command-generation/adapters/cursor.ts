@@ -30,8 +30,8 @@ function escapeYamlValue(value: string): string {
 
 /**
  * Cursor adapter for command generation.
- * File path: .cursor/commands/qas-<id>.md
- * Frontmatter: name (as /qas:<id>), id, category, description
+ * File path: .cursor/commands/qsx-<id>.md
+ * Frontmatter: name (as /qsx:<id>), id, category, description
  */
 export const cursorAdapter: ToolCommandAdapter = {
   toolId: 'cursor',

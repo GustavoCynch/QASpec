@@ -51,7 +51,7 @@ PRs are test targets, not ground truth.`,
       ],
       apply: [
         'Re-read qaspec/references/qase_test_case_rules.md before the first Qase MCP call',
-        'Block publish when testmatrix exists but change specs/ is empty — direct user to /qas:matrix first',
+        'Block publish when testmatrix exists but change specs/ is empty — direct user to /qsx:matrix first',
         'Resolve Qase project code, role, and base URL from artifacts or one halt listing only missing fields; persist to execution-context.md',
         'Do not echo secrets or PII in chat or Qase fields; stop upload path if detected',
         'Mark each published row - [x] in testmatrix.md; write publish-log.md trace',

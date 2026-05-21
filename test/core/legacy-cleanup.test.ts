@@ -653,6 +653,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['NON_EXISTENT.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -693,7 +694,7 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatCleanupSummary(result);
-      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /qas:*)');
+      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /qsx:*)');
     });
 
     it('should format modified files', () => {
@@ -759,6 +760,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -768,7 +770,7 @@ ${OPENSPEC_MARKERS.end}`);
       const summary = formatDetectionSummary(detection);
       expect(summary).toContain('Cleaning up old QASpec setup');
       expect(summary).toContain('agent skills');
-      expect(summary).toContain('/qas:*');
+      expect(summary).toContain('/qsx:*');
     });
 
     it('should format config files as files to update (never remove)', () => {
@@ -777,6 +779,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -797,6 +800,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLINE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -816,6 +820,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -833,6 +838,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.cursor/commands/openspec-proposal.md'],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -850,6 +856,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -867,6 +874,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: true,
         hasRootAgentsWithMarkers: false,
@@ -887,6 +895,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: true,
         hasRootAgentsWithMarkers: false,
@@ -907,6 +916,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md', 'CLINE.md'],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -931,6 +941,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -990,13 +1001,12 @@ ${OPENSPEC_MARKERS.end}`);
         pattern: [
           '.cursor/commands/qas-*.md',
           '.cursor/commands/openspec-*.md',
-          '.cursor/commands/opsx-*.md',
         ],
       });
 
       expect(LEGACY_SLASH_COMMAND_PATHS['windsurf']).toEqual({
         type: 'files',
-        pattern: '.windsurf/workflows/openspec-*.md',
+        pattern: ['.windsurf/workflows/qas-*.md', '.windsurf/workflows/openspec-*.md'],
       });
     });
 
@@ -1020,6 +1030,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -1095,6 +1106,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -1196,7 +1208,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [
-          '.opencode/command/qas-propose.md',
+          '.opencode/command/qsx-propose.md',
           '.opencode/command/openspec-new.md',
         ],
         hasOpenspecAgents: false,
@@ -1218,6 +1230,7 @@ ${OPENSPEC_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
+        legacySkillDirs: [],
         hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,

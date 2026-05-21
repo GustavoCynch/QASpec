@@ -19,7 +19,9 @@ The system SHALL detect legacy artifacts from previous QASpec init versions only
 - **WHEN** running `qaspec init` on an existing project
 - **AND** upstream OpenSpec is not active
 - **THEN** the system SHALL check for old slash command directories and files using the legacy registry
-- **AND** SHALL include `qas-*` and pre-skill `openspec-*` patterns
+- **AND** SHALL include transitional `qas-*` skills and `qas-*.md` commands from the bootstrap naming era
+- **AND** SHALL include pre-skill `openspec-*` patterns where applicable
+- **AND** SHALL NOT include current `qsx-*` or `qaspec-*` as legacy targets
 - **AND** SHALL NOT include `opsx-*` patterns as legacy targets
 
 #### Scenario: Detecting legacy structure files

@@ -62,11 +62,11 @@ describe('skill templates split parity', () => {
 
   it('preserves generated QASpec skill file content exactly', () => {
     const skillFactories: Array<[string, () => SkillTemplate]> = [
-      ['qas-explore', getQasExploreSkillTemplate],
-      ['qas-analyze', getQasAnalyzeSkillTemplate],
-      ['qas-matrix', getQasMatrixSkillTemplate],
-      ['qas-publish', getQasPublishSkillTemplate],
-      ['qas-archive', getQasArchiveSkillTemplate],
+      ['qaspec-explore', getQasExploreSkillTemplate],
+      ['qaspec-analyze', getQasAnalyzeSkillTemplate],
+      ['qaspec-matrix', getQasMatrixSkillTemplate],
+      ['qaspec-publish', getQasPublishSkillTemplate],
+      ['qaspec-archive', getQasArchiveSkillTemplate],
     ];
 
     const actualHashes = Object.fromEntries(

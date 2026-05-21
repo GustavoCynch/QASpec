@@ -6,6 +6,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Gemini adapter for command generation.
@@ -16,7 +17,7 @@ export const geminiAdapter: ToolCommandAdapter = {
   toolId: 'gemini',
 
   getFilePath(commandId: string): string {
-    return path.join('.gemini', 'commands', 'qas', `${commandId}.toml`);
+    return path.join('.gemini', 'commands', qasCommandSubdir(), `${commandId}.toml`);
   },
 
   formatFile(content: CommandContent): string {

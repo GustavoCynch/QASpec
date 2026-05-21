@@ -29,11 +29,11 @@ describe('tool-detection', () => {
   describe('SKILL_NAMES', () => {
     it('should contain only QASpec core skill directory names', () => {
       expect(SKILL_NAMES).toHaveLength(5);
-      expect(SKILL_NAMES).toContain('qas-explore');
-      expect(SKILL_NAMES).toContain('qas-analyze');
-      expect(SKILL_NAMES).toContain('qas-matrix');
-      expect(SKILL_NAMES).toContain('qas-publish');
-      expect(SKILL_NAMES).toContain('qas-archive');
+      expect(SKILL_NAMES).toContain('qaspec-explore');
+      expect(SKILL_NAMES).toContain('qaspec-analyze');
+      expect(SKILL_NAMES).toContain('qaspec-matrix');
+      expect(SKILL_NAMES).toContain('qaspec-publish');
+      expect(SKILL_NAMES).toContain('qaspec-archive');
     });
   });
 
@@ -63,7 +63,7 @@ describe('tool-detection', () => {
     });
 
     it('should detect when one skill exists', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'test content');
 
@@ -98,7 +98,7 @@ describe('tool-detection', () => {
     });
 
     it('should detect configured tools', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'test content');
 
@@ -117,7 +117,7 @@ describe('tool-detection', () => {
     it('should return null when generatedBy is not present', async () => {
       const filePath = path.join(testDir, 'skill.md');
       await fs.writeFile(filePath, `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   author: openspec
   version: "1.0"
@@ -133,7 +133,7 @@ Content here
     it('should extract generatedBy version with double quotes', async () => {
       const filePath = path.join(testDir, 'skill.md');
       await fs.writeFile(filePath, `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   author: openspec
   version: "1.0"
@@ -150,7 +150,7 @@ Content here
     it('should extract generatedBy version with single quotes', async () => {
       const filePath = path.join(testDir, 'skill.md');
       await fs.writeFile(filePath, `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   generatedBy: '0.24.0'
 ---
@@ -165,7 +165,7 @@ Content here
     it('should extract generatedBy version without quotes', async () => {
       const filePath = path.join(testDir, 'skill.md');
       await fs.writeFile(filePath, `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   generatedBy: 0.25.0
 ---
@@ -194,10 +194,10 @@ Content here
     });
 
     it('should detect needsUpdate when generatedBy is missing', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   author: openspec
   version: "1.0"
@@ -213,10 +213,10 @@ Content here
     });
 
     it('should detect needsUpdate when version differs', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   author: openspec
   version: "1.0"
@@ -233,10 +233,10 @@ Content here
     });
 
     it('should not need update when version matches', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), `---
-name: qas-explore
+name: qaspec-explore
 metadata:
   author: openspec
   version: "1.0"
@@ -253,7 +253,7 @@ Content here
     });
 
     it('should include tool name in status', async () => {
-      const skillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const skillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'content');
 
@@ -271,12 +271,12 @@ Content here
 
     it('should return configured tools', async () => {
       // Setup Claude
-      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(claudeSkillDir, { recursive: true });
       await fs.writeFile(path.join(claudeSkillDir, 'SKILL.md'), 'content');
 
       // Setup Cursor
-      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qas-explore');
+      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qaspec-explore');
       await fs.mkdir(cursorSkillDir, { recursive: true });
       await fs.writeFile(path.join(cursorSkillDir, 'SKILL.md'), 'content');
 
@@ -295,7 +295,7 @@ Content here
 
     it('should return version status for all configured tools', async () => {
       // Setup Claude with old version
-      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qas-explore');
+      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
       await fs.mkdir(claudeSkillDir, { recursive: true });
       await fs.writeFile(path.join(claudeSkillDir, 'SKILL.md'), `---
 metadata:
@@ -304,7 +304,7 @@ metadata:
 `);
 
       // Setup Cursor with current version
-      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qas-explore');
+      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qaspec-explore');
       await fs.mkdir(cursorSkillDir, { recursive: true });
       await fs.writeFile(path.join(cursorSkillDir, 'SKILL.md'), `---
 metadata:

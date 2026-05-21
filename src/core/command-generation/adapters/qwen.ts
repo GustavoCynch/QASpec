@@ -6,17 +6,18 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Qwen adapter for command generation.
- * File path: .qwen/commands/qas-<id>.toml
+ * File path: .qwen/commands/qsx-<id>.toml
  * Format: TOML with description and prompt fields
  */
 export const qwenAdapter: ToolCommandAdapter = {
   toolId: 'qwen',
 
   getFilePath(commandId: string): string {
-    return path.join('.qwen', 'commands', `qas-${commandId}.toml`);
+    return path.join('.qwen', 'commands', `${qasCommandFileBase(commandId)}.toml`);
   },
 
   formatFile(content: CommandContent): string {

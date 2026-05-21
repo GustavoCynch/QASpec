@@ -119,11 +119,11 @@ The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, test
 |-------|----------|------------------|
 | **Role & locale** | `context` | QA role, read-only constraint, language, stack, domain |
 | **Phase policy** | `rules.analyze`, `rules.test-matrix`, `rules.specs`, `rules.apply` | Depth per workflow step (BVA, dual-source, MCP gates) |
-| **Orchestration** | Generated `qas-*` skills | CLI steps, Task×2 protocol, halts — English in the product |
+| **Orchestration** | Generated `qaspec-*` skills | CLI steps, Task×2 protocol, halts — English in the product |
 | **Artifact shape** | Schema templates + `qaspec instructions … --json` | Section headings, file paths, checkbox format |
 | **Team data** | `qaspec/references/*.md` | Historical bugs, Qase field rules |
 
-Generated `/qas:*` skills always tell the agent to run `qaspec instructions <artifact> --json` and apply `context`/`rules` without copying them into artifact files.
+Generated `/qsx:*` skills always tell the agent to run `qaspec instructions <artifact> --json` and apply `context`/`rules` without copying them into artifact files.
 
 Example for a Spanish QA project:
 
@@ -149,7 +149,7 @@ rules:
     - Releer qase_test_case_rules.md antes del primer MCP
 ```
 
-New projects initialized with `qaspec-pr-review` receive an **active** `context` and `rules` seed with `(edit — …)` placeholders for language, stack, and domain. Replace those lines with your project details before the first `/qas:analyze` run.
+New projects initialized with `qaspec-pr-review` receive an **active** `context` and `rules` seed with `(edit — …)` placeholders for language, stack, and domain. Replace those lines with your project details before the first `/qsx:analyze` run.
 
 ## Related Documentation
 

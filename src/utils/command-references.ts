@@ -16,5 +16,5 @@
  * transformToHyphenCommands('Use /opsx:apply to implement') // returns 'Use /opsx-apply to implement'
  */
 export function transformToHyphenCommands(text: string): string {
-  return text.replace(/\/(qas|opsx):/g, '/$1-');
+  return text.replace(/\/(qsx|qas|opsx):/g, '/$1-');
 }

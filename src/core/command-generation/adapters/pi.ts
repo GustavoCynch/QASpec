@@ -7,6 +7,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 import { transformToHyphenCommands } from '../../../utils/command-references.js';
 
 const PI_INPUT_HEADING = /^\*\*Input\*\*:[^\n]*$/m;
@@ -39,22 +40,22 @@ function escapeYamlValue(value: string): string {
 
 /**
  * Pi adapter for prompt template generation.
- * File path: .pi/prompts/qas-<id>.md
+ * File path: .pi/prompts/qsx-<id>.md
  * Frontmatter: description
  *
  * Pi uses the filename (minus .md) as the slash command name, so
- * opsx-propose.md → /qas-propose. Command references in the body
- * are transformed from /qas: to /qas- for consistency.
+ * opsx-propose.md → /qsx-propose. Command references in the body
+ * are transformed from /qsx: to /qsx- for consistency.
  */
 export const piAdapter: ToolCommandAdapter = {
   toolId: 'pi',
 
   getFilePath(commandId: string): string {
-    return path.join('.pi', 'prompts', `qas-${commandId}.md`);
+    return path.join('.pi', 'prompts', `${qasCommandFileBase(commandId)}.md`);
   },
 
   formatFile(content: CommandContent): string {
-    // Transform /qas: references to /qas- and inject $@ for template args
+    // Transform /qsx: references to /qsx- and inject $@ for template args
     const transformedBody = transformToHyphenCommands(content.body);
 
     return `---

@@ -6,17 +6,18 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Kiro adapter for command generation.
- * File path: .kiro/prompts/qas-<id>.prompt.md
+ * File path: .kiro/prompts/qsx-<id>.prompt.md
  * Frontmatter: description
  */
 export const kiroAdapter: ToolCommandAdapter = {
   toolId: 'kiro',
 
   getFilePath(commandId: string): string {
-    return path.join('.kiro', 'prompts', `qas-${commandId}.prompt.md`);
+    return path.join('.kiro', 'prompts', `${qasCommandFileBase(commandId)}.prompt.md`);
   },
 
   formatFile(content: CommandContent): string {

@@ -66,8 +66,8 @@ describe('migration', () => {
   });
 
   it('migrates to custom skills delivery when only managed skills are detected', async () => {
-    await writeSkill(projectDir, 'qas-explore');
-    await writeSkill(projectDir, 'qas-analyze');
+    await writeSkill(projectDir, 'qaspec-explore');
+    await writeSkill(projectDir, 'qaspec-analyze');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
@@ -90,8 +90,8 @@ describe('migration', () => {
   });
 
   it('migrates to both delivery when qas skills and commands coexist', async () => {
-    await writeSkill(projectDir, 'qas-explore');
-    await writeSkill(projectDir, 'qas-archive');
+    await writeSkill(projectDir, 'qaspec-explore');
+    await writeSkill(projectDir, 'qaspec-archive');
     await writeManagedCommand(projectDir, 'explore');
     await writeManagedCommand(projectDir, 'publish');
 
@@ -104,7 +104,7 @@ describe('migration', () => {
   });
 
   it('migrates to custom both delivery when managed skills and commands are detected', async () => {
-    await writeSkill(projectDir, 'qas-explore');
+    await writeSkill(projectDir, 'qaspec-explore');
     await writeManagedCommand(projectDir, 'explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
@@ -121,7 +121,7 @@ describe('migration', () => {
       profile: 'core',
       delivery: 'both',
     });
-    await writeSkill(projectDir, 'qas-explore');
+    await writeSkill(projectDir, 'qaspec-explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
@@ -137,7 +137,7 @@ describe('migration', () => {
       featureFlags: {},
       delivery: 'both',
     });
-    await writeSkill(projectDir, 'qas-explore');
+    await writeSkill(projectDir, 'qaspec-explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 

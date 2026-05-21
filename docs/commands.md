@@ -4,56 +4,56 @@ Reference for QASpec **slash commands** installed by `qaspec init` and `qaspec u
 
 For workflow patterns, see [Workflows](workflows.md). For terminal commands, see [CLI](cli.md).
 
-> **Not installed by QASpec:** legacy upstream slash-command workflows and third-party skill packs. QASpec ships `/qas:*` commands via `qaspec init`.
+> **Not installed by QASpec:** legacy upstream slash-command workflows and third-party skill packs. QASpec ships `/qsx:*` commands via `qaspec init`.
 
 ## Quick Reference (core profile)
 
 | Command | Purpose |
 |---------|---------|
-| `/qas:explore` | Investigate a topic before committing to analysis |
-| `/qas:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
-| `/qas:matrix` | Create `testmatrix.md` and change delta specs |
-| `/qas:publish` | Publish approved cases to TCMS (e.g. Qase via MCP) |
-| `/qas:archive` | Finalize and archive the change |
+| `/qsx:explore` | Investigate a topic before committing to analysis |
+| `/qsx:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
+| `/qsx:matrix` | Create `testmatrix.md` and change delta specs |
+| `/qsx:publish` | Publish approved cases to TCMS (e.g. Qase via MCP) |
+| `/qsx:archive` | Finalize and archive the change |
 
 Workflow ids: `explore`, `analyze`, `matrix`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these five).
 
 ---
 
-## `/qas:explore`
+## `/qsx:explore`
 
 Think through ideas, investigate the codebase, and clarify scope **without** requiring `analisis.md` or `testmatrix.md`.
 
 **Syntax:**
 
 ```text
-/qas:explore [topic]
+/qsx:explore [topic]
 ```
 
 **What it does:**
 
 - Open-ended investigation; may produce notes or diagrams
-- Does not skip halts for later `/qas:analyze` or `/qas:matrix`
-- Can hand off to `/qas:analyze` when you are ready to formalize
+- Does not skip halts for later `/qsx:analyze` or `/qsx:matrix`
+- Can hand off to `/qsx:analyze` when you are ready to formalize
 
 **Example:**
 
 ```text
-You: /qas:explore How does session refresh interact with 2FA?
+You: /qsx:explore How does session refresh interact with 2FA?
 
-AI:  Reviews auth module and references; suggests running /qas:analyze when scope is clear.
+AI:  Reviews auth module and references; suggests running /qsx:analyze when scope is clear.
 ```
 
 ---
 
-## `/qas:analyze`
+## `/qsx:analyze`
 
 Produce **`analisis.md`** for the active change: risks, affected capabilities (kebab-case), and synthesis from dual blind analysts by default.
 
 **Syntax:**
 
 ```text
-/qas:analyze [change-name-or-description]
+/qsx:analyze [change-name-or-description]
 ```
 
 **What it does:**
@@ -71,19 +71,19 @@ qaspec instructions analyze --json
 
 ---
 
-## `/qas:matrix`
+## `/qsx:matrix`
 
 Produce **`testmatrix.md`** with mandatory checkboxes and create or update **delta specs** under the change.
 
 **Syntax:**
 
 ```text
-/qas:matrix [change-name]
+/qsx:matrix [change-name]
 ```
 
 **Prerequisites:**
 
-- Prior `/qas:analyze` (or manually authored `analisis.md`) unless you explicitly accept gaps
+- Prior `/qsx:analyze` (or manually authored `analisis.md`) unless you explicitly accept gaps
 - Reads `qaspec/references/qase_test_case_rules.md` when publishing to Qase later
 - Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md`
 
@@ -93,31 +93,31 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 ---
 
-## `/qas:publish`
+## `/qsx:publish`
 
 Upload **approved** test cases from `testmatrix.md` to the configured test management system (Qase MCP when enabled).
 
 **Syntax:**
 
 ```text
-/qas:publish [change-name]
+/qsx:publish [change-name]
 ```
 
 **Prerequisites:**
 
-- Approved `testmatrix.md` and delta specs from `/qas:matrix`
-- Agent directs you back to `/qas:matrix` if artifacts are missing
+- Approved `testmatrix.md` and delta specs from `/qsx:matrix`
+- Agent directs you back to `/qsx:matrix` if artifacts are missing
 
 ---
 
-## `/qas:archive`
+## `/qsx:archive`
 
 Finalize a completed change: merge deltas into main specs when applicable and move the change to archive per your schema.
 
 **Syntax:**
 
 ```text
-/qas:archive [change-name]
+/qsx:archive [change-name]
 ```
 
 **CLI support:**

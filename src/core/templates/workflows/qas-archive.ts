@@ -13,7 +13,7 @@ Archive a completed QASpec change.
 
 export function getQasArchiveSkillTemplate(): SkillTemplate {
   return {
-    name: 'qas-archive',
+    name: 'qaspec-archive',
     description: 'Archive a completed QASpec QA change',
     instructions: QAS_ARCHIVE_BODY,
     compatibility: 'Requires qaspec CLI.',

@@ -6,6 +6,7 @@
 
 import path from 'path';
 import type { CommandContent, ToolCommandAdapter } from '../types.js';
+import { qasCommandFileBase, qasCommandSubdir, qasSlashCommandId, qasSlashCommandName } from '../../qaspec-commands.js';
 
 /**
  * Crush adapter for command generation.
@@ -16,7 +17,7 @@ export const crushAdapter: ToolCommandAdapter = {
   toolId: 'crush',
 
   getFilePath(commandId: string): string {
-    return path.join('.crush', 'commands', 'qas', `${commandId}.md`);
+    return path.join('.crush', 'commands', qasCommandSubdir(), `${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {
