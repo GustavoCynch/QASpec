@@ -37,28 +37,30 @@ OpenSpec conventions SHALL keep specs lightweight by default and scale rigor onl
 - **THEN** authors increase detail and explicit validation expectations proportionally
 
 ### Requirement: Project Structure
-
-A QASpec project SHALL maintain a consistent directory structure for specifications and changes under the resolved planning home.
+An OpenSpec project SHALL maintain a consistent directory structure for specifications and changes.
 
 #### Scenario: Initializing project structure
-
-- **WHEN** a QASpec project is initialized (greenfield)
+- **WHEN** an OpenSpec project is initialized
 - **THEN** it SHALL have this structure:
 ```
-qaspec/
-├── config.yaml           # Project context, schema, rules
-├── specs/                # Current deployed capabilities
-│   └── [capability]/
-│       └── spec.md
-└── changes/
-    ├── [change-name]/
-    └── archive/
+openspec/
+├── project.md              # Project-specific context
+├── AGENTS.md               # AI assistant instructions
+├── specs/                  # Current deployed capabilities
+│   └── [capability]/       # Single, focused capability
+│       ├── spec.md         # WHAT and WHY
+│       └── design.md       # HOW (optional, for established patterns)
+└── changes/                # Proposed changes
+    ├── [change-name]/      # Descriptive change identifier
+    │   ├── proposal.md     # Why, what, and impact
+    │   ├── tasks.md        # Implementation checklist
+    │   ├── design.md       # Technical decisions (optional)
+    │   └── specs/          # Complete future state
+    │       └── [capability]/
+    │           └── spec.md # Clean markdown (no diff syntax)
+    └── archive/            # Completed changes
+        └── YYYY-MM-DD-[name]/
 ```
-
-#### Scenario: Optional reference directory
-
-- **WHEN** init runs for a QASpec consumer project
-- **THEN** `qaspec/references/` MAY exist alongside the planning tree for QA reference files (separate from planning home root name)
 
 ### Requirement: Structured Format for Behavioral Specs
 
@@ -301,22 +303,6 @@ OpenSpec conventions SHALL distinguish workspace-level planning from repo-local 
 - **WHEN** workspace guidance describes OpenSpec workflows
 - **THEN** it SHALL keep the familiar verbs explore, propose, apply, verify, and archive
 - **AND** it SHALL explain that workspace context changes paths, scope, and allowed edit roots rather than creating a separate workflow family
-
-### Requirement: QASpec planning home layout
-
-A QASpec project SHALL use `qaspec/` as the canonical planning root for config, specs, and changes.
-
-#### Scenario: Greenfield project layout
-
-- **WHEN** a QASpec project is initialized for QA workflow use
-- **THEN** the planning root directory name is `qaspec/`
-- **AND** config lives at `qaspec/config.yaml`
-
-#### Scenario: Legacy OpenSpec layout compatibility
-
-- **WHEN** only `openspec/` exists at project root with valid config
-- **THEN** tooling SHALL resolve that directory as the planning home
-- **AND** authors MAY continue working until they optionally migrate to `qaspec/`
 
 ## Core Principles
 
