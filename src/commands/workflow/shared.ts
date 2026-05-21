@@ -36,6 +36,10 @@ export interface ApplyInstructions {
   state: 'blocked' | 'all_done' | 'ready';
   missingArtifacts?: string[];
   instruction: string;
+  /** Project context from config (constraint for agent — do not copy into outputs). */
+  context?: string;
+  /** Publish/apply-phase rules from config.rules.apply when present. */
+  rules?: string[];
 }
 
 // -----------------------------------------------------------------------------

@@ -80,6 +80,14 @@ Tech stack: TypeScript, React, Node.js, PostgreSQL
 - **Context** appears in ALL artifacts
 - **Rules** ONLY appear for the matching artifact
 
+### QASpec QA config seed (`qaspec-pr-review`)
+
+On first init with the QASpec default schema, `config.yaml` includes active `context` (QA role, read-only, language, stack/domain placeholders) and `rules` for `analyze`, `test-matrix`, `specs`, and `apply`. That is the right place to customize team policy. Generated `qas-*` skills stay thin and load this config via `qaspec instructions … --json`.
+
+`qaspec update` refreshes skills and commands but **does not** overwrite an existing `config.yaml`.
+
+**Existing projects:** copy the seed block from a fresh temp init or from `src/core/qa-config-seed.ts` in the QASpec repo, then merge into your config. Tune `rules` per phase rather than editing generated skills under `.cursor/skills/`.
+
 ### Schema Resolution Order
 
 When QASpec needs a schema, it checks in this order:

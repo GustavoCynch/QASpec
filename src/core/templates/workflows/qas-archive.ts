@@ -1,22 +1,23 @@
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
+import { QAS_EXPLORE_CONFIG_PREAMBLE } from './qas-workflow-preamble.js';
 
-const QAS_ARCHIVE_BODY = `Archive a completed QASpec change.
+const QAS_ARCHIVE_BODY = `${QAS_EXPLORE_CONFIG_PREAMBLE}
+
+Archive a completed QASpec change.
 
 1. Run \`qaspec list --json\`; let the user pick the change if unclear.
 2. Run \`qaspec status --change "<name>" --json\` — warn on incomplete artifacts.
 3. For \`qaspec-pr-review\`, check \`testmatrix.md\` checkboxes if publish was expected; for \`spec-driven\`, check \`tasks.md\`.
-4. Run \`qaspec archive <name>\` (or follow CLI prompts).
-
-**Language:** User-facing warnings in project language from config when summarizing status.`;
+4. Run \`qaspec archive <name>\` (or follow CLI prompts).`;
 
 export function getQasArchiveSkillTemplate(): SkillTemplate {
   return {
     name: 'qas-archive',
     description: 'Archive a completed QASpec QA change',
     instructions: QAS_ARCHIVE_BODY,
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'qaspec', version: '1.0' },
+    compatibility: 'Requires qaspec CLI.',
+    metadata: { author: 'qaspec', version: '1.1' },
   };
 }
 

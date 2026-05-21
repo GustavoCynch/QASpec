@@ -1,4 +1,10 @@
+import { stringify as stringifyYaml } from 'yaml';
 import type { ProjectConfig } from './project-config.js';
+import { getQaspecPrReviewConfigSeed } from './qa-config-seed.js';
+
+const CONFIG_HEADER = `# QASpec project config
+# Edit context and rules for your team. See docs/customization.md and docs/multi-language.md
+`;
 
 /**
  * Serialize config to YAML string with helpful comments.
@@ -7,41 +13,43 @@ import type { ProjectConfig } from './project-config.js';
  * @returns YAML string ready to write to file
  */
 export function serializeConfig(config: Partial<ProjectConfig>): string {
-  const lines: string[] = [];
-
-  // Schema (required)
-  lines.push(`schema: ${config.schema}`);
-  lines.push('');
-
-  if (config.schema === 'qaspec-pr-review') {
-    lines.push('context: |');
-    lines.push('  Language: English');
-    lines.push('  All QA artifacts, reference scaffolds, and halt messages must use the language declared here.');
-    lines.push('  See docs/multi-language.md to switch (e.g. Spanish, Portuguese).');
-    lines.push('');
+  const schema = config.schema;
+  if (!schema) {
+    throw new Error('serializeConfig requires schema');
   }
 
-  // Context section with comments
+  const merged: Partial<ProjectConfig> =
+    schema === 'qaspec-pr-review'
+      ? { ...getQaspecPrReviewConfigSeed(), ...config, schema }
+      : { ...config, schema };
+
+  if (merged.context || merged.rules) {
+    const body: Record<string, unknown> = { schema: merged.schema };
+    if (merged.context) {
+      body.context = merged.context;
+    }
+    if (merged.rules) {
+      body.rules = merged.rules;
+    }
+    return CONFIG_HEADER + stringifyYaml(body);
+  }
+
+  const lines: string[] = [];
+
+  lines.push(`schema: ${schema}`);
+  lines.push('');
+
   lines.push('# Project context (optional)');
   lines.push('# This is shown to AI when creating artifacts.');
   lines.push('# Add your tech stack, conventions, style guides, domain knowledge, etc.');
-  lines.push('# Example:');
-  lines.push('#   context: |');
-  lines.push('#     Tech stack: TypeScript, React, Node.js');
-  lines.push('#     We use conventional commits');
-  lines.push('#     Domain: e-commerce platform');
   lines.push('');
 
-  // Rules section with comments
   lines.push('# Per-artifact rules (optional)');
   lines.push('# Add custom rules for specific artifacts.');
   lines.push('# Example:');
   lines.push('#   rules:');
   lines.push('#     proposal:');
   lines.push('#       - Keep proposals under 500 words');
-  lines.push('#       - Always include a "Non-goals" section');
-  lines.push('#     tasks:');
-  lines.push('#       - Break tasks into chunks of max 2 hours');
 
   return lines.join('\n') + '\n';
 }

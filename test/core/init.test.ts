@@ -76,6 +76,9 @@ describe('InitCommand', () => {
       const content = await fs.readFile(configPath, 'utf-8');
       expect(content).toContain('schema: qaspec-pr-review');
       expect(content).toContain('Language: English');
+      expect(content).toContain('read-only');
+      expect(content).toContain('rules:');
+      expect(content).toContain('analyze:');
     });
 
     it('should create core profile skills for Claude Code by default', async () => {
@@ -381,6 +384,10 @@ describe('InitCommand', () => {
 
       expect(content).toContain('name: qas-analyze');
       expect(content).toContain('analisis.md');
+      expect(content).toContain('instructions analyze');
+      expect(content).toContain('historical_bugs.md');
+      expect(content).toContain('parallel blind Task');
+      expect(content).toContain('**do NOT** copy');
     });
 
     it('should include publish skill instructions', async () => {

@@ -228,6 +228,17 @@ describe('skill-generation', () => {
       expect(content).toContain('Test instructions');
     });
 
+    it('qas-analyze template includes config preamble and dual analysts', () => {
+      const templates = getSkillTemplates(CORE_WORKFLOWS);
+      const analyze = templates.find((t) => t.dirName === 'qas-analyze');
+      expect(analyze).toBeDefined();
+      const body = analyze!.template.instructions;
+      expect(body).toContain('instructions analyze');
+      expect(body).toContain('historical_bugs.md');
+      expect(body).toContain('parallel blind Task');
+      expect(body).toContain('**do NOT** copy');
+    });
+
     it('should apply transformInstructions callback when provided', () => {
       const template = {
         name: 'transform-test',

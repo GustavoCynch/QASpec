@@ -15,6 +15,7 @@ import {
   resolveArtifactOutputs,
   type ArtifactInstructions,
 } from '../../core/artifact-graph/index.js';
+import { readProjectConfig } from '../../core/project-config.js';
 import { getChangeDir, resolveCurrentPlanningHomeSync } from '../../core/planning-home.js';
 import {
   validateChangeExists,
@@ -339,6 +340,17 @@ export async function generateApplyInstructions(
     instruction = schemaInstruction?.trim() ?? 'Read context files, work through pending tasks, mark complete as you go.\nPause if you hit blockers or need clarification.';
   }
 
+  let configContext: string | undefined;
+  let configRules: string[] | undefined;
+  try {
+    const projectConfig = readProjectConfig(projectRoot);
+    configContext = projectConfig?.context?.trim() || undefined;
+    const applyRules = projectConfig?.rules?.apply;
+    configRules = applyRules && applyRules.length > 0 ? applyRules : undefined;
+  } catch {
+    // continue without config
+  }
+
   return {
     changeName,
     changeDir,
@@ -349,6 +361,8 @@ export async function generateApplyInstructions(
     state,
     missingArtifacts: missingArtifacts.length > 0 ? missingArtifacts : undefined,
     instruction,
+    context: configContext,
+    rules: configRules,
   };
 }
 
@@ -392,11 +406,40 @@ export async function applyInstructionsCommand(options: ApplyInstructionsOptions
 }
 
 export function printApplyInstructionsText(instructions: ApplyInstructions): void {
-  const { changeName, schemaName, contextFiles, progress, tasks, state, missingArtifacts, instruction } = instructions;
+  const {
+    changeName,
+    schemaName,
+    contextFiles,
+    progress,
+    tasks,
+    state,
+    missingArtifacts,
+    instruction,
+    context: projectContext,
+    rules: applyRules,
+  } = instructions;
 
   console.log(`## Apply: ${changeName}`);
   console.log(`Schema: ${schemaName}`);
   console.log();
+
+  if (projectContext) {
+    console.log('<project_context>');
+    console.log('<!-- Background for the agent. Do NOT include in outputs. -->');
+    console.log(projectContext);
+    console.log('</project_context>');
+    console.log();
+  }
+
+  if (applyRules && applyRules.length > 0) {
+    console.log('<rules>');
+    console.log('<!-- Apply/publish phase constraints. Do NOT include in outputs. -->');
+    for (const rule of applyRules) {
+      console.log(`- ${rule}`);
+    }
+    console.log('</rules>');
+    console.log();
+  }
 
   // Warning for blocked state
   if (state === 'blocked' && missingArtifacts) {

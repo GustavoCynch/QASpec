@@ -1,11 +1,12 @@
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
+import { QAS_EXPLORE_CONFIG_PREAMBLE } from './qas-workflow-preamble.js';
 
-const QAS_EXPLORE_BODY = `Enter QASpec explore mode. Think deeply about test strategy, risks, and scope before formal analyze/matrix/publish steps.
+const QAS_EXPLORE_BODY = `${QAS_EXPLORE_CONFIG_PREAMBLE}
+
+Enter QASpec explore mode. Think deeply about test strategy, risks, and scope before formal analyze/matrix/publish steps.
 
 **IMPORTANT: Explore mode is for thinking, not implementing.** Read files and investigate; do NOT write application code under test. Do NOT publish to Qase. You MAY discuss or draft ideas without creating required cycle artifacts unless the user asks.
-
-**Language:** User-facing messages follow the project language in \`qaspec/config.yaml\` \`context\` and \`rules\`.
 
 **Does NOT replace:** halts for \`/qas:analyze\`, \`/qas:matrix\`, or \`/qas:publish\`.
 
@@ -24,8 +25,8 @@ export function getQasExploreSkillTemplate(): SkillTemplate {
     description:
       'QASpec explore mode — think through QA scope, risks, and strategy without required cycle artifacts.',
     instructions: QAS_EXPLORE_BODY,
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'qaspec', version: '1.0' },
+    compatibility: 'Requires qaspec CLI.',
+    metadata: { author: 'qaspec', version: '1.1' },
   };
 }
 

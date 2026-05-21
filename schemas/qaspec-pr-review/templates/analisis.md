@@ -9,15 +9,47 @@
 
 ## Functional intent vs implementation
 
-<!-- Dual source of truth: what should happen vs what the diff does -->
+<!-- Dual source of truth: intended behavior (notes, description) vs what the diff implements -->
 
-## Risks and regression signals
+## Functional impact by area
 
-<!-- Historical bug patterns, high-risk changes -->
+<!-- Modules, user flows, or features touched -->
 
-## Responsive, usability, and localization
+## Framework and UI risks
 
-<!-- When UI is touched; N/A if not applicable -->
+<!-- Lifecycle, state, templates, change detection — or N/A -->
+
+## Backend and API risks
+
+<!-- Errors, pagination, aggregation, partial failures — or N/A -->
+
+## Settings and feature flags
+
+<!-- Conditional behavior from settings/tenants — or N/A -->
+
+## Regression signals
+
+<!-- historical_bugs.md patterns activated for this change -->
+
+## Responsive and usability
+
+<!-- Desktop, tablet, mobile when UI changes — or N/A -->
+
+## Localization
+
+<!-- i18n / visible copy when UI changes — or N/A -->
+
+## Security and data handling
+
+<!-- PII, secrets, redaction notes -->
+
+## Risks for matrix phase
+
+<!-- What /qas:matrix must cover (BVA, API blocking, settings pairs, etc.) -->
+
+## Synthesis notes
+
+<!-- Agreed / Single-analyst / Contradiction from dual analysts -->
 
 ## Open question
 

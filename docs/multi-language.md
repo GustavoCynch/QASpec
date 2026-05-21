@@ -113,11 +113,17 @@ qaspec instructions proposal --change my-change
 
 The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, tests) in **English**.
 
-**User-facing** content follows `openspec/config.yaml`:
+**User-facing** content follows `qaspec/config.yaml` (or `openspec/config.yaml` in legacy layouts):
 
-- Generated change artifacts: `analisis.md`, `testmatrix.md`, `publish-log.md`
-- Reference scaffolds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_test_case_rules.md`
-- Halt questions and case titles from `/qas:analyze`, `/qas:matrix`, `/qas:publish`
+| Layer | Location | What it controls |
+|-------|----------|------------------|
+| **Role & locale** | `context` | QA role, read-only constraint, language, stack, domain |
+| **Phase policy** | `rules.analyze`, `rules.test-matrix`, `rules.specs`, `rules.apply` | Depth per workflow step (BVA, dual-source, MCP gates) |
+| **Orchestration** | Generated `qas-*` skills | CLI steps, Task×2 protocol, halts — English in the product |
+| **Artifact shape** | Schema templates + `qaspec instructions … --json` | Section headings, file paths, checkbox format |
+| **Team data** | `qaspec/references/*.md` | Historical bugs, Qase field rules |
+
+Generated `/qas:*` skills always tell the agent to run `qaspec instructions <artifact> --json` and apply `context`/`rules` without copying them into artifact files.
 
 Example for a Spanish QA project:
 
@@ -125,17 +131,25 @@ Example for a Spanish QA project:
 schema: qaspec-pr-review
 
 context: |
+  Role: QA Architect — read-only on application source.
   Language: Spanish (es)
   All QA artifacts, reference scaffolds, and halt messages must be written in Spanish.
+  Stack: Angular SPA, REST APIs, Qase
 
 rules:
   analyze:
-    - Plain-language Spanish for analysis and halts
+    - Narrativa en español para análisis y halts
+    - Dual source of truth: notas del desarrollador vs diff del PR
   test-matrix:
-    - Case titles and steps: Spanish; no code identifiers in Qase-bound text
+    - Títulos y pasos en español; etiquetas UI en inglés entre comillas cuando la app es en inglés
+    - Sin identificadores de código en el texto de casos
+  specs:
+    - Requisitos y escenarios en español; SHALL/MUST normativos
+  apply:
+    - Releer qase_test_case_rules.md antes del primer MCP
 ```
 
-New projects initialized with QASpec default schema include an English `Language:` placeholder in `context`; edit it before your first `/qas:analyze` run.
+New projects initialized with `qaspec-pr-review` receive an **active** English `context` and `rules` seed (editable). Change `Language:` and stack/domain before your first `/qas:analyze` run.
 
 ## Related Documentation
 
