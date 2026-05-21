@@ -35,7 +35,7 @@ Typical happy path:
 
 ### Halts and prerequisites
 
-- **Analyze → matrix:** Matrix instructions expect `analisis.md` (or explicit user override). Analyze ends with a halt before matrix in the same session.
+- **Analyze → matrix:** `analisis.md` is the validated source of truth for matrix (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; matrix reads it before the PR diff and overrides the diff when they conflict.
 - **Matrix → publish:** Publish requires approved matrix and deltas; matrix halts for case and requirement approval.
 - **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs Qase MCP only after confirmation.
 - **Explore → matrix without analyze:** Matrix still enforces artifact rules from `qaspec instructions matrix --json`.

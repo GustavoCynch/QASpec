@@ -11,6 +11,11 @@
 
 <!-- Dual source of truth: intended behavior (notes, description) vs what the diff implements -->
 
+## Validated clarifications
+
+<!-- User-approved facts after analyze halt: defects vs expected behavior, scope cuts, env assumptions -->
+<!-- Matrix phase treats this section as binding — update here before /qsx:matrix if chat clarifies anything -->
+
 ## Functional impact by area
 
 <!-- Modules, user flows, or features touched -->

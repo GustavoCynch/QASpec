@@ -61,7 +61,7 @@ Produce **`analisis.md`** for the active change: risks, affected capabilities (k
 - Creates or updates a folder under `qaspec/changes/<change>/`
 - Writes `analisis.md`; reads `qaspec/references/historical_bugs.md` when present
 - Does **not** write `specs/**/*.md` in this step
-- Ends with a **halt** for human confirmation before matrix work in the same turn
+- Ends with a **halt** for human confirmation; persist answers in `analisis.md` (**Validated clarifications**) before `/qsx:matrix`
 
 **CLI support:**
 
@@ -89,6 +89,7 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 **What it does:**
 
+- Treats approved `analisis.md` as source of truth (over PR diff when they conflict)
 - Halts once for approval of **both** the case list and requirements
 
 ---

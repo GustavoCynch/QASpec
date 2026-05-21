@@ -28,8 +28,9 @@ ${getQasAnalystPromptBlock('analyze')}
 4. Include **Affected capabilities** (kebab-case) for the matrix phase.
 5. Apply \`rules.analyze\` from config for depth (intent vs implementation, risks, regression, responsive, i18n, settings).
 6. End chat with **exactly one** halt question. Do NOT write \`testmatrix.md\`, \`specs/**/*.md\`, or continue to matrix in the same message.
+7. When the user answers the halt or adds clarifications (defect vs expected, scope, env): update \`analisis.md\` — especially **Validated clarifications** and **Functional intent vs implementation** — before suggesting \`/qsx:matrix\`. Chat-only approvals are not visible to matrix.
 
-**Guardrails:** no Qase MCP; no app code edits; one message for this phase.`;
+**Guardrails:** no Qase MCP; no app code edits; one message for this phase unless updating \`analisis.md\` after user halt response.`;
 
 export function getQasAnalyzeSkillTemplate(): SkillTemplate {
   return {

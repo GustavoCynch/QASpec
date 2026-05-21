@@ -24,6 +24,14 @@ export const QAS_EXPLORE_CONFIG_PREAMBLE = `## Config (explore)
 Read \`qaspec/config.yaml\` \`context\` (and \`rules\` when relevant) for project language and QA role constraints.
 **Read-only** on application source under test.`;
 
+export const QAS_MATRIX_ANALISIS_AUTHORITY = `## analisis.md is source of truth (matrix phase)
+
+- \`analisis.md\` is user-validated output from \`/qsx:analyze\`; read it **in full** before \`gh pr diff\` / \`git diff\`.
+- **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for matrix phase, Synthesis notes.
+- When analysis conflicts with the diff or current code, **analisis.md wins**. Use the diff only to decide *how* to test agreed behavior.
+- Items marked defect/bug in analysis → matrix cases and delta specs verify the **correct** behavior (fail today / pass after fix); never encode the defect as accepted SHALL/MUST.
+- Pass the full \`analisis.md\` body into both analyst Task prompts under **Validated analysis (binding)**.`;
+
 export const QAS_DUAL_ANALYST_PROTOCOL = `## Dual blind analysts (mandatory when Task tool is available)
 
 - Launch **two** parallel **Task** subagents with the **same** analyst brief; do not tell either that a peer exists.
@@ -44,6 +52,18 @@ export function getQasAnalystPromptBlock(phase: 'analyze' | 'matrix'): string {
       ? '\n- Also read `qaspec/references/qase_test_case_rules.md`'
       : '';
 
+  const matrixAuthority =
+    phase === 'matrix'
+      ? `
+## Validated analysis (binding — orchestrator pastes full analisis.md)
+{FULL analisis.md BODY — mandatory; overrides PR/diff when they conflict}
+
+## Conflict rule (matrix only)
+- analisis.md wins over gh/git diff and over current implementation
+- Defects in analysis → draft cases for corrected behavior, not for accepting the bug
+`
+      : '';
+
   return `## Analyst Task prompt (copy identically to both parallel Task runs)
 
 \`\`\`
@@ -54,11 +74,12 @@ You are a QA analyst executing one pass of the QASpec workflow.
 ## Mandatory references
 - qaspec/references/historical_bugs.md${extraRef}
 - Apply rules from the orchestrator brief (project config)
-
+${matrixAuthority}
 ## Obtain the change set yourself
 - GitHub PR: run gh pr diff and gh pr view (--repo if specified in brief)
 - Otherwise: run git diff or read the patch path from the brief
 - Read changed source files with read/search after you have the patch
+${phase === 'matrix' ? '- Use the diff only where analisis.md does not already decide expected vs defective behavior' : ''}
 
 ## PR / change identity (orchestrator fills — identical for both analysts)
 {PR number, URL, gh flags, developer notes, or non-GH fallback}

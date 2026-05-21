@@ -94,9 +94,15 @@ The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md
 - **THEN** `analisis.md` exists
 - **AND** no new `specs/<capability>/spec.md` files are required from the analyze step alone
 
+#### Scenario: Analyze persists clarifications for matrix
+
+- **WHEN** the user answers the analyze halt or supplies clarifications after it
+- **THEN** the agent updates `analisis.md` **Validated clarifications** (and intent vs implementation when needed)
+- **AND** does not rely on chat-only text as the input for `/qsx:matrix`
+
 ### Requirement: Matrix workflow behavior
 
-The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, and halt once for human approval of **both** the case list and the requirements.
+The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md` with mandatory checkboxes, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, and halt once for human approval of **both** the case list and the requirements.
 
 #### Scenario: Matrix format
 
@@ -115,10 +121,22 @@ The `qaspec-matrix` skill and `/qsx:matrix` command SHALL produce `testmatrix.md
 - **THEN** the agent asks exactly one question covering approval of the matrix and the specs together
 - **AND** the agent does not start publish or Qase MCP in the same message
 
+#### Scenario: analisis.md overrides diff in matrix phase
+
+- **WHEN** the agent runs the matrix phase and `analisis.md` documents expected behavior or a known defect that differs from the PR diff or current code
+- **THEN** the agent reads `analisis.md` in full before fetching the change set
+- **AND** matrix cases and delta specs reflect `analisis.md`, not accidental implementation
+- **AND** known defects are tested as corrected behavior, not encoded as accepted SHALL/MUST requirements
+
 #### Scenario: Chat iteration updates both artifacts
 
 - **WHEN** the user requests case or requirement changes after the initial matrix draft
 - **THEN** the agent updates `testmatrix.md` and affected `specs/**/*.md` in the same conversation without requiring a separate slash command
+
+#### Scenario: Matrix iteration updates analysis when behavior agreement changes
+
+- **WHEN** the user clarifies defect vs expected behavior or other agreed facts after matrix draft
+- **THEN** the agent updates `analisis.md` (especially **Validated clarifications**) before updating `testmatrix.md` and affected `specs/**/*.md`
 
 ### Requirement: Publish workflow behavior
 
