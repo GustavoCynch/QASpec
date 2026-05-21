@@ -7,7 +7,7 @@ import {
 import { ZSH_DYNAMIC_HELPERS } from '../templates/zsh-templates.js';
 
 /**
- * Generates Zsh completion scripts for the OpenSpec CLI.
+ * Generates Zsh completion scripts for the QASpec CLI.
  * Follows Zsh completion system conventions using the _openspec function.
  */
 export class ZshGenerator implements CompletionGenerator {
@@ -49,12 +49,12 @@ export class ZshGenerator implements CompletionGenerator {
     const helpers = ZSH_DYNAMIC_HELPERS;
 
     // Assemble final script with template literal
-    return `#compdef openspec
+    return `#compdef qaspec
 
-# Zsh completion script for OpenSpec CLI
+# Zsh completion script for QASpec CLI
 # Auto-generated - do not edit manually
 
-_openspec() {
+_qaspec() {
   local context state line
   typeset -A opt_args
 
@@ -69,7 +69,7 @@ ${commandList}
 
   case $state in
     command)
-      _describe "openspec command" commands
+      _describe "qaspec command" commands
       ;;
     args)
       case $words[1] in
@@ -81,7 +81,7 @@ ${commandCases}
 
 ${commandFunctions}
 ${helpers}
-compdef _openspec openspec
+compdef _qaspec qaspec
 `;
   }
 

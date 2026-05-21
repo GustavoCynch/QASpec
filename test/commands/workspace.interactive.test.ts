@@ -223,7 +223,7 @@ describe('workspace command interactive flows', () => {
     });
   });
 
-  it('asks which agents get OpenSpec skills and preselects the preferred opener', async () => {
+  it('asks which agents get QASpec skills and preselects the preferred opener', async () => {
     const api = mkdir('repos/api');
     const binDir = mkdir('bin');
     const codexPath = path.join(binDir, process.platform === 'win32' ? 'codex.cmd' : 'codex');
@@ -258,7 +258,7 @@ describe('workspace command interactive flows', () => {
       message: string;
       choices: Array<{ value: string; preSelected?: boolean }>;
     }) => {
-      expect(options.message).toBe('Which agents should get OpenSpec skills in this workspace?');
+      expect(options.message).toBe('Which agents should get QASpec skills in this workspace?');
       expect(options.choices.find((choice) => choice.value === 'codex')?.preSelected).toBe(true);
       expect(options.choices.find((choice) => choice.value === 'claude')?.preSelected).toBe(false);
       return ['codex', 'claude'];

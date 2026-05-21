@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { randomUUID } from 'node:crypto';
 import {
   readProjectConfig,
   validateConfigRules,
@@ -576,7 +577,8 @@ rules:
     });
 
     it('should include fix instruction', () => {
-      const message = suggestSchemas('wrong-schema', availableSchemas);
+      const greenfieldRoot = path.join(os.tmpdir(), `qaspec-greenfield-${randomUUID()}`);
+      const message = suggestSchemas('wrong-schema', availableSchemas, greenfieldRoot);
 
       expect(message).toContain(
         "Fix: Edit qaspec/config.yaml and change 'schema: wrong-schema' to a valid schema name"

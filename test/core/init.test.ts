@@ -602,7 +602,7 @@ describe('InitCommand - profile and detection features', () => {
     expect(await fileExists(path.join(testDir, 'openspec', 'AGENTS.md'))).toBe(true);
 
     const logCalls = consoleLogSpy.mock.calls.map((call) => String(call[0] ?? ''));
-    expect(logCalls.some((line) => line.includes('Upgrading to the new OpenSpec'))).toBe(false);
+    expect(logCalls.some((line) => line.includes('Upgrading to the new QASpec'))).toBe(false);
     expect(logCalls.some((line) => line.includes('Cleaning up old QASpec setup'))).toBe(false);
     expect(confirmMock).not.toHaveBeenCalled();
 

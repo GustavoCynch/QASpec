@@ -1,7 +1,7 @@
 /**
  * Update Command
  *
- * Refreshes OpenSpec skills and commands for configured tools.
+ * Refreshes QASpec skills and commands for configured tools.
  * Supports profile-aware updates, delivery changes, migration, and smart update detection.
  */
 
@@ -13,6 +13,7 @@ import { createRequire } from 'module';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
 import { AI_TOOLS } from './config.js';
+import { DOCS_URL } from './branding.js';
 import { getPlanningDir } from './planning-dir.js';
 import {
   generateCommands,
@@ -118,7 +119,7 @@ export class UpdateCommand {
 
     if (configuredTools.length === 0 && newlyConfiguredTools.length === 0) {
       console.log(chalk.yellow('No configured tools found.'));
-      console.log(chalk.dim('Run "openspec init" to set up tools.'));
+      console.log(chalk.dim('Run "qaspec init" to set up tools.'));
       return;
     }
 
@@ -273,7 +274,7 @@ export class UpdateCommand {
       console.log();
       if (activeWorkflows.includes('analyze')) {
         console.log(chalk.bold('Getting started:'));
-        console.log('  openspec new change <name>   Create a QA change');
+        console.log('  qaspec new change <name>   Create a QA change');
         console.log('  /qas:explore                 Think before the formal cycle');
         console.log('  /qas:analyze                 Analysis (analisis.md)');
         console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
@@ -286,7 +287,7 @@ export class UpdateCommand {
         console.log('  Start your first change: /opsx:new "your idea"');
       }
       console.log();
-      console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/OpenSpec')}`);
+      console.log(`Learn more: ${chalk.cyan(DOCS_URL)}`);
     }
 
     const configuredAndNewTools = [...new Set([...configuredTools, ...newlyConfiguredTools])];
@@ -361,7 +362,7 @@ export class UpdateCommand {
       console.log();
       console.log(
         chalk.yellow(
-          `Detected new ${toolNoun}: ${newToolNames.join(', ')}. Run 'openspec init' to add ${pronoun}.`
+          `Detected new ${toolNoun}: ${newToolNames.join(', ')}. Run 'qaspec init' to add ${pronoun}.`
         )
       );
     }
@@ -380,7 +381,7 @@ export class UpdateCommand {
     const extraWorkflows = installedWorkflows.filter((w) => !profileSet.has(w));
 
     if (extraWorkflows.length > 0) {
-      console.log(chalk.dim(`Note: ${extraWorkflows.length} extra workflows not in profile (use \`openspec config profile\` to manage)`));
+      console.log(chalk.dim(`Note: ${extraWorkflows.length} extra workflows not in profile (use \`qaspec config profile\` to manage)`));
     }
   }
 
@@ -403,7 +404,7 @@ export class UpdateCommand {
     }
 
     console.log(chalk.dim('Note: The core profile now includes sync. Your custom profile is preserving the old core workflow set.'));
-    console.log(chalk.dim('Run `openspec config profile core` and then `openspec update` to add sync.'));
+    console.log(chalk.dim('Run `qaspec config profile core` and then `qaspec update` to add sync.'));
   }
 
   /**
@@ -526,7 +527,7 @@ export class UpdateCommand {
   }
 
   /**
-   * Detect and handle legacy OpenSpec artifacts.
+   * Detect and handle legacy QASpec artifacts.
    * Unlike init, update warns but continues if legacy files found in non-interactive mode.
    * Returns array of tool IDs that were newly configured during legacy upgrade.
    */

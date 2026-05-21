@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import { AI_TOOLS } from '../config.js';
 
 /**
- * Names of skill directories created by openspec init.
+ * Names of skill directories created by qaspec init.
  */
 export const SKILL_NAMES = [
   'qas-explore',
@@ -33,7 +33,7 @@ export const SKILL_NAMES = [
 export type SkillName = (typeof SKILL_NAMES)[number];
 
 /**
- * IDs of command templates created by openspec init.
+ * IDs of command templates created by qaspec init.
  */
 export const COMMAND_IDS = [
   'explore',

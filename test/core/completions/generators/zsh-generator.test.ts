@@ -24,23 +24,23 @@ describe('ZshGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
       ];
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('#compdef openspec');
-      expect(script).toContain('# Zsh completion script for OpenSpec CLI');
-      expect(script).toContain('_openspec() {');
+      expect(script).toContain('#compdef qaspec');
+      expect(script).toContain('# Zsh completion script for QASpec CLI');
+      expect(script).toContain('_qaspec() {');
     });
 
     it('should include all commands in the command list', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
         {
@@ -57,7 +57,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("'init:Initialize OpenSpec'");
+      expect(script).toContain("'init:Initialize QASpec'");
       expect(script).toContain("'validate:Validate specs'");
       expect(script).toContain("'show:Show a spec'");
     });
@@ -66,7 +66,7 @@ describe('ZshGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
         {
@@ -256,7 +256,7 @@ describe('ZshGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           acceptsPositional: true,
           positionalType: 'path',
           flags: [],
@@ -395,7 +395,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script.trim().endsWith('compdef _openspec openspec')).toBe(true);
+      expect(script.trim().endsWith('compdef _qaspec qaspec')).toBe(true);
     });
 
     it('should handle empty command list', () => {
@@ -403,8 +403,8 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('#compdef openspec');
-      expect(script).toContain('_openspec() {');
+      expect(script).toContain('#compdef qaspec');
+      expect(script).toContain('_qaspec() {');
     });
 
     it('should handle commands with no flags', () => {

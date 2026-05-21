@@ -1,7 +1,7 @@
 /**
  * Init Command
  *
- * Sets up OpenSpec with Agent Skills and /opsx:* slash commands.
+ * Sets up QASpec with Agent Skills and /opsx:* slash commands.
  * This is the unified setup command that replaces both the old init and experimental commands.
  */
 
@@ -19,6 +19,7 @@ import {
   getPlanningDir,
   AIToolOption,
 } from './config.js';
+import { DOCS_URL, FEEDBACK_URL } from './branding.js';
 import { PALETTE } from './styles/palette.js';
 import { isInteractive } from '../utils/interactive.js';
 import { serializeConfig } from './config-prompts.js';
@@ -217,7 +218,7 @@ export class InitCommand {
 
     if (this.force || !canPrompt) {
       // --force flag or non-interactive mode: proceed with cleanup automatically.
-      // Legacy slash commands are 100% OpenSpec-managed, and config file cleanup
+      // Legacy slash commands are 100% QASpec-managed, and config file cleanup
       // only removes markers (never deletes files), so auto-cleanup is safe.
       await this.performLegacyCleanup(projectPath, detection);
       return;
@@ -330,7 +331,7 @@ export class InitCommand {
       .map((toolId) => AI_TOOLS.find((t) => t.value === toolId)?.name || toolId);
 
     if (configuredNames.length > 0) {
-      console.log(`OpenSpec configured: ${configuredNames.join(', ')} (pre-selected)`);
+      console.log(`QASpec configured: ${configuredNames.join(', ')} (pre-selected)`);
     }
 
     const detectedOnlyNames = detectedTools
@@ -718,18 +719,18 @@ export class InitCommand {
       console.log('  /qas:publish                 Publish to Qase');
     } else if (activeWorkflows.includes('propose')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:propose "your idea"');
+      console.log('  Legacy OpenSpec workflow: /opsx:propose "your idea"');
     } else if (activeWorkflows.includes('new')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:new "your idea"');
+      console.log('  Legacy OpenSpec workflow: /opsx:new "your idea"');
     } else {
-      console.log("Done. Run 'openspec config profile' to configure your workflows.");
+      console.log("Done. Run 'qaspec config profile' to configure your workflows.");
     }
 
     // Links
     console.log();
-    console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/OpenSpec')}`);
-    console.log(`Feedback:   ${chalk.cyan('https://github.com/Fission-AI/OpenSpec/issues')}`);
+    console.log(`Learn more: ${chalk.cyan(DOCS_URL)}`);
+    console.log(`Feedback:   ${chalk.cyan(FEEDBACK_URL)}`);
 
     // Restart instruction if any tools were configured
     if (results.createdTools.length > 0 || results.refreshedTools.length > 0) {

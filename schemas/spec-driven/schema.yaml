@@ -1,6 +1,6 @@
 name: spec-driven
 version: 1
-description: Default OpenSpec workflow - proposal → specs → design → tasks
+description: Legacy spec-driven workflow (opsx) - proposal → specs → design → tasks
 artifacts:
   - id: proposal
     generates: proposal.md

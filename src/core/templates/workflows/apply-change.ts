@@ -5,12 +5,13 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getApplyChangeSkillTemplate(): SkillTemplate {
   return {
     name: 'openspec-apply-change',
-    description: 'Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.',
-    instructions: `Implement tasks from an OpenSpec change.
+    description: 'Implement tasks from an QASpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.',
+    instructions: `Implement tasks from an QASpec change.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -21,13 +22,13 @@ export function getApplyChangeSkillTemplate(): SkillTemplate {
    If a name is provided, use it. Otherwise:
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
-   - If ambiguous, run \`openspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
+   - If ambiguous, run \`qaspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
 
    Always announce: "Using change: <name>" and how to override (e.g., \`/opsx:apply <other>\`).
 
 2. **Check status to understand the schema**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used (e.g., "spec-driven")
@@ -37,7 +38,7 @@ export function getApplyChangeSkillTemplate(): SkillTemplate {
 3. **Get apply instructions**
 
    \`\`\`bash
-   openspec instructions apply --change "<name>" --json
+   qaspec instructions apply --change "<name>" --json
    \`\`\`
 
    This returns:
@@ -167,10 +168,10 @@ This skill supports the "actions on a change" model:
 export function getOpsxApplyCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Apply',
-    description: 'Implement tasks from an OpenSpec change (Experimental)',
-    category: 'Workflow',
+    description: 'Implement tasks from an QASpec change (Experimental)',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Implement tasks from an OpenSpec change.
+    content: `Implement tasks from an QASpec change.
 
 **Input**: Optionally specify a change name (e.g., \`/opsx:apply add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -181,13 +182,13 @@ export function getOpsxApplyCommandTemplate(): CommandTemplate {
    If a name is provided, use it. Otherwise:
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
-   - If ambiguous, run \`openspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
+   - If ambiguous, run \`qaspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
 
    Always announce: "Using change: <name>" and how to override (e.g., \`/opsx:apply <other>\`).
 
 2. **Check status to understand the schema**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used (e.g., "spec-driven")
@@ -197,7 +198,7 @@ export function getOpsxApplyCommandTemplate(): CommandTemplate {
 3. **Get apply instructions**
 
    \`\`\`bash
-   openspec instructions apply --change "<name>" --json
+   qaspec instructions apply --change "<name>" --json
    \`\`\`
 
    This returns:

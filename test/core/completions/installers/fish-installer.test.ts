@@ -75,12 +75,12 @@ describe('FishInstaller', () => {
   });
 
   describe('install', () => {
-    const mockCompletionScript = `# Fish completion script for OpenSpec CLI
+    const mockCompletionScript = `# Fish completion script for QASpec CLI
 function __fish_openspec
     echo "test"
 end
 
-complete -c openspec -a 'init' -d 'Initialize OpenSpec'
+complete -c qaspec -a 'init' -d 'Initialize QASpec'
 `;
 
     it('should install completion script for the first time', async () => {
@@ -130,13 +130,13 @@ complete -c openspec -a 'init' -d 'Initialize OpenSpec'
       await installer.install(mockCompletionScript);
 
       // Update with different content
-      const updatedScript = `# Fish completion script for OpenSpec CLI
+      const updatedScript = `# Fish completion script for QASpec CLI
 function __fish_openspec_new
     echo "updated"
 end
 
-complete -c openspec -a 'init' -d 'Initialize OpenSpec'
-complete -c openspec -a 'validate' -d 'Validate specs'
+complete -c qaspec -a 'init' -d 'Initialize QASpec'
+complete -c qaspec -a 'validate' -d 'Validate specs'
 `;
 
       const result = await installer.install(updatedScript);
@@ -246,7 +246,7 @@ end
 
   describe('uninstall', () => {
     const mockCompletionScript = `# Fish completion script
-complete -c openspec -a 'init'
+complete -c qaspec -a 'init'
 `;
 
     it('should successfully uninstall when completion script exists', async () => {

@@ -9,7 +9,7 @@ const QAS_MATRIX_BODY = `Run QASpec **matrix** (Phase 2). Produce \`testmatrix.m
 
 **Steps**
 
-1. Resolve change; run \`openspec instructions test-matrix --change "<name>" --json\` and \`openspec instructions specs --change "<name>" --json\`.
+1. Resolve change; run \`qaspec instructions test-matrix --change "<name>" --json\` and \`qaspec instructions specs --change "<name>" --json\`.
 2. Read \`qaspec/references/qase_test_case_rules.md\` and \`analisis.md\` (including **Affected capabilities**).
 3. For each capability in \`analisis.md\`, read \`qaspec/specs/<capability>/spec.md\` when present (baseline for MODIFIED deltas).
 4. Run **two parallel blind Task subagents** for draft case lists; merge into one matrix and aligned delta specs.

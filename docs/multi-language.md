@@ -1,6 +1,6 @@
 # Multi-Language Guide
 
-Configure OpenSpec to generate artifacts in languages other than English.
+Configure QASpec to generate artifacts in languages other than English.
 
 ## Quick Setup
 
@@ -104,7 +104,7 @@ To verify your language config is working:
 
 ```bash
 # Check the instructions - should show your language context
-openspec instructions proposal --change my-change
+qaspec instructions proposal --change my-change
 
 # Output will include your language context
 ```

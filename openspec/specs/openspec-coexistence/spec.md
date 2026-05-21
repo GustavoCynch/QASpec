@@ -2,9 +2,7 @@
 
 ## Purpose
 Ensure QASpec init and update workflows detect an active upstream OpenSpec installation and do not modify or remove its artifacts.
-
 ## Requirements
-
 ### Requirement: Detect active upstream OpenSpec
 
 The QASpec CLI SHALL detect when a repository already has an active upstream OpenSpec installation before running legacy cleanup.
@@ -52,3 +50,13 @@ When upstream OpenSpec is active, the QASpec CLI SHALL NOT delete, move, or prom
 - **WHEN** `qaspec init` completes on a project with active upstream OpenSpec
 - **THEN** the user SHALL still have a working OpenSpec install (unchanged opsx commands and `openspec/` files)
 - **AND** the user SHALL have a `qaspec/` planning home and QASpec tooling installed
+
+### Requirement: Coexistence prose clarity
+
+Requirements and user-visible messages about coexistence SHALL name **upstream OpenSpec** and **QASpec** distinctly.
+
+#### Scenario: Init blocked by upstream
+
+- **WHEN** init refuses to modify a repo with active upstream OpenSpec
+- **THEN** the message SHALL state that **upstream OpenSpec** is installed and QASpec will not overwrite it
+

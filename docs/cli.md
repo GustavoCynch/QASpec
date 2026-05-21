@@ -1,12 +1,12 @@
 # CLI Reference
 
-The OpenSpec CLI (`openspec`) provides terminal commands for project setup, validation, status inspection, and management. These commands complement the AI slash commands (like `/opsx:propose`) documented in [Commands](commands.md).
+The QASpec CLI (`openspec`) provides terminal commands for project setup, validation, status inspection, and management. These commands complement the AI slash commands (like `/opsx:propose`) documented in [Commands](commands.md).
 
 ## Summary
 
 | Category | Commands | Purpose |
 |----------|----------|---------|
-| **Setup** | `init`, `update` | Initialize and update OpenSpec in your project |
+| **Setup** | `init`, `update` | Initialize and update QASpec in your project |
 | **Workspaces (beta)** | `workspace setup`, `workspace list`, `workspace ls`, `workspace link`, `workspace relink`, `workspace doctor`, `workspace update`, `workspace open` | Set up planning across linked repos or folders |
 | **Browsing** | `list`, `view`, `show` | Explore changes and specs |
 | **Validation** | `validate` | Check changes and specs for issues |
@@ -28,9 +28,9 @@ These commands are interactive and designed for terminal use:
 
 | Command | Purpose |
 |---------|---------|
-| `openspec init` | Initialize project (interactive prompts) |
+| `qaspec init` | Initialize project (interactive prompts) |
 | `openspec view` | Interactive dashboard |
-| `openspec config edit` | Open config in editor |
+| `qaspec config edit` | Open config in editor |
 | `openspec feedback` | Submit feedback via GitHub |
 | `openspec completion install` | Install shell completions |
 
@@ -40,19 +40,19 @@ These commands support `--json` output for programmatic use by AI agents and scr
 
 | Command | Human Use | Agent Use |
 |---------|-----------|-----------|
-| `openspec list` | Browse changes/specs | `--json` for structured data |
-| `openspec show <item>` | Read content | `--json` for parsing |
-| `openspec validate` | Check for issues | `--all --json` for bulk validation |
-| `openspec status` | See artifact progress | `--json` for structured status |
-| `openspec instructions` | Get next steps | `--json` for agent instructions |
+| `qaspec list` | Browse changes/specs | `--json` for structured data |
+| `qaspec show <item>` | Read content | `--json` for parsing |
+| `qaspec validate` | Check for issues | `--all --json` for bulk validation |
+| `qaspec status` | See artifact progress | `--json` for structured status |
+| `qaspec instructions` | Get next steps | `--json` for agent instructions |
 | `openspec templates` | Find template paths | `--json` for path resolution |
-| `openspec schemas` | List available schemas | `--json` for schema discovery |
-| `openspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
-| `openspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
-| `openspec workspace link` | Link a repo or folder | `--json` for structured link output |
-| `openspec workspace relink` | Repair a linked path | `--json` for structured link output |
-| `openspec workspace doctor` | Check one workspace | `--json` for structured status output |
-| `openspec workspace update` | Refresh workspace-local agent skills | `--tools` selects agents; profile selects workflows |
+| `qaspec schemas` | List available schemas | `--json` for schema discovery |
+| `qaspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
+| `qaspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
+| `qaspec workspace link` | Link a repo or folder | `--json` for structured link output |
+| `qaspec workspace relink` | Repair a linked path | `--json` for structured link output |
+| `qaspec workspace doctor` | Check one workspace | `--json` for structured status output |
+| `qaspec workspace update` | Refresh workspace-local agent skills | `--tools` selects agents; profile selects workflows |
 
 ---
 
@@ -70,14 +70,14 @@ These options work with all commands:
 
 ## Setup Commands
 
-### `openspec init`
+### `qaspec init`
 
-Initialize OpenSpec in your project. Creates the folder structure and configures AI tool integrations.
+Initialize QASpec in your project. Creates the folder structure and configures AI tool integrations.
 
 Default behavior uses global config defaults: profile `core`, delivery `both`, workflows `propose, explore, apply, sync, archive`.
 
 ```
-openspec init [path] [options]
+qaspec init [path] [options]
 ```
 
 **Arguments:**
@@ -94,7 +94,7 @@ openspec init [path] [options]
 | `--force` | Auto-cleanup legacy files without prompting |
 | `--profile <profile>` | Override global profile for this init run (`core` or `custom`) |
 
-`--profile custom` uses whatever workflows are currently selected in global config (`openspec config profile`).
+`--profile custom` uses whatever workflows are currently selected in global config (`qaspec config profile`).
 
 **Supported tool IDs (`--tools`):** `amazon-q`, `antigravity`, `auggie`, `bob`, `claude`, `cline`, `codex`, `forgecode`, `codebuddy`, `continue`, `costrict`, `crush`, `cursor`, `factory`, `gemini`, `github-copilot`, `iflow`, `junie`, `kilocode`, `kimi`, `kiro`, `opencode`, `pi`, `qoder`, `lingma`, `qwen`, `roocode`, `trae`, `windsurf`
 
@@ -102,22 +102,22 @@ openspec init [path] [options]
 
 ```bash
 # Interactive initialization
-openspec init
+qaspec init
 
 # Initialize in a specific directory
-openspec init ./my-project
+qaspec init ./my-project
 
 # Non-interactive: configure for Claude and Cursor
-openspec init --tools claude,cursor
+qaspec init --tools claude,cursor
 
 # Configure for all supported tools
-openspec init --tools all
+qaspec init --tools all
 
 # Override profile for this run
-openspec init --profile core
+qaspec init --profile core
 
 # Skip prompts and auto-cleanup legacy files
-openspec init --force
+qaspec init --force
 ```
 
 **What it creates:**
@@ -136,12 +136,12 @@ openspec/
 
 ---
 
-### `openspec update`
+### `qaspec update`
 
-Update OpenSpec instruction files after upgrading the CLI. Re-generates AI tool configuration files using your current global profile, selected workflows, and delivery mode.
+Update QASpec instruction files after upgrading the CLI. Re-generates AI tool configuration files using your current global profile, selected workflows, and delivery mode.
 
 ```
-openspec update [path] [options]
+qaspec update [path] [options]
 ```
 
 **Arguments:**
@@ -161,7 +161,7 @@ openspec update [path] [options]
 ```bash
 # Update instruction files after npm upgrade
 npm update @fission-ai/openspec
-openspec update
+qaspec update
 ```
 
 ---
@@ -170,14 +170,14 @@ openspec update
 
 Workspace commands are under active development and are not ready for use yet. Do not build external automation, integrations, or long-lived workflows on top of this command surface; command behavior, state files, and JSON output can change at any point.
 
-Coordination workspaces are planning homes for work that spans multiple repos or folders. Workspace visibility is not change commitment: link the repos or folders OpenSpec should know about, then create changes when you are ready to plan specific work.
+Coordination workspaces are planning homes for work that spans multiple repos or folders. Workspace visibility is not change commitment: link the repos or folders QASpec should know about, then create changes when you are ready to plan specific work.
 
-### `openspec workspace setup`
+### `qaspec workspace setup`
 
-Create a workspace in the standard OpenSpec workspace location and link at least one existing repo or folder.
+Create a workspace in the standard QASpec workspace location and link at least one existing repo or folder.
 
 ```bash
-openspec workspace setup [options]
+qaspec workspace setup [options]
 ```
 
 **Options:**
@@ -188,41 +188,41 @@ openspec workspace setup [options]
 | `--link <path>` | Link an existing repo or folder and infer the link name from the folder name |
 | `--link <name>=<path>` | Link an existing repo or folder with an explicit link name |
 | `--opener <id>` | Store a preferred opener during non-interactive setup: `codex`, `claude`, `github-copilot`, or `editor` |
-| `--tools <tools>` | Install workspace-local OpenSpec skills for agents. Use `all`, `none`, or comma-separated tool IDs |
+| `--tools <tools>` | Install workspace-local QASpec skills for agents. Use `all`, `none`, or comma-separated tool IDs |
 | `--no-interactive` | Disable prompts; requires `--name` and at least one `--link` |
 | `--json` | Output JSON; requires `--no-interactive` |
 
 **Examples:**
 
 ```bash
-openspec workspace setup
-openspec workspace setup --no-interactive --name platform --link /repos/api --link web=/repos/web
-openspec workspace setup --no-interactive --name platform --link /repos/api --opener codex
-openspec workspace setup --no-interactive --name platform --link /repos/api --tools codex,claude
-openspec workspace setup --no-interactive --json --name checkout --link /repos/platform/apps/checkout
+qaspec workspace setup
+qaspec workspace setup --no-interactive --name platform --link /repos/api --link web=/repos/web
+qaspec workspace setup --no-interactive --name platform --link /repos/api --opener codex
+qaspec workspace setup --no-interactive --name platform --link /repos/api --tools codex,claude
+qaspec workspace setup --no-interactive --json --name checkout --link /repos/platform/apps/checkout
 ```
 
-Interactive setup asks for a preferred opener and can install workspace-local OpenSpec skills for selected agents. Non-interactive setup stores a preferred opener only when `--opener` is provided; otherwise `workspace open` prompts later in interactive terminals when a supported opener is available, or asks scripts to pass `--agent <tool>` or `--editor`.
+Interactive setup asks for a preferred opener and can install workspace-local QASpec skills for selected agents. Non-interactive setup stores a preferred opener only when `--opener` is provided; otherwise `workspace open` prompts later in interactive terminals when a supported opener is available, or asks scripts to pass `--agent <tool>` or `--editor`.
 
 Workspace skill installation is skills-only in this beta slice: even if global delivery is `commands` or `both`, workspace setup writes agent skill folders in the workspace root and does not create slash command files. The active global profile chooses which workflow skills are installed; `--tools` chooses which agents receive them. If `--tools` is omitted in non-interactive setup, no skills are installed and `workspace update --tools <ids>` can add them later.
 
-### `openspec workspace list`
+### `qaspec workspace list`
 
-List known OpenSpec workspaces from the local registry.
+List known QASpec workspaces from the local registry.
 
 ```bash
-openspec workspace list [--json]
-openspec workspace ls [--json]
+qaspec workspace list [--json]
+qaspec workspace ls [--json]
 ```
 
 The list shows each workspace location and linked repos or folders. Stale registry records are reported but not changed.
 
-### `openspec workspace link`
+### `qaspec workspace link`
 
 Record an existing repo or folder for one workspace.
 
 ```bash
-openspec workspace link [name] <path> [options]
+qaspec workspace link [name] <path> [options]
 ```
 
 **Options:**
@@ -236,29 +236,29 @@ openspec workspace link [name] <path> [options]
 **Examples:**
 
 ```bash
-openspec workspace link /repos/api
-openspec workspace link api-service /repos/api
-openspec workspace link --workspace platform /repos/platform/apps/checkout
+qaspec workspace link /repos/api
+qaspec workspace link api-service /repos/api
+qaspec workspace link --workspace platform /repos/platform/apps/checkout
 ```
 
-The path must already exist. Relative paths are resolved against the command's current directory before OpenSpec stores the verified absolute path in machine-local workspace state. Linked paths can be full repos, packages, services, apps, or folders without repo-local `openspec/` state.
+The path must already exist. Relative paths are resolved against the command's current directory before QASpec stores the verified absolute path in machine-local workspace state. Linked paths can be full repos, packages, services, apps, or folders without repo-local `openspec/` state.
 
-### `openspec workspace relink`
+### `qaspec workspace relink`
 
 Repair or change the local path for an existing link.
 
 ```bash
-openspec workspace relink <name> <path> [options]
+qaspec workspace relink <name> <path> [options]
 ```
 
 The path must already exist. Relink updates only the machine-local path for the stable link name.
 
-### `openspec workspace doctor`
+### `qaspec workspace doctor`
 
 Check what one workspace can resolve on the current machine.
 
 ```bash
-openspec workspace doctor [options]
+qaspec workspace doctor [options]
 ```
 
 Doctor shows the workspace location, planning path, linked repos or folders, missing paths, repo-local specs paths when present, and suggested fixes. It reports issues only; it does not repair them automatically.
@@ -267,12 +267,12 @@ Commands that need one workspace use the current workspace when run from inside 
 
 JSON responses use typed objects plus `status` arrays. Primary data lives in `workspace`, `workspaces`, or `link`; warnings and errors live in `status`.
 
-### `openspec workspace update`
+### `qaspec workspace update`
 
-Refresh workspace-local OpenSpec skills from the active global profile.
+Refresh workspace-local QASpec skills from the active global profile.
 
 ```bash
-openspec workspace update [name] [options]
+qaspec workspace update [name] [options]
 ```
 
 **Options:**
@@ -287,22 +287,22 @@ openspec workspace update [name] [options]
 **Examples:**
 
 ```bash
-openspec workspace update
-openspec workspace update platform
-openspec workspace update --workspace platform --tools codex,claude
-openspec workspace update --workspace platform --tools none
+qaspec workspace update
+qaspec workspace update platform
+qaspec workspace update --workspace platform --tools codex,claude
+qaspec workspace update --workspace platform --tools none
 ```
 
-`workspace update` reuses the stored workspace skill agent selection when `--tools` is omitted. Passing `--tools` replaces that stored selection. It refreshes only OpenSpec-managed workflow skill directories in the workspace root, removes deselected managed workflow skills, and leaves linked repos and folders untouched.
+`workspace update` reuses the stored workspace skill agent selection when `--tools` is omitted. Passing `--tools` replaces that stored selection. It refreshes only QASpec-managed workflow skill directories in the workspace root, removes deselected managed workflow skills, and leaves linked repos and folders untouched.
 
-Running `openspec update` from inside a workspace planning home redirects to `openspec workspace update`; run `openspec update` inside repo-local projects when you want repo-owned tool files updated.
+Running `qaspec update` from inside a workspace planning home redirects to `qaspec workspace update`; run `qaspec update` inside repo-local projects when you want repo-owned tool files updated.
 
-### `openspec workspace open`
+### `qaspec workspace open`
 
 Open a workspace working set through the stored preferred opener, a one-session agent override, or VS Code editor mode.
 
 ```bash
-openspec workspace open [name] [options]
+qaspec workspace open [name] [options]
 ```
 
 **Options:**
@@ -317,31 +317,31 @@ openspec workspace open [name] [options]
 **Examples:**
 
 ```bash
-openspec workspace open
-openspec workspace open platform
-openspec workspace open platform --agent github-copilot
-openspec workspace open --agent codex
-openspec workspace open --editor
+qaspec workspace open
+qaspec workspace open platform
+qaspec workspace open platform --agent github-copilot
+qaspec workspace open --agent codex
+qaspec workspace open --editor
 ```
 
 `workspace open` uses the current workspace when run inside one, auto-selects the only known workspace when run elsewhere, and asks the user to choose when multiple workspaces are known. `--agent` and `--editor` do not change the stored preferred opener. Passing both opener overrides is an error; choose either `--agent <tool>` or `--editor`.
 
-OpenSpec maintains `<workspace-name>.code-workspace` at the workspace root for VS Code editor and GitHub Copilot-in-VS-Code opens. That file is machine-local and ignored by default with a specific `<workspace-name>.code-workspace` `.gitignore` entry, so user-authored `*.code-workspace` files remain eligible for tracking.
+QASpec maintains `<workspace-name>.code-workspace` at the workspace root for VS Code editor and GitHub Copilot-in-VS-Code opens. That file is machine-local and ignored by default with a specific `<workspace-name>.code-workspace` `.gitignore` entry, so user-authored `*.code-workspace` files remain eligible for tracking.
 
 The maintained VS Code workspace includes the coordination root as `.` plus valid linked repos or folders as additional roots. VS Code displays those entries as a multi-root workspace.
 
-Root workspace open supports exploration and planning across linked repos or folders. Implementation edits should start only after an explicit user request and a normal OpenSpec implementation workflow.
+Root workspace open supports exploration and planning across linked repos or folders. Implementation edits should start only after an explicit user request and a normal QASpec implementation workflow.
 
 ---
 
 ## Browsing Commands
 
-### `openspec list`
+### `qaspec list`
 
 List changes or specs in your project.
 
 ```
-openspec list [options]
+qaspec list [options]
 ```
 
 **Options:**
@@ -357,13 +357,13 @@ openspec list [options]
 
 ```bash
 # List all active changes
-openspec list
+qaspec list
 
 # List all specs
-openspec list --specs
+qaspec list --specs
 
 # JSON output for scripts
-openspec list --json
+qaspec list --json
 ```
 
 **Output (text):**
@@ -388,12 +388,12 @@ Opens a terminal-based interface for navigating your project's specifications an
 
 ---
 
-### `openspec show`
+### `qaspec show`
 
 Display details of a change or spec.
 
 ```
-openspec show [item-name] [options]
+qaspec show [item-name] [options]
 ```
 
 **Arguments:**
@@ -428,28 +428,28 @@ openspec show [item-name] [options]
 
 ```bash
 # Interactive selection
-openspec show
+qaspec show
 
 # Show a specific change
-openspec show add-dark-mode
+qaspec show add-dark-mode
 
 # Show a specific spec
-openspec show auth --type spec
+qaspec show auth --type spec
 
 # JSON output for parsing
-openspec show add-dark-mode --json
+qaspec show add-dark-mode --json
 ```
 
 ---
 
 ## Validation Commands
 
-### `openspec validate`
+### `qaspec validate`
 
 Validate changes and specs for structural issues.
 
 ```
-openspec validate [item-name] [options]
+qaspec validate [item-name] [options]
 ```
 
 **Arguments:**
@@ -475,19 +475,19 @@ openspec validate [item-name] [options]
 
 ```bash
 # Interactive validation
-openspec validate
+qaspec validate
 
 # Validate a specific change
-openspec validate add-dark-mode
+qaspec validate add-dark-mode
 
 # Validate all changes
-openspec validate --changes
+qaspec validate --changes
 
 # Validate everything with JSON output (for CI/scripts)
-openspec validate --all --json
+qaspec validate --all --json
 
 # Strict validation with increased parallelism
-openspec validate --all --strict --concurrency 12
+qaspec validate --all --strict --concurrency 12
 ```
 
 **Output (text):**
@@ -527,12 +527,12 @@ Validating add-dark-mode...
 
 ## Lifecycle Commands
 
-### `openspec archive`
+### `qaspec archive`
 
 Archive a completed change and merge delta specs into main specs.
 
 ```
-openspec archive [change-name] [options]
+qaspec archive [change-name] [options]
 ```
 
 **Arguments:**
@@ -553,16 +553,16 @@ openspec archive [change-name] [options]
 
 ```bash
 # Interactive archive
-openspec archive
+qaspec archive
 
 # Archive specific change
-openspec archive add-dark-mode
+qaspec archive add-dark-mode
 
 # Archive without prompts (CI/scripts)
-openspec archive add-dark-mode --yes
+qaspec archive add-dark-mode --yes
 
 # Archive a tooling change that doesn't affect specs
-openspec archive update-ci-config --skip-specs
+qaspec archive update-ci-config --skip-specs
 ```
 
 **What it does:**
@@ -578,12 +578,12 @@ openspec archive update-ci-config --skip-specs
 
 These commands support the artifact-driven OPSX workflow. They're useful for both humans checking progress and agents determining next steps.
 
-### `openspec status`
+### `qaspec status`
 
 Display artifact completion status for a change.
 
 ```
-openspec status [options]
+qaspec status [options]
 ```
 
 **Options:**
@@ -598,13 +598,13 @@ openspec status [options]
 
 ```bash
 # Interactive status check
-openspec status
+qaspec status
 
 # Status for specific change
-openspec status --change add-dark-mode
+qaspec status --change add-dark-mode
 
 # JSON for agent use
-openspec status --change add-dark-mode --json
+qaspec status --change add-dark-mode --json
 ```
 
 **Output (text):**
@@ -639,12 +639,12 @@ Progress: 2/4 artifacts complete
 
 ---
 
-### `openspec instructions`
+### `qaspec instructions`
 
 Get enriched instructions for creating an artifact or applying tasks. Used by AI agents to understand what to create next.
 
 ```
-openspec instructions [artifact] [options]
+qaspec instructions [artifact] [options]
 ```
 
 **Arguments:**
@@ -667,16 +667,16 @@ openspec instructions [artifact] [options]
 
 ```bash
 # Get instructions for next artifact
-openspec instructions --change add-dark-mode
+qaspec instructions --change add-dark-mode
 
 # Get specific artifact instructions
-openspec instructions design --change add-dark-mode
+qaspec instructions design --change add-dark-mode
 
 # Get apply/implementation instructions
-openspec instructions apply --change add-dark-mode
+qaspec instructions apply --change add-dark-mode
 
 # JSON for agent consumption
-openspec instructions design --change add-dark-mode --json
+qaspec instructions design --change add-dark-mode --json
 ```
 
 **Output includes:**
@@ -730,12 +730,12 @@ Templates:
 
 ---
 
-### `openspec schemas`
+### `qaspec schemas`
 
 List available workflow schemas with their descriptions and artifact flows.
 
 ```
-openspec schemas [options]
+qaspec schemas [options]
 ```
 
 **Options:**
@@ -747,7 +747,7 @@ openspec schemas [options]
 **Example:**
 
 ```bash
-openspec schemas
+qaspec schemas
 ```
 
 **Output:**
@@ -770,12 +770,12 @@ Available schemas:
 
 Commands for creating and managing custom workflow schemas.
 
-### `openspec schema init`
+### `qaspec schema init`
 
 Create a new project-local schema.
 
 ```
-openspec schema init <name> [options]
+qaspec schema init <name> [options]
 ```
 
 **Arguments:**
@@ -799,10 +799,10 @@ openspec schema init <name> [options]
 
 ```bash
 # Interactive schema creation
-openspec schema init research-first
+qaspec schema init research-first
 
 # Non-interactive with specific artifacts
-openspec schema init rapid \
+qaspec schema init rapid \
   --description "Rapid iteration workflow" \
   --artifacts "proposal,tasks" \
   --default
@@ -822,12 +822,12 @@ openspec/schemas/<name>/
 
 ---
 
-### `openspec schema fork`
+### `qaspec schema fork`
 
 Copy an existing schema to your project for customization.
 
 ```
-openspec schema fork <source> [name] [options]
+qaspec schema fork <source> [name] [options]
 ```
 
 **Arguments:**
@@ -848,17 +848,17 @@ openspec schema fork <source> [name] [options]
 
 ```bash
 # Fork the built-in spec-driven schema
-openspec schema fork spec-driven my-workflow
+qaspec schema fork spec-driven my-workflow
 ```
 
 ---
 
-### `openspec schema validate`
+### `qaspec schema validate`
 
 Validate a schema's structure and templates.
 
 ```
-openspec schema validate [name] [options]
+qaspec schema validate [name] [options]
 ```
 
 **Arguments:**
@@ -878,20 +878,20 @@ openspec schema validate [name] [options]
 
 ```bash
 # Validate a specific schema
-openspec schema validate my-workflow
+qaspec schema validate my-workflow
 
 # Validate all schemas
-openspec schema validate
+qaspec schema validate
 ```
 
 ---
 
-### `openspec schema which`
+### `qaspec schema which`
 
 Show where a schema resolves from (useful for debugging precedence).
 
 ```
-openspec schema which [name] [options]
+qaspec schema which [name] [options]
 ```
 
 **Arguments:**
@@ -911,7 +911,7 @@ openspec schema which [name] [options]
 
 ```bash
 # Check where a schema comes from
-openspec schema which spec-driven
+qaspec schema which spec-driven
 ```
 
 **Output:**
@@ -931,12 +931,12 @@ spec-driven resolves from: package
 
 ## Configuration Commands
 
-### `openspec config`
+### `qaspec config`
 
-View and modify global OpenSpec configuration.
+View and modify global QASpec configuration.
 
 ```
-openspec config <subcommand> [options]
+qaspec config <subcommand> [options]
 ```
 
 **Subcommands:**
@@ -956,57 +956,57 @@ openspec config <subcommand> [options]
 
 ```bash
 # Show config file path
-openspec config path
+qaspec config path
 
 # List all settings
-openspec config list
+qaspec config list
 
 # Get a specific value
-openspec config get telemetry.enabled
+qaspec config get telemetry.enabled
 
 # Set a value
-openspec config set telemetry.enabled false
+qaspec config set telemetry.enabled false
 
 # Set a string value explicitly
-openspec config set user.name "My Name" --string
+qaspec config set user.name "My Name" --string
 
 # Remove a custom setting
-openspec config unset user.name
+qaspec config unset user.name
 
 # Reset all configuration
-openspec config reset --all --yes
+qaspec config reset --all --yes
 
 # Edit config in your editor
-openspec config edit
+qaspec config edit
 
 # Configure profile with action-based wizard
-openspec config profile
+qaspec config profile
 
 # Fast preset: switch workflows to core (keeps delivery mode)
-openspec config profile core
+qaspec config profile core
 ```
 
-`openspec config profile` starts with a current-state summary, then lets you choose:
+`qaspec config profile` starts with a current-state summary, then lets you choose:
 - Change delivery + workflows
 - Change delivery only
 - Change workflows only
 - Keep current settings (exit)
 
 If you keep current settings, no changes are written and no update prompt is shown.
-If there are no config changes but the current project or workspace files are out of sync with your global profile/delivery, OpenSpec will show a warning and suggest `openspec update` for repo-local projects or `openspec workspace update` for workspace-local skills.
+If there are no config changes but the current project or workspace files are out of sync with your global profile/delivery, QASpec will show a warning and suggest `qaspec update` for repo-local projects or `qaspec workspace update` for workspace-local skills.
 Pressing `Ctrl+C` also cancels the flow cleanly (no stack trace) and exits with code `130`.
-In the workflow checklist, `[x]` means the workflow is selected in global config. To apply those selections to project files, run `openspec update` (or choose `Apply changes to this project now?` when prompted inside a project). From inside a workspace, use `openspec workspace update` to refresh workspace-local skills; this remains skills-only and does not generate workspace slash commands.
+In the workflow checklist, `[x]` means the workflow is selected in global config. To apply those selections to project files, run `qaspec update` (or choose `Apply changes to this project now?` when prompted inside a project). From inside a workspace, use `qaspec workspace update` to refresh workspace-local skills; this remains skills-only and does not generate workspace slash commands.
 
 **Interactive examples:**
 
 ```bash
 # Delivery-only update
-openspec config profile
+qaspec config profile
 # choose: Change delivery only
 # choose delivery: Skills only
 
 # Workflows-only update
-openspec config profile
+qaspec config profile
 # choose: Change workflows only
 # toggle workflows in the checklist, then confirm
 ```
@@ -1017,7 +1017,7 @@ openspec config profile
 
 ### `openspec feedback`
 
-Submit feedback about OpenSpec. Creates a GitHub issue.
+Submit feedback about QASpec. Creates a GitHub issue.
 
 ```
 openspec feedback <message> [options]
@@ -1048,7 +1048,7 @@ openspec feedback "Add support for custom artifact types" \
 
 ### `openspec completion`
 
-Manage shell completions for the OpenSpec CLI.
+Manage shell completions for the QASpec CLI.
 
 ```
 openspec completion <subcommand> [shell]
@@ -1098,7 +1098,7 @@ openspec completion uninstall
 | `OPENSPEC_TELEMETRY` | Set to `0` to disable telemetry |
 | `DO_NOT_TRACK` | Set to `1` to disable telemetry (standard DNT signal) |
 | `OPENSPEC_CONCURRENCY` | Default concurrency for bulk validation (default: 6) |
-| `EDITOR` or `VISUAL` | Editor for `openspec config edit` |
+| `EDITOR` or `VISUAL` | Editor for `qaspec config edit` |
 | `NO_COLOR` | Disable color output when set |
 
 ---

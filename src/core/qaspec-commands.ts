@@ -6,6 +6,8 @@ export const QASPEC_COMMAND_PREFIX = 'qas';
 
 export const QASPEC_COMMAND_CATEGORY = 'QASpec';
 
+export { LEGACY_OPENSPEC_COMMAND_CATEGORY } from './branding.js';
+
 export function qasCommandFileBase(commandId: string): string {
   return `${QASPEC_COMMAND_PREFIX}-${commandId}`;
 }

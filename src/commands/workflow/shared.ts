@@ -140,7 +140,7 @@ export async function validateChangeExists(
     const available = await getAvailableChanges(projectRoot, changesDir);
     if (available.length === 0) {
       throw new Error(
-        `Change '${changeName}' not found. No changes exist. Create one with: openspec new change <name>`
+        `Change '${changeName}' not found. No changes exist. Create one with: qaspec new change <name>`
       );
     }
     throw new Error(

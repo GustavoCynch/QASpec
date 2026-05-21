@@ -2,9 +2,7 @@
 
 ## Purpose
 Define detection and cleanup behavior for legacy QASpec artifacts during `qaspec init` and `qaspec update` workflows, without interfering with an active upstream OpenSpec installation.
-
 ## Requirements
-
 ### Requirement: Legacy artifact detection
 
 The system SHALL detect legacy artifacts from previous QASpec init versions only. The system SHALL NOT classify current upstream OpenSpec artifacts (`opsx-*` commands, active `openspec/` planning files) as legacy when upstream OpenSpec is active.
@@ -174,3 +172,18 @@ The system SHALL report what was cleaned up.
 - **WHEN** no legacy artifacts are found
 - **THEN** the system SHALL NOT display the cleanup section
 - **AND** proceed directly with skill setup
+
+### Requirement: User-visible cleanup messaging
+
+Legacy cleanup SHALL distinguish **QASpec** artifacts from **upstream OpenSpec** in messages shown to users.
+
+#### Scenario: Reporting upstream coexistence
+
+- **WHEN** cleanup or init detects an active upstream OpenSpec install
+- **THEN** user-facing text SHALL say **upstream OpenSpec** (not imply QASpec is OpenSpec)
+
+#### Scenario: Reporting QASpec legacy artifacts
+
+- **WHEN** cleanup removes QASpec-managed legacy paths
+- **THEN** messages SHALL refer to **QASpec** or **legacy QASpec** artifacts, not "OpenSpec" alone as this product's name
+

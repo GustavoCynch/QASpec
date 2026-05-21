@@ -5,6 +5,7 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getVerifyChangeSkillTemplate(): SkillTemplate {
   return {
@@ -18,7 +19,7 @@ export function getVerifyChangeSkillTemplate(): SkillTemplate {
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have implementation tasks (tasks artifact exists).
    Include the schema used for each change if available.
@@ -28,7 +29,7 @@ export function getVerifyChangeSkillTemplate(): SkillTemplate {
 
 2. **Check status to understand the schema**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used (e.g., "spec-driven")
@@ -40,7 +41,7 @@ export function getVerifyChangeSkillTemplate(): SkillTemplate {
 3. **Get planning context and load artifacts**
 
    \`\`\`bash
-   openspec instructions apply --change "<name>" --json
+   qaspec instructions apply --change "<name>" --json
    \`\`\`
 
    This returns the change directory and \`contextFiles\` (artifact ID -> array of concrete file paths). Read all available artifacts from \`contextFiles\`.
@@ -180,7 +181,7 @@ export function getOpsxVerifyCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Verify',
     description: 'Verify implementation matches change artifacts before archiving',
-    category: 'Workflow',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'verify', 'experimental'],
     content: `Verify that an implementation matches the change artifacts (specs, tasks, design).
 
@@ -190,7 +191,7 @@ export function getOpsxVerifyCommandTemplate(): CommandTemplate {
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have implementation tasks (tasks artifact exists).
    Include the schema used for each change if available.
@@ -200,7 +201,7 @@ export function getOpsxVerifyCommandTemplate(): CommandTemplate {
 
 2. **Check status to understand the schema**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used (e.g., "spec-driven")
@@ -212,7 +213,7 @@ export function getOpsxVerifyCommandTemplate(): CommandTemplate {
 3. **Get planning context and load artifacts**
 
    \`\`\`bash
-   openspec instructions apply --change "<name>" --json
+   qaspec instructions apply --change "<name>" --json
    \`\`\`
 
    This returns the change directory and \`contextFiles\` (artifact ID -> array of concrete file paths). Read all available artifacts from \`contextFiles\`.

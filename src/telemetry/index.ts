@@ -110,7 +110,7 @@ function getClient(): PostHog {
  * Track a command execution.
  *
  * @param commandName - The command name (e.g., 'init', 'change:apply')
- * @param version - The OpenSpec version
+ * @param version - The QASpec version
  */
 export async function trackCommand(commandName: string, version: string): Promise<void> {
   if (!isTelemetryEnabled()) {
@@ -152,7 +152,7 @@ export async function maybeShowTelemetryNotice(): Promise<void> {
 
     // Display notice
     console.log(
-      'Note: OpenSpec collects anonymous usage stats. Opt out: OPENSPEC_TELEMETRY=0'
+      'Note: QASpec collects anonymous usage stats. Opt out: OPENSPEC_TELEMETRY=0'
     );
 
     // Mark as seen

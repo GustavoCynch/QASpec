@@ -5,6 +5,7 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getExploreSkillTemplate(): SkillTemplate {
   return {
@@ -12,7 +13,7 @@ export function getExploreSkillTemplate(): SkillTemplate {
     description: 'Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.',
     instructions: `Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create QASpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
@@ -76,15 +77,15 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## QASpec Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+You have full context of the QASpec system. Use it naturally, don't force it.
 
 ### Check for context
 
 At the start, quickly check what exists:
 \`\`\`bash
-openspec list --json
+qaspec list --json
 \`\`\`
 
 This tells you:
@@ -104,7 +105,7 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Resolve and read existing artifacts for context**
-   - Run \`openspec status --change "<name>" --json\`.
+   - Run \`qaspec status --change "<name>" --json\`.
    - Use \`changeRoot\`, \`artifactPaths\`, and \`actionContext\` from the status JSON.
    - Read existing files from \`artifactPaths.<artifact>.existingOutputPaths\`.
 
@@ -278,7 +279,7 @@ But this summary is optional. Sometimes the thinking IS the value.
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Creating OpenSpec artifacts is fine, writing application code is not.
+- **Don't implement** - Never write code or implement features. Creating QASpec artifacts is fine, writing application code is not.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally
@@ -296,11 +297,11 @@ export function getOpsxExploreCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Explore',
     description: 'Enter explore mode - think through ideas, investigate problems, clarify requirements',
-    category: 'Workflow',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'explore', 'experimental', 'thinking'],
     content: `Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create QASpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
@@ -371,15 +372,15 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## QASpec Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+You have full context of the QASpec system. Use it naturally, don't force it.
 
 ### Check for context
 
 At the start, quickly check what exists:
 \`\`\`bash
-openspec list --json
+qaspec list --json
 \`\`\`
 
 This tells you:
@@ -401,7 +402,7 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Resolve and read existing artifacts for context**
-   - Run \`openspec status --change "<name>" --json\`.
+   - Run \`qaspec status --change "<name>" --json\`.
    - Use \`changeRoot\`, \`artifactPaths\`, and \`actionContext\` from the status JSON.
    - Read existing files from \`artifactPaths.<artifact>.existingOutputPaths\`.
 
@@ -455,7 +456,7 @@ When things crystallize, you might offer a summary - but it's optional. Sometime
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Creating OpenSpec artifacts is fine, writing application code is not.
+- **Don't implement** - Never write code or implement features. Creating QASpec artifacts is fine, writing application code is not.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally

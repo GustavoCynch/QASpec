@@ -204,7 +204,7 @@ describe('workspace command', () => {
       'platform.code-workspace'
     );
     expect(fs.readFileSync(path.join(workspaceRoot, 'AGENTS.md'), 'utf-8')).toContain(
-      'OpenSpec Workspace Guidance'
+      'QASpec Workspace Guidance'
     );
     expect(JSON.parse(fs.readFileSync(getWorkspaceCodeWorkspacePath(workspaceRoot, 'platform'), 'utf-8')).folders).toEqual([
       {
@@ -259,7 +259,7 @@ describe('workspace command', () => {
         skipped: [
           expect.objectContaining({
             reason: 'tools_omitted',
-            message: expect.stringContaining('openspec workspace update --tools <ids>'),
+            message: expect.stringContaining('qaspec workspace update --tools <ids>'),
           }),
         ],
       })
@@ -397,7 +397,7 @@ describe('workspace command', () => {
     expect(parseJson(drift).workspace.status).toContainEqual(
       expect.objectContaining({
         code: 'workspace_skills_out_of_sync',
-        fix: 'openspec workspace update --workspace profile-sync',
+        fix: 'qaspec workspace update --workspace profile-sync',
       })
     );
 
@@ -520,7 +520,7 @@ describe('workspace command', () => {
     expect(update.exitCode).toBe(0);
     expect(update.stdout).toContain('Workspace update complete');
     expect(update.stdout).toContain('target-first');
-    expect(update.stdout).not.toContain('Multiple OpenSpec workspaces are known');
+    expect(update.stdout).not.toContain('Multiple QASpec workspaces are known');
     expect(fs.existsSync(path.join(first.workspace.root, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(second.workspace.root, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
   });
@@ -961,7 +961,7 @@ describe('workspace command', () => {
 
     const noWorkspaces = await runCLI(['workspace', 'list'], { cwd: tempDir, env });
     expect(noWorkspaces.exitCode).toBe(0);
-    expect(noWorkspaces.stdout).toContain("No OpenSpec workspaces found. Run 'openspec workspace setup' first.");
+    expect(noWorkspaces.stdout).toContain("No QASpec workspaces found. Run 'qaspec workspace setup' first.");
 
     const missing = await runCLI(['workspace', 'setup', '--no-interactive', '--json'], {
       cwd: tempDir,
@@ -1439,9 +1439,9 @@ paths:
     });
 
     expect(doctor.exitCode).toBe(1);
-    expect(doctor.stderr).toContain('Multiple OpenSpec workspaces are known.');
+    expect(doctor.stderr).toContain('Multiple QASpec workspaces are known.');
     expect(doctor.stderr).toContain('Pass --workspace <name>.');
-    expect(doctor.stderr).toContain('openspec workspace doctor --workspace <name>');
+    expect(doctor.stderr).toContain('qaspec workspace doctor --workspace <name>');
   });
 
   it('opens a workspace through VS Code editor and agent overrides without changing stored preference', async () => {
@@ -1504,7 +1504,7 @@ paths:
     expect(codexLaunch.args).toEqual([
       '--add-dir',
       expectedApi,
-      'Open this OpenSpec workspace.',
+      'Open this QASpec workspace.',
     ]);
     expect(readLocalState(setup.workspace.root).preferred_opener).toEqual({
       kind: 'editor',
@@ -1521,7 +1521,7 @@ paths:
       env,
     });
     expect(noKnown.exitCode).toBe(1);
-    expect(noKnown.stderr).toContain("No known OpenSpec workspaces. Run 'openspec workspace setup' first.");
+    expect(noKnown.stderr).toContain("No known QASpec workspaces. Run 'qaspec workspace setup' first.");
 
     const platform = await setupWorkspace('platform', [`api=${api}`]);
     await setupWorkspace('checkout-web', [`web=${web}`]);
@@ -1617,7 +1617,7 @@ preferred_opener:
     );
     expect(setup.exitCode).toBe(0);
     expect(setup.stdout).toContain('Workspace setup complete');
-    expect(setup.stdout).toContain('OpenSpec workspaces (1)');
+    expect(setup.stdout).toContain('QASpec workspaces (1)');
     expect(setup.stdout).toContain('Location:');
     expect(setup.stdout).not.toContain('Root:');
     expect(setup.stdout).toContain('Linked repos or folders (1):');
@@ -1629,7 +1629,7 @@ preferred_opener:
 
     const list = await runCLI(['workspace', 'list'], { cwd: tempDir, env });
     expect(list.exitCode).toBe(0);
-    expect(list.stdout).toContain('OpenSpec workspaces (1)');
+    expect(list.stdout).toContain('QASpec workspaces (1)');
     expect(list.stdout).toContain('platform');
     expect(list.stdout).toContain('Location:');
     expect(list.stdout).not.toContain('Root:');
@@ -1686,7 +1686,7 @@ preferred_opener:
     ]);
     expect(setup?.flags?.some((flag) => flag.name === 'opener')).toBe(true);
     expect(setup?.flags?.find((flag) => flag.name === 'tools')?.description).toContain(
-      'Install OpenSpec skills'
+      'Install QASpec skills'
     );
     expect(setup?.flags?.find((flag) => flag.name === 'opener')?.values).toEqual([
       'codex',

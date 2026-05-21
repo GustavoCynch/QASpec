@@ -52,8 +52,8 @@ describe('CompletionCommand', () => {
 
       expect(consoleLogSpy).toHaveBeenCalled();
       const output = consoleLogSpy.mock.calls[0][0];
-      expect(output).toContain('#compdef openspec');
-      expect(output).toContain('_openspec() {');
+      expect(output).toContain('#compdef qaspec');
+      expect(output).toMatch(/_qaspec\(\) \{/);
     });
 
     it('should auto-detect Zsh shell when no shell specified', async () => {
@@ -63,7 +63,7 @@ describe('CompletionCommand', () => {
 
       expect(consoleLogSpy).toHaveBeenCalled();
       const output = consoleLogSpy.mock.calls[0][0];
-      expect(output).toContain('#compdef openspec');
+      expect(output).toContain('#compdef qaspec');
     });
 
     it('should show error when shell cannot be auto-detected', async () => {
@@ -91,7 +91,7 @@ describe('CompletionCommand', () => {
 
       expect(consoleLogSpy).toHaveBeenCalled();
       const output = consoleLogSpy.mock.calls[0][0];
-      expect(output).toContain('#compdef openspec');
+      expect(output).toContain('#compdef qaspec');
     });
   });
 
@@ -272,7 +272,7 @@ describe('CompletionCommand', () => {
 
       expect(consoleLogSpy).toHaveBeenCalled();
       const output = consoleLogSpy.mock.calls[0][0];
-      expect(output).toContain('#compdef openspec');
+      expect(output).toContain('#compdef qaspec');
     });
   });
 });

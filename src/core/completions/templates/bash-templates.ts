@@ -7,24 +7,24 @@ export const BASH_DYNAMIC_HELPERS = `# Dynamic completion helpers
 
 _openspec_complete_changes() {
   local changes
-  changes=$(openspec __complete changes 2>/dev/null | cut -f1)
+  changes=$(qaspec __complete changes 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$changes" -- "$cur"))
 }
 
 _openspec_complete_specs() {
   local specs
-  specs=$(openspec __complete specs 2>/dev/null | cut -f1)
+  specs=$(qaspec __complete specs 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$specs" -- "$cur"))
 }
 
 _openspec_complete_items() {
   local items
-  items=$(openspec __complete changes 2>/dev/null | cut -f1; openspec __complete specs 2>/dev/null | cut -f1)
+  items=$(qaspec __complete changes 2>/dev/null | cut -f1; qaspec __complete specs 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$items" -- "$cur"))
 }
 
 _openspec_complete_schemas() {
   local schemas
-  schemas=$(openspec __complete schemas 2>/dev/null | cut -f1)
+  schemas=$(qaspec __complete schemas 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$schemas" -- "$cur"))
 }`;

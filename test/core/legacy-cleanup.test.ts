@@ -947,7 +947,7 @@ ${OPENSPEC_MARKERS.end}`);
 
     it('should explain the new context section benefits', () => {
       const hint = formatProjectMdMigrationHint();
-      expect(hint).toContain('included in every OpenSpec request');
+      expect(hint).toContain('included in every QASpec planning request');
       expect(hint).toContain('reliably');
     });
   });

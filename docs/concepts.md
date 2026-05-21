@@ -1,10 +1,10 @@
 # Concepts
 
-This guide explains the core ideas behind OpenSpec and how they fit together. For practical usage, see [Getting Started](getting-started.md) and [Workflows](workflows.md).
+This guide explains the core ideas behind QASpec and how they fit together. For practical usage, see [Getting Started](getting-started.md) and [Workflows](workflows.md).
 
 ## Philosophy
 
-OpenSpec is built around four principles:
+QASpec is built around four principles:
 
 ```
 fluid not rigid         — no phase gates, work on what makes sense
@@ -15,17 +15,17 @@ brownfield-first        — works with existing codebases, not just greenfield
 
 ### Why These Principles Matter
 
-**Fluid not rigid.** Traditional spec systems lock you into phases: first you plan, then you implement, then you're done. OpenSpec is more flexible — you can create artifacts in any order that makes sense for your work.
+**Fluid not rigid.** Traditional spec systems lock you into phases: first you plan, then you implement, then you're done. QASpec is more flexible — you can create artifacts in any order that makes sense for your work.
 
-**Iterative not waterfall.** Requirements change. Understanding deepens. What seemed like a good approach at the start might not hold up after you see the codebase. OpenSpec embraces this reality.
+**Iterative not waterfall.** Requirements change. Understanding deepens. What seemed like a good approach at the start might not hold up after you see the codebase. QASpec embraces this reality.
 
-**Easy not complex.** Some spec frameworks require extensive setup, rigid formats, or heavyweight processes. OpenSpec stays out of your way. Initialize in seconds, start working immediately, customize only if you need to.
+**Easy not complex.** Some spec frameworks require extensive setup, rigid formats, or heavyweight processes. QASpec stays out of your way. Initialize in seconds, start working immediately, customize only if you need to.
 
-**Brownfield-first.** Most software work isn't building from scratch — it's modifying existing systems. OpenSpec's delta-based approach makes it easy to specify changes to existing behavior, not just describe new systems.
+**Brownfield-first.** Most software work isn't building from scratch — it's modifying existing systems. QASpec's delta-based approach makes it easy to specify changes to existing behavior, not just describe new systems.
 
 ## The Big Picture
 
-OpenSpec organizes your work into two main areas:
+QASpec organizes your work into two main areas:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -55,7 +55,7 @@ Workspace support is under active development and is not ready for use yet. Do n
 
 The commands below provide the first setup flow for planning across linked repos or folders.
 
-Repo-local OpenSpec projects are the right default when one repo owns the planning, implementation, and archive flow. Some work spans several repos or folders. For that case, an OpenSpec coordination workspace is the durable planning home.
+Repo-local QASpec projects are the right default when one repo owns the planning, implementation, and archive flow. Some work spans several repos or folders. For that case, a QASpec coordination workspace is the durable planning home.
 
 The workspace mental model is:
 
@@ -75,7 +75,7 @@ workspace-folder/
     └── local.yaml                 # This machine's local paths
 ```
 
-Repo-local OpenSpec state keeps the existing shape:
+Repo-local QASpec state keeps the existing shape:
 
 ```text
 repo-root/
@@ -84,7 +84,7 @@ repo-root/
     └── changes/
 ```
 
-That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's `openspec/` directory remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `openspec init` inside a workspace folder.
+That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's `openspec/` directory remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `qaspec init` inside a workspace folder.
 
 Stable link names are how workspace planning refers to repos and folders. The shared workspace state keeps names such as `api`, `web`, or `checkout`; each machine maps those names to its own local paths in `.openspec-workspace/local.yaml`.
 
@@ -105,7 +105,7 @@ paths:
   web: /repos/web
 ```
 
-OpenSpec-created workspaces exclude `.openspec-workspace/local.yaml` from portable collaboration state by default. `.openspec-workspace/workspace.yaml` remains portable because it stores the workspace name and stable link names, not one user's absolute checkout paths.
+QASpec-created workspaces exclude `.openspec-workspace/local.yaml` from portable collaboration state by default. `.openspec-workspace/workspace.yaml` remains portable because it stores the workspace name and stable link names, not one user's absolute checkout paths.
 
 Linked paths can be full repos, folders inside a large monorepo, or other existing folders. They do not need repo-local `openspec/` state before they can participate in workspace planning. Later implementation, verify, or archive workflows may require more repo readiness, but planning visibility starts with the link.
 
@@ -119,15 +119,15 @@ large monorepo:
   checkout -> /repos/platform/apps/checkout
 ```
 
-Managed workspaces live under the standard OpenSpec data directory:
+Managed workspaces live under the standard QASpec data directory:
 
 ```text
 getGlobalDataDir()/workspaces
 ```
 
-That means `$XDG_DATA_HOME/openspec/workspaces` when `XDG_DATA_HOME` is set, `~/.local/share/openspec/workspaces` on Unix-style fallback, and `%LOCALAPPDATA%\openspec\workspaces` on native Windows fallback. Native Windows shells, PowerShell, and WSL2 each keep the path strings for the runtime running OpenSpec. This foundation does not translate between `D:\repo`, `/mnt/d/repo`, and UNC WSL paths.
+That means `$XDG_DATA_HOME/openspec/workspaces` when `XDG_DATA_HOME` is set, `~/.local/share/openspec/workspaces` on Unix-style fallback, and `%LOCALAPPDATA%\openspec\workspaces` on native Windows fallback. Native Windows shells, PowerShell, and WSL2 each keep the path strings for the runtime running QASpec. This foundation does not translate between `D:\repo`, `/mnt/d/repo`, and UNC WSL paths.
 
-OpenSpec also keeps a machine-local registry at:
+QASpec also keeps a machine-local registry at:
 
 ```text
 getGlobalDataDir()/workspaces/registry.yaml
@@ -135,54 +135,54 @@ getGlobalDataDir()/workspaces/registry.yaml
 
 The registry maps workspace names to workspace locations so later global commands can list or select known workspaces from anywhere. It is only an index. Each workspace folder remains authoritative for its own `.openspec-workspace/workspace.yaml` and `.openspec-workspace/local.yaml`, so stale registry records can be reported and repaired without redefining the workspace itself.
 
-Workspace visibility is not change commitment. Set up a workspace when OpenSpec should know which repos or folders are relevant; create a change later when you are ready to plan a feature, fix, project, or other piece of work.
+Workspace visibility is not change commitment. Set up a workspace when QASpec should know which repos or folders are relevant; create a change later when you are ready to plan a feature, fix, project, or other piece of work.
 
 Useful commands:
 
 ```bash
 # Guided setup
-openspec workspace setup
+qaspec workspace setup
 
 # Automation-friendly setup
-openspec workspace setup --no-interactive --name platform --link /repos/api --link web=/repos/web
-openspec workspace setup --no-interactive --name platform --link /repos/api --opener codex
+qaspec workspace setup --no-interactive --name platform --link /repos/api --link web=/repos/web
+qaspec workspace setup --no-interactive --name platform --link /repos/api --opener codex
 
 # See known workspaces from the local registry
-openspec workspace list
-openspec workspace ls
+qaspec workspace list
+qaspec workspace ls
 
 # Add or repair links for the selected workspace
-openspec workspace link /repos/api
-openspec workspace link api-service /repos/api
-openspec workspace relink api-service /new/path/to/api
+qaspec workspace link /repos/api
+qaspec workspace link api-service /repos/api
+qaspec workspace relink api-service /new/path/to/api
 
 # Check what this machine can resolve
-openspec workspace doctor
-openspec workspace doctor --workspace platform
+qaspec workspace doctor
+qaspec workspace doctor --workspace platform
 
 # Refresh workspace-local agent skills from the active global profile
-openspec workspace update
-openspec workspace update --workspace platform --tools codex,claude
+qaspec workspace update
+qaspec workspace update --workspace platform --tools codex,claude
 
 # Open the linked working set
-openspec workspace open
-openspec workspace open platform --agent github-copilot
-openspec workspace open --editor
+qaspec workspace open
+qaspec workspace open platform --agent github-copilot
+qaspec workspace open --editor
 ```
 
-`workspace setup` always creates the workspace in the standard workspace location, records it in the local registry, shows the workspace location, and requires at least one linked repo or folder. Interactive setup asks for a preferred opener and can install OpenSpec skills for selected agents. Non-interactive setup stores one only when `--opener codex`, `--opener claude`, `--opener github-copilot`, or `--opener editor` is provided.
+`workspace setup` always creates the workspace in the standard workspace location, records it in the local registry, shows the workspace location, and requires at least one linked repo or folder. Interactive setup asks for a preferred opener and can install QASpec skills for selected agents. Non-interactive setup stores one only when `--opener codex`, `--opener claude`, `--opener github-copilot`, or `--opener editor` is provided.
 
-Workspace skills are installed only in the workspace root. The active global profile selects which workflow skills are generated; `--tools` selects which agents receive them. Workspace setup and update are skills-only in this beta slice, so they do not create slash command files even when global delivery includes commands. Run `openspec workspace update` after changing the global profile to refresh, add, or remove managed workspace-local skill directories without editing linked repos or folders.
+Workspace skills are installed only in the workspace root. The active global profile selects which workflow skills are generated; `--tools` selects which agents receive them. Workspace setup and update are skills-only in this beta slice, so they do not create slash command files even when global delivery includes commands. Run `qaspec workspace update` after changing the global profile to refresh, add, or remove managed workspace-local skill directories without editing linked repos or folders.
 
-OpenSpec also maintains root workspace open files: an OpenSpec-managed guidance block in `AGENTS.md`, a machine-local `<workspace-name>.code-workspace` file for VS Code and GitHub Copilot-in-VS-Code opens, and a specific ignore entry for that maintained `.code-workspace` file. User-authored `*.code-workspace` files remain trackable because the ignore rule targets only the maintained file.
+QASpec also maintains root workspace open files: an QASpec-managed guidance block in `AGENTS.md`, a machine-local `<workspace-name>.code-workspace` file for VS Code and GitHub Copilot-in-VS-Code opens, and a specific ignore entry for that maintained `.code-workspace` file. User-authored `*.code-workspace` files remain trackable because the ignore rule targets only the maintained file.
 
 The maintained VS Code workspace includes the coordination root as `.` plus valid linked repos or folders as additional roots. VS Code displays those entries as a multi-root workspace.
 
 `workspace open` opens the linked working set with the stored preferred opener unless `--agent <tool>` or `--editor` is passed for that one session. Passing both opener overrides is an error. Root workspace open makes linked repos and folders visible for exploration and planning; implementation starts after the user explicitly asks for implementation work.
 
-`workspace link` and `workspace relink` record existing folders only; they do not create, copy, move, initialize, or edit the linked repo or folder. After a successful link or relink, OpenSpec refreshes the managed guidance, VS Code workspace file, and ignore rule.
+`workspace link` and `workspace relink` record existing folders only; they do not create, copy, move, initialize, or edit the linked repo or folder. After a successful link or relink, QASpec refreshes the managed guidance, VS Code workspace file, and ignore rule.
 
-Workspace commands that need one workspace can run from anywhere with `--workspace <name>`. If you run them inside a workspace folder or subdirectory, OpenSpec uses that current workspace. If several known workspaces are available and you do not pass `--workspace <name>`, human commands show a picker; `--json` and `--no-interactive` fail with a structured status error instead of prompting.
+Workspace commands that need one workspace can run from anywhere with `--workspace <name>`. If you run them inside a workspace folder or subdirectory, QASpec uses that current workspace. If several known workspaces are available and you do not pass `--workspace <name>`, human commands show a picker; `--json` and `--no-interactive` fail with a structured status error instead of prompting.
 
 Direct workspace commands support JSON output for scripts. JSON responses keep primary data in `workspace`, `workspaces`, or `link` objects and report warnings or errors in `status` arrays. Healthy objects use `status: []`.
 
@@ -291,7 +291,7 @@ Quick test:
 
 ### Keep It Lightweight: Progressive Rigor
 
-OpenSpec aims to avoid bureaucracy. Use the lightest level that still makes the change verifiable.
+QASpec aims to avoid bureaucracy. Use the lightest level that still makes the change verifiable.
 
 **Lite spec (default):**
 - Short behavior-first requirements
@@ -482,7 +482,7 @@ Tasks are the **implementation checklist** — concrete steps with checkboxes.
 
 ## Delta Specs
 
-Delta specs are the key concept that makes OpenSpec work for brownfield development. They describe **what's changing** rather than restating the entire spec.
+Delta specs are the key concept that makes QASpec work for brownfield development. They describe **what's changing** rather than restating the entire spec.
 
 ### The Format
 
@@ -609,10 +609,10 @@ Create custom schemas for your team's workflow:
 
 ```bash
 # Create from scratch
-openspec schema init research-first
+qaspec schema init research-first
 
 # Or fork an existing one
-openspec schema fork spec-driven research-first
+qaspec schema fork spec-driven research-first
 ```
 
 **Example custom schema:**

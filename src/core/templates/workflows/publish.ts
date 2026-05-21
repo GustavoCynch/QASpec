@@ -7,7 +7,7 @@ const QAS_PUBLISH_BODY = `Run QASpec **publish** (Phase 3). Upload approved \`te
 
 **Steps**
 
-1. Run \`openspec instructions apply --change "<name>" --json\` (publish phase for \`qaspec-pr-review\`).
+1. Run \`qaspec instructions apply --change "<name>" --json\` (publish phase for \`qaspec-pr-review\`).
 2. Re-read \`qaspec/references/qase_test_case_rules.md\`; confirm matrix approved and checkbox-formatted.
 3. If \`testmatrix.md\` exists but no files under change \`specs/\` and apply requires \`specs\`, stop and direct user to complete \`/qas:matrix\` (or author deltas) — do not invoke Qase MCP.
 4. Read completed \`specs/**/*.md\` for context before MCP when files exist.

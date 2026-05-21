@@ -1,8 +1,8 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: Default agent surface
+### Requirement: Core profile product branding
 
-The default QASpec **core** agent surface SHALL replace legacy OpenSpec dev workflow branding with QASpec QA commands and skills for fork end users.
+The default QASpec **core** agent surface SHALL present QASpec in user-visible skill and command metadata.
 
 #### Scenario: Core profile is QASpec
 

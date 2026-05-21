@@ -9,7 +9,7 @@ describe('command-generation/generator', () => {
     id: 'explore',
     name: 'OpenSpec Explore',
     description: 'Enter explore mode',
-    category: 'Workflow',
+    category: 'OpenSpec',
     tags: ['workflow'],
     body: 'Command body here.',
   };

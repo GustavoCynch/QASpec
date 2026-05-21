@@ -5,6 +5,7 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getBulkArchiveChangeSkillTemplate(): SkillTemplate {
   return {
@@ -20,7 +21,7 @@ This skill allows you to batch-archive changes, handling spec conflicts intellig
 
 1. **Get active changes**
 
-   Run \`openspec list --json\` to get all active changes.
+   Run \`qaspec list --json\` to get all active changes.
 
    If no active changes exist, inform user and stop.
 
@@ -37,7 +38,7 @@ This skill allows you to batch-archive changes, handling spec conflicts intellig
 
    For each selected change, collect:
 
-   a. **Artifact status** - Run \`openspec status --change "<name>" --json\`
+   a. **Artifact status** - Run \`qaspec status --change "<name>" --json\`
       - Parse \`schemaName\`, \`artifacts\`, \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`
       - Note which artifacts are \`done\` vs other states
 
@@ -257,7 +258,7 @@ export function getOpsxBulkArchiveCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Bulk Archive',
     description: 'Archive multiple completed changes at once',
-    category: 'Workflow',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'archive', 'experimental', 'bulk'],
     content: `Archive multiple completed changes in a single operation.
 
@@ -269,7 +270,7 @@ This skill allows you to batch-archive changes, handling spec conflicts intellig
 
 1. **Get active changes**
 
-   Run \`openspec list --json\` to get all active changes.
+   Run \`qaspec list --json\` to get all active changes.
 
    If no active changes exist, inform user and stop.
 
@@ -286,7 +287,7 @@ This skill allows you to batch-archive changes, handling spec conflicts intellig
 
    For each selected change, collect:
 
-   a. **Artifact status** - Run \`openspec status --change "<name>" --json\`
+   a. **Artifact status** - Run \`qaspec status --change "<name>" --json\`
       - Parse \`schemaName\`, \`artifacts\`, \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`
       - Note which artifacts are \`done\` vs other states
 

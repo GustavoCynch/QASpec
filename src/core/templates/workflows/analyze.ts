@@ -9,7 +9,7 @@ const QAS_ANALYZE_BODY = `Run QASpec **analyze** (Phase 1). Produce \`analisis.m
 
 **Steps**
 
-1. Resolve change name; run \`openspec status --change "<name>" --json\` and \`openspec instructions analyze --change "<name>" --json\`.
+1. Resolve change name; run \`qaspec status --change "<name>" --json\` and \`qaspec instructions analyze --change "<name>" --json\`.
 2. Read \`qaspec/references/historical_bugs.md\` (mandatory; re-read this run).
 3. Gather diff: \`gh pr diff\` / \`gh pr view\` for GitHub PRs, else \`git diff\` or user patch.
 4. Run **two parallel blind Task subagents** to draft analysis; synthesize one \`analisis.md\` at \`resolvedOutputPath\`.

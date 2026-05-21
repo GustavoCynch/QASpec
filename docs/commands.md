@@ -1,6 +1,6 @@
 # Commands
 
-This is the reference for OpenSpec's slash commands. These commands are invoked in your AI coding assistant's chat interface (e.g., Claude Code, Cursor, Windsurf).
+This is the reference for QASpec's slash commands. These commands are invoked in your AI coding assistant's chat interface (e.g., Claude Code, Cursor, Windsurf).
 
 For workflow patterns and when to use each command, see [Workflows](workflows.md). For CLI commands, see [CLI](cli.md).
 
@@ -27,7 +27,7 @@ For workflow patterns and when to use each command, see [Workflows](workflows.md
 | `/opsx:bulk-archive` | Archive multiple changes at once |
 | `/opsx:onboard` | Guided tutorial through the complete workflow |
 
-The default global profile is `core`. To enable expanded workflow commands, run `openspec config profile`, select workflows, then run `openspec update` in your project.
+The default global profile is `core`. To enable expanded workflow commands, run `qaspec config profile`, select workflows, then run `qaspec update` in your project.
 
 ---
 
@@ -550,7 +550,7 @@ AI:  ✓ Archived add-dark-mode
 
 ### `/opsx:onboard`
 
-Guided onboarding through the complete OpenSpec workflow. An interactive tutorial using your actual codebase.
+Guided onboarding through the complete QASpec workflow. An interactive tutorial using your actual codebase.
 
 **Syntax:**
 ```
@@ -582,7 +582,7 @@ Guided onboarding through the complete OpenSpec workflow. An interactive tutoria
 ```
 You: /opsx:onboard
 
-AI:  Welcome to OpenSpec!
+AI:  Welcome to QASpec!
 
      I'll walk you through the complete workflow using your actual codebase.
      We'll find something small to improve, create a proper change for it,
@@ -655,7 +655,7 @@ The command couldn't identify which change to work on.
 
 **Solutions:**
 - Specify the change name explicitly: `/opsx:apply add-dark-mode`
-- Check that the change folder exists: `openspec list`
+- Check that the change folder exists: `qaspec list`
 - Verify you're in the right project directory
 
 ### "No artifacts ready"
@@ -663,7 +663,7 @@ The command couldn't identify which change to work on.
 All artifacts are either complete or blocked by missing dependencies.
 
 **Solutions:**
-- Run `openspec status --change <name>` to see what's blocking
+- Run `qaspec status --change <name>` to see what's blocking
 - Check if required artifacts exist
 - Create missing dependency artifacts first
 
@@ -672,17 +672,17 @@ All artifacts are either complete or blocked by missing dependencies.
 The specified schema doesn't exist.
 
 **Solutions:**
-- List available schemas: `openspec schemas`
+- List available schemas: `qaspec schemas`
 - Check spelling of schema name
-- Create the schema if it's custom: `openspec schema init <name>`
+- Create the schema if it's custom: `qaspec schema init <name>`
 
 ### Commands not recognized
 
-The AI tool doesn't recognize OpenSpec commands.
+The AI tool doesn't recognize QASpec commands.
 
 **Solutions:**
-- Ensure OpenSpec is initialized: `openspec init`
-- Regenerate skills: `openspec update`
+- Ensure QASpec is initialized: `qaspec init`
+- Regenerate skills: `qaspec update`
 - Check that `.claude/skills/` directory exists (for Claude Code)
 - Restart your AI tool to pick up new skills
 

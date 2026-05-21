@@ -1,6 +1,6 @@
 # Workflows
 
-This guide covers common workflow patterns for OpenSpec and when to use each one. For basic setup, see [Getting Started](getting-started.md). For command reference, see [Commands](commands.md).
+This guide covers common workflow patterns for QASpec and when to use each one. For basic setup, see [Getting Started](getting-started.md). For command reference, see [Commands](commands.md).
 
 ## Philosophy: Actions, Not Phases
 
@@ -50,8 +50,8 @@ Typical flow:
 If you want explicit scaffold-and-build commands (`/opsx:new`, `/opsx:continue`, `/opsx:ff`, `/opsx:verify`, `/opsx:bulk-archive`, `/opsx:onboard`), enable them with:
 
 ```bash
-openspec config profile
-openspec update
+qaspec config profile
+qaspec update
 ```
 
 ## Workflow Patterns (Expanded Mode)
@@ -418,7 +418,7 @@ Catches mismatches before you close out the change.
 
 ### Name Changes Clearly
 
-Good names make `openspec list` useful:
+Good names make `qaspec list` useful:
 
 ```text
 Good:                          Avoid:

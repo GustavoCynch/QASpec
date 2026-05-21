@@ -5,22 +5,24 @@
 As a developer using OpenSpec, I want to update the OpenSpec instructions in my project when new versions are released, so that I can benefit from improvements to AI agent instructions.
 ## Requirements
 ### Requirement: Update Behavior
-The update command SHALL update OpenSpec instruction files to the latest templates in a team-friendly manner.
+
+The update command SHALL update QASpec instruction files to the latest templates in a team-friendly manner.
 
 #### Scenario: Running update command
-- **WHEN** a user runs `openspec update`
-- **THEN** replace `openspec/AGENTS.md` with the latest template
-- **AND** if a root-level stub (`AGENTS.md`/`CLAUDE.md`) exists, refresh it so it points to `@/openspec/AGENTS.md`
+
+- **WHEN** a user runs `qaspec update`
+- **THEN** refresh planning-home agent instructions from the latest QASpec templates
+- **AND** use QASpec branding in user-visible status output
 
 ### Requirement: Prerequisites
 
-The command SHALL require an existing OpenSpec structure before allowing updates.
+The command SHALL require an existing QASpec planning home before allowing updates.
 
 #### Scenario: Checking prerequisites
 
-- **GIVEN** the command requires an existing `openspec` directory (created by `openspec init`)
-- **WHEN** the `openspec` directory does not exist
-- **THEN** display error: "No OpenSpec directory found. Run 'openspec init' first."
+- **GIVEN** the command requires an existing planning directory (created by `qaspec init`)
+- **WHEN** no QASpec planning home is found
+- **THEN** display an error directing users to run **`qaspec init`**, without calling this product "OpenSpec"
 - **AND** exit with code 1
 
 ### Requirement: File Handling
@@ -185,6 +187,15 @@ The repo-local `openspec update` command SHALL not silently treat a workspace pl
 - **GIVEN** the command runs from inside a repo-local OpenSpec project
 - **WHEN** the user runs `openspec update`
 - **THEN** OpenSpec SHALL preserve existing repo-local update behavior
+
+### Requirement: Learn More Links
+
+Update completion output SHALL link to the QASpec fork for documentation and feedback.
+
+#### Scenario: Post-update documentation
+
+- **WHEN** update flow prints documentation or feedback URLs for this product
+- **THEN** links SHALL target the QASpec fork repository (or published QASpec docs), not default upstream OpenSpec URLs unless labeled as upstream lineage
 
 ## Edge Cases
 

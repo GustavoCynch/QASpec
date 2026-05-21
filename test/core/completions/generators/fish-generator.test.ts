@@ -24,14 +24,14 @@ describe('FishGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
       ];
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('# Fish completion script for OpenSpec CLI');
+      expect(script).toContain('# Fish completion script for QASpec CLI');
       expect(script).toContain('function __fish_openspec');
     });
 
@@ -39,7 +39,7 @@ describe('FishGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
       ];
@@ -55,7 +55,7 @@ describe('FishGenerator', () => {
       const commands: CommandDefinition[] = [
         {
           name: 'init',
-          description: 'Initialize OpenSpec',
+          description: 'Initialize QASpec',
           flags: [],
         },
         {
@@ -72,9 +72,9 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("complete -c openspec");
+      expect(script).toContain("complete -c qaspec");
       expect(script).toContain("-a 'init'");
-      expect(script).toContain("'Initialize OpenSpec'");
+      expect(script).toContain("'Initialize QASpec'");
       expect(script).toContain("-a 'validate'");
       expect(script).toContain("'Validate specs'");
       expect(script).toContain("-a 'show'");
@@ -308,7 +308,7 @@ describe('FishGenerator', () => {
       const script = generator.generate(commands);
 
       expect(script).toContain('__fish_openspec_schemas');
-      expect(script).toContain('openspec __complete schemas 2>/dev/null');
+      expect(script).toContain('qaspec __complete schemas 2>/dev/null');
     });
 
     it('should generate dynamic completion helper for changes', () => {
@@ -325,7 +325,7 @@ describe('FishGenerator', () => {
       const script = generator.generate(commands);
 
       expect(script).toContain('function __fish_openspec_changes');
-      expect(script).toContain('openspec __complete changes 2>/dev/null');
+      expect(script).toContain('qaspec __complete changes 2>/dev/null');
       expect(script).toContain('while read -l id desc');
       expect(script).toContain('printf');
     });
@@ -344,7 +344,7 @@ describe('FishGenerator', () => {
       const script = generator.generate(commands);
 
       expect(script).toContain('function __fish_openspec_specs');
-      expect(script).toContain('openspec __complete specs 2>/dev/null');
+      expect(script).toContain('qaspec __complete specs 2>/dev/null');
     });
 
     it('should generate dynamic completion helper for items', () => {

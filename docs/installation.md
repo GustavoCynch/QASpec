@@ -35,16 +35,16 @@ bun add -g @qaspec/cli@latest
 
 ## Nix
 
-Run OpenSpec directly without installation:
+Run QASpec directly without installation:
 
 ```bash
-nix run github:Fission-AI/OpenSpec -- init
+nix run github:GustavoCynch/QASpec -- init
 ```
 
 Or install to your profile:
 
 ```bash
-nix profile install github:Fission-AI/OpenSpec
+nix profile install github:GustavoCynch/QASpec
 ```
 
 Or add to your development environment in `flake.nix`:
@@ -53,7 +53,7 @@ Or add to your development environment in `flake.nix`:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    openspec.url = "github:Fission-AI/OpenSpec";
+    openspec.url = "github:GustavoCynch/QASpec";
   };
 
   outputs = { nixpkgs, openspec, ... }: {

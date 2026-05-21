@@ -31,7 +31,7 @@ describe('command-generation/adapters', () => {
     id: 'explore',
     name: 'OpenSpec Explore',
     description: 'Enter explore mode for thinking',
-    category: 'Workflow',
+    category: 'OpenSpec',
     tags: ['workflow', 'explore', 'experimental'],
     body: 'This is the command body.\n\nWith multiple lines.',
   };
@@ -57,7 +57,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: OpenSpec Explore');
       expect(output).toContain('description: Enter explore mode for thinking');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('tags: [workflow, explore, experimental]');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.\n\nWith multiple lines.');
@@ -91,7 +91,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: /qas:explore');
       expect(output).toContain('id: qas-explore');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('description: Enter explore mode for thinking');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.');
@@ -119,7 +119,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: OpenSpec Explore');
       expect(output).toContain('description: Enter explore mode for thinking');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('tags: [workflow, explore, experimental]');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.');
@@ -399,7 +399,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: OpenSpec Explore');
       expect(output).toContain('description: Enter explore mode for thinking');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('tags: [workflow, explore, experimental]');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.');
@@ -479,7 +479,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: /qas:explore');
       expect(output).toContain('id: qas-explore');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('description: Enter explore mode for thinking');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.');
@@ -564,7 +564,7 @@ describe('command-generation/adapters', () => {
       expect(output).toContain('---\n');
       expect(output).toContain('name: OpenSpec Explore');
       expect(output).toContain('description: Enter explore mode for thinking');
-      expect(output).toContain('category: Workflow');
+      expect(output).toContain('category: OpenSpec');
       expect(output).toContain('tags: [workflow, explore, experimental]');
       expect(output).toContain('---\n\n');
       expect(output).toContain('This is the command body.');

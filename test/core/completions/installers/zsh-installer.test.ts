@@ -99,7 +99,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('install', () => {
-    const testScript = '#compdef openspec\n_openspec() {\n  echo "test"\n}\n';
+    const testScript = '#compdef qaspec\n_openspec() {\n  echo "test"\n}\n';
 
     it('should install to Oh My Zsh path when Oh My Zsh is present', async () => {
       // Create .oh-my-zsh directory
@@ -226,12 +226,12 @@ describe('ZshInstaller', () => {
 
     it('should update completion when content differs', async () => {
       // First installation
-      const firstScript = '#compdef openspec\n_openspec() {\n  echo "version 1"\n}\n';
+      const firstScript = '#compdef qaspec\n_openspec() {\n  echo "version 1"\n}\n';
       const firstResult = await installer.install(firstScript);
       expect(firstResult.success).toBe(true);
 
       // Second installation with different script
-      const secondScript = '#compdef openspec\n_openspec() {\n  echo "version 2"\n}\n';
+      const secondScript = '#compdef qaspec\n_openspec() {\n  echo "version 2"\n}\n';
       const secondResult = await installer.install(secondScript);
 
       expect(secondResult.success).toBe(true);
@@ -275,7 +275,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('uninstall', () => {
-    const testScript = '#compdef openspec\n_openspec() {}\n';
+    const testScript = '#compdef qaspec\n_openspec() {}\n';
 
     it('should remove installed completion script', async () => {
       // Install first
@@ -318,7 +318,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('isInstalled', () => {
-    const testScript = '#compdef openspec\n_openspec() {}\n';
+    const testScript = '#compdef qaspec\n_openspec() {}\n';
 
     it('should return false when not installed', async () => {
       const isInstalled = await installer.isInstalled();
@@ -344,7 +344,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('getInstallationInfo', () => {
-    const testScript = '#compdef openspec\n_openspec() {}\n';
+    const testScript = '#compdef qaspec\n_openspec() {}\n';
 
     it('should return not installed when script does not exist', async () => {
       const info = await installer.getInstallationInfo();
@@ -404,7 +404,7 @@ describe('ZshInstaller', () => {
 
       expect(content).toContain('# OPENSPEC:START');
       expect(content).toContain('# OPENSPEC:END');
-      expect(content).toContain('# OpenSpec shell completions configuration');
+      expect(content).toContain('# QASpec shell completions configuration');
       expect(content).toContain(`fpath=("${completionsDir}" $fpath)`);
       expect(content).toContain('autoload -Uz compinit');
       expect(content).toContain('compinit');
@@ -545,7 +545,7 @@ describe('ZshInstaller', () => {
         '# My config',
         '',
         '# OPENSPEC:START',
-        '# OpenSpec shell completions configuration',
+        '# QASpec shell completions configuration',
         'fpath=(~/.zsh/completions $fpath)',
         'autoload -Uz compinit',
         'compinit',
@@ -564,7 +564,7 @@ describe('ZshInstaller', () => {
 
       expect(newContent).not.toContain('# OPENSPEC:START');
       expect(newContent).not.toContain('# OPENSPEC:END');
-      expect(newContent).not.toContain('OpenSpec shell completions');
+      expect(newContent).not.toContain('QASpec shell completions');
       expect(newContent).toContain('# My config');
       expect(newContent).toContain('alias ll="ls -la"');
     });
@@ -614,7 +614,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('install with .zshrc auto-configuration', () => {
-    const testScript = '#compdef openspec\n_openspec() {}\n';
+    const testScript = '#compdef qaspec\n_openspec() {}\n';
 
     it('should auto-configure .zshrc for standard Zsh', async () => {
       const result = await installer.install(testScript);
@@ -692,7 +692,7 @@ describe('ZshInstaller', () => {
   });
 
   describe('uninstall with .zshrc cleanup', () => {
-    const testScript = '#compdef openspec\n_openspec() {}\n';
+    const testScript = '#compdef qaspec\n_openspec() {}\n';
 
     it('should remove .zshrc config when uninstalling', async () => {
       // Install first (which creates .zshrc config)
@@ -707,7 +707,7 @@ describe('ZshInstaller', () => {
       const result = await installer.uninstall();
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Removed OpenSpec configuration from ~/.zshrc');
+      expect(result.message).toContain('Removed QASpec configuration from ~/.zshrc');
 
       // Verify .zshrc config was removed
       content = await fs.readFile(zshrcPath, 'utf-8');
@@ -734,7 +734,7 @@ describe('ZshInstaller', () => {
       const result = await installer.uninstall();
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Removed OpenSpec configuration from ~/.zshrc');
+      expect(result.message).toContain('Removed QASpec configuration from ~/.zshrc');
     });
 
     it('should include both messages when removing script and .zshrc', async () => {
@@ -744,7 +744,7 @@ describe('ZshInstaller', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('Completion script removed');
-      expect(result.message).toContain('Removed OpenSpec configuration from ~/.zshrc');
+      expect(result.message).toContain('Removed QASpec configuration from ~/.zshrc');
     });
   });
 });

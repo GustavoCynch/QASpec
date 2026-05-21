@@ -1,22 +1,22 @@
 # Supported Tools
 
-OpenSpec works with many AI coding assistants. When you run `openspec init`, OpenSpec configures selected tools using your active profile/workflow selection and delivery mode.
+QASpec works with many AI coding assistants. When you run `qaspec init`, QASpec configures selected tools using your active profile/workflow selection and delivery mode.
 
 ## How It Works
 
-For each selected tool, OpenSpec can install:
+For each selected tool, QASpec can install:
 
 1. **Skills** (if delivery includes skills): `.../skills/openspec-*/SKILL.md`
 2. **Commands** (if delivery includes commands): tool-specific `opsx-*` command files
 
-By default, OpenSpec uses the `core` profile, which includes:
+By default, QASpec uses the `core` profile, which includes:
 - `propose`
 - `explore`
 - `apply`
 - `sync`
 - `archive`
 
-You can enable expanded workflows (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`) via `openspec config profile`, then run `openspec update`.
+You can enable expanded workflows (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`) via `qaspec config profile`, then run `qaspec update`.
 
 ## Tool Directory Reference
 
@@ -62,23 +62,23 @@ For CI/CD or scripted setup, use `--tools` (and optionally `--profile`):
 
 ```bash
 # Configure specific tools
-openspec init --tools claude,cursor
+qaspec init --tools claude,cursor
 
 # Configure all supported tools
-openspec init --tools all
+qaspec init --tools all
 
 # Skip tool configuration
-openspec init --tools none
+qaspec init --tools none
 
 # Override profile for this init run
-openspec init --profile core
+qaspec init --profile core
 ```
 
 **Available tool IDs (`--tools`):** `amazon-q`, `antigravity`, `auggie`, `bob`, `claude`, `cline`, `codex`, `forgecode`, `codebuddy`, `continue`, `costrict`, `crush`, `cursor`, `factory`, `gemini`, `github-copilot`, `iflow`, `junie`, `kilocode`, `kimi`, `kiro`, `opencode`, `pi`, `qoder`, `lingma`, `qwen`, `roocode`, `trae`, `windsurf`
 
 ## Workflow-Dependent Installation
 
-OpenSpec installs workflow artifacts based on selected workflows:
+QASpec installs workflow artifacts based on selected workflows:
 
 - **Core profile (default):** `propose`, `explore`, `apply`, `sync`, `archive`
 - **Custom selection:** any subset of all workflow IDs:
@@ -88,7 +88,7 @@ In other words, skill/command counts are profile-dependent and delivery-dependen
 
 ## Generated Skill Names
 
-When selected by profile/workflow config, OpenSpec generates these skills:
+When selected by profile/workflow config, QASpec generates these skills:
 
 - `openspec-propose`
 - `openspec-explore`

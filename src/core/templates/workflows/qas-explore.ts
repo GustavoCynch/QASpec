@@ -9,7 +9,7 @@ const QAS_EXPLORE_BODY = `Enter QASpec explore mode. Think deeply about test str
 
 **Does NOT replace:** halts for \`/qas:analyze\`, \`/qas:matrix\`, or \`/qas:publish\`.
 
-At start, optionally run \`openspec list --json\` and read \`qaspec/references/\` when relevant.
+At start, optionally run \`qaspec list --json\` and read \`qaspec/references/\` when relevant.
 
 | Insight | Capture in |
 |---------|----------------|

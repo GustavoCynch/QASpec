@@ -4,13 +4,13 @@
 
 ## What Is It?
 
-OPSX is now the standard workflow for OpenSpec.
+OPSX is now the standard workflow for QASpec.
 
-It's a **fluid, iterative workflow** for OpenSpec changes. No more rigid phases — just actions you can take anytime.
+It's a **fluid, iterative workflow** for QASpec changes. No more rigid phases — just actions you can take anytime.
 
 ## Why This Exists
 
-The legacy OpenSpec workflow works, but it's **locked down**:
+The legacy QASpec workflow works, but it's **locked down**:
 
 - **Instructions are hardcoded** — buried in TypeScript, you can't change them
 - **All-or-nothing** — one big command creates everything, can't test individual pieces
@@ -39,7 +39,7 @@ Legacy workflow:                      OPSX:
 **This is for everyone:**
 - **Teams** — create workflows that match how you actually work
 - **Power users** — tweak prompts to get better AI outputs for your codebase
-- **OpenSpec contributors** — experiment with new approaches without releases
+- **QASpec contributors** — experiment with new approaches without releases
 
 We're all still learning what works best. OPSX lets us learn together.
 
@@ -60,12 +60,12 @@ You're "in planning phase", then "in implementation phase", then "done". But rea
 
 ```bash
 # Make sure you have openspec installed — skills are automatically generated
-openspec init
+qaspec init
 ```
 
 This creates skills in `.claude/skills/` (or equivalent) that AI coding assistants auto-detect.
 
-By default, OpenSpec uses the `core` workflow profile (`propose`, `explore`, `apply`, `sync`, `archive`). If you want the expanded workflow commands (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`), configure them with `openspec config profile` and apply with `openspec update`.
+By default, QASpec uses the `core` workflow profile (`propose`, `explore`, `apply`, `sync`, `archive`). If you want the expanded workflow commands (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`), configure them with `qaspec config profile` and apply with `qaspec update`.
 
 During setup, you'll be prompted to create a **project config** (`openspec/config.yaml`). This is optional but recommended.
 
@@ -75,7 +75,7 @@ Project config lets you set defaults and inject project-specific context into al
 
 ### Creating Config
 
-Config is created during `openspec init`, or manually:
+Config is created during `qaspec init`, or manually:
 
 ```yaml
 # openspec/config.yaml
@@ -142,7 +142,7 @@ rules:
 
 **"Unknown artifact ID in rules: X"**
 - Check artifact IDs match your schema (see list above)
-- Run `openspec schemas --json` to see artifact IDs for each schema
+- Run `qaspec schemas --json` to see artifact IDs for each schema
 
 **Config not being applied:**
 - Ensure file is at `openspec/config.yaml` (not `.yml`)
@@ -490,7 +490,7 @@ Artifacts form a directed acyclic graph (DAG). Dependencies are **enablers**, no
   ┌──────────────────────────────────────────────────────────────────────────┐
   │  Step 1: Query current state                                             │
   │  ┌────────────────────────────────────────────────────────────────────┐  │
-  │  │  $ openspec status --change "add-auth" --json                      │  │
+  │  │  $ qaspec status --change "add-auth" --json                      │  │
   │  │                                                                    │  │
   │  │  {                                                                 │  │
   │  │    "artifacts": [                                                  │  │
@@ -504,7 +504,7 @@ Artifacts form a directed acyclic graph (DAG). Dependencies are **enablers**, no
   │                                                                          │
   │  Step 2: Get rich instructions for ready artifact                        │
   │  ┌────────────────────────────────────────────────────────────────────┐  │
-  │  │  $ openspec instructions specs --change "add-auth" --json          │  │
+  │  │  $ qaspec instructions specs --change "add-auth" --json          │  │
   │  │                                                                    │  │
   │  │  {                                                                 │  │
   │  │    "template": "# Specification\n\n## ADDED Requirements...",      │  │
@@ -564,16 +564,16 @@ Create custom workflows using the schema management commands:
 
 ```bash
 # Create a new schema from scratch (interactive)
-openspec schema init my-workflow
+qaspec schema init my-workflow
 
 # Or fork an existing schema as a starting point
-openspec schema fork spec-driven my-workflow
+qaspec schema fork spec-driven my-workflow
 
 # Validate your schema structure
-openspec schema validate my-workflow
+qaspec schema validate my-workflow
 
 # See where a schema resolves from (useful for debugging)
-openspec schema which my-workflow
+qaspec schema which my-workflow
 ```
 
 Schemas are stored in `openspec/schemas/` (project-local, version controlled) or `~/.local/share/openspec/schemas/` (user global).
@@ -629,19 +629,19 @@ Schemas define what artifacts exist and their dependencies. Currently available:
 
 ```bash
 # List available schemas
-openspec schemas
+qaspec schemas
 
 # See all schemas with their resolution sources
-openspec schema which --all
+qaspec schema which --all
 
 # Create a new schema interactively
-openspec schema init my-workflow
+qaspec schema init my-workflow
 
 # Fork an existing schema for customization
-openspec schema fork spec-driven my-workflow
+qaspec schema fork spec-driven my-workflow
 
 # Validate schema structure before use
-openspec schema validate my-workflow
+qaspec schema validate my-workflow
 ```
 
 ## Tips
@@ -650,7 +650,7 @@ openspec schema validate my-workflow
 - `/opsx:ff` when you know what you want, `/opsx:continue` when exploring
 - During `/opsx:apply`, if something's wrong — fix the artifact, then continue
 - Tasks track progress via checkboxes in `tasks.md`
-- Check status anytime: `openspec status --change "name"`
+- Check status anytime: `qaspec status --change "name"`
 
 ## Feedback
 

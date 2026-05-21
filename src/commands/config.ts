@@ -93,7 +93,7 @@ const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
   },
   onboard: {
     name: 'Onboard',
-    description: 'Guided onboarding flow for OpenSpec',
+    description: 'Guided onboarding flow for QASpec',
   },
 };
 
@@ -220,7 +220,7 @@ function maybeWarnProjectConfigDrift(
   if (!hasProjectConfigDrift(projectDir, state.workflows, state.delivery)) {
     return;
   }
-  console.log(colorize('Warning: Global config is not applied to this project. Run `openspec update` to sync.'));
+  console.log(colorize('Warning: Global config is not applied to this project. Run `qaspec update` to sync.'));
 }
 
 async function maybeWarnConfigDrift(
@@ -239,7 +239,7 @@ async function maybeWarnConfigDrift(
     if (hasWorkspaceSkillProfileDrift(localState)) {
       console.log(
         colorize(
-          'Warning: Workspace-local agent skills are out of sync with the active global profile. Run `openspec workspace update` to sync.'
+          'Warning: Workspace-local agent skills are out of sync with the active global profile. Run `qaspec workspace update` to sync.'
         )
       );
     }
@@ -251,11 +251,11 @@ async function maybeWarnConfigDrift(
 
 function printConfigProfileApplyGuidance(workspaceContext: WorkspaceConfigProfileContext | null): void {
   if (workspaceContext) {
-    console.log('Config updated. Run `openspec workspace update` to apply it to workspace-local skills.');
+    console.log('Config updated. Run `qaspec workspace update` to apply it to workspace-local skills.');
     return;
   }
 
-  console.log('Config updated. Run `openspec update` in your projects to apply.');
+  console.log('Config updated. Run `qaspec update` in your projects to apply.');
 }
 
 /**
@@ -266,7 +266,7 @@ function printConfigProfileApplyGuidance(workspaceContext: WorkspaceConfigProfil
 export function registerConfigCommand(program: Command): void {
   const configCmd = program
     .command('config')
-    .description('View and modify global OpenSpec configuration')
+    .description('View and modify global QASpec configuration')
     .option('--scope <scope>', 'Config scope (only "global" supported currently)')
     .hook('preAction', (thisCommand) => {
       const opts = thisCommand.opts();
@@ -356,7 +356,7 @@ export function registerConfigCommand(program: Command): void {
       if (!keyValidation.valid && !allowUnknown) {
         const reason = keyValidation.reason ? ` ${keyValidation.reason}.` : '';
         console.error(`Error: Invalid configuration key "${key}".${reason}`);
-        console.error('Use "openspec config list" to see available keys.');
+        console.error('Use "qaspec config list" to see available keys.');
         console.error('Pass --allow-unknown to bypass this check.');
         process.exitCode = 1;
         return;
@@ -411,7 +411,7 @@ export function registerConfigCommand(program: Command): void {
     .action(async (options: { all?: boolean; yes?: boolean }) => {
       if (!options.all) {
         console.error('Error: --all flag is required for reset');
-        console.error('Usage: openspec config reset --all [-y]');
+        console.error('Usage: qaspec config reset --all [-y]');
         process.exitCode = 1;
         return;
       }
@@ -511,7 +511,7 @@ export function registerConfigCommand(program: Command): void {
     .command('profile [preset]')
     .description('Configure workflow profile (interactive picker or preset shortcut)')
     .action(async (preset?: string) => {
-      // Preset shortcut: `openspec config profile core`
+      // Preset shortcut: `qaspec config profile core`
       if (preset === 'core') {
         const config = getGlobalConfig();
         config.profile = 'core';
@@ -531,7 +531,7 @@ export function registerConfigCommand(program: Command): void {
 
       // Non-interactive check
       if (!process.stdout.isTTY) {
-        console.error('Interactive mode required. Use `openspec config profile core` or set config via environment/flags.');
+        console.error('Interactive mode required. Use `qaspec config profile core` or set config via environment/flags.');
         process.exitCode = 1;
         return;
       }
@@ -678,13 +678,13 @@ export function registerConfigCommand(program: Command): void {
 
           if (applyNow) {
             try {
-              execSync('npx openspec workspace update', {
+              execSync('npx qaspec workspace update', {
                 stdio: 'inherit',
                 cwd: workspaceContext.root,
               });
-              console.log('Run `openspec workspace update` in your other workspaces to apply.');
+              console.log('Run `qaspec workspace update` in your other workspaces to apply.');
             } catch {
-              console.error('`openspec workspace update` failed. Please run it manually to apply the profile changes.');
+              console.error('`qaspec workspace update` failed. Please run it manually to apply the profile changes.');
               process.exitCode = 1;
             }
             return;
@@ -694,7 +694,7 @@ export function registerConfigCommand(program: Command): void {
           return;
         }
 
-        // Check if inside an OpenSpec project
+        // Check if inside an QASpec project
         const projectDir = process.cwd();
         const openspecDir = getPlanningDir(projectDir);
         if (fs.existsSync(openspecDir)) {
@@ -705,10 +705,10 @@ export function registerConfigCommand(program: Command): void {
 
           if (applyNow) {
             try {
-              execSync('npx openspec update', { stdio: 'inherit', cwd: projectDir });
-              console.log('Run `openspec update` in your other projects to apply.');
+              execSync('npx qaspec update', { stdio: 'inherit', cwd: projectDir });
+              console.log('Run `qaspec update` in your other projects to apply.');
             } catch {
-              console.error('`openspec update` failed. Please run it manually to apply the profile changes.');
+              console.error('`qaspec update` failed. Please run it manually to apply the profile changes.');
               process.exitCode = 1;
             }
             return;

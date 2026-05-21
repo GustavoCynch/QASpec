@@ -36,7 +36,7 @@ function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {
 }
 
 /**
- * Checks whether a tool has at least one generated OpenSpec command file.
+ * Checks whether a tool has at least one generated QASpec command file.
  */
 export function toolHasAnyConfiguredCommand(projectPath: string, toolId: string): boolean {
   const adapter = CommandAdapterRegistry.get(toolId);

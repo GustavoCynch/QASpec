@@ -13,9 +13,9 @@ import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js'
  * 3. Runtime validation - uses safeParse() for resilient field-by-field validation
  *
  * Why Zod over manual validation:
- * - Helps understand OpenSpec's data interfaces at a glance
+ * - Helps understand QASpec's data interfaces at a glance
  * - Single source of truth for type and validation
- * - Consistent with other OpenSpec schemas
+ * - Consistent with other QASpec schemas
  */
 export const ProjectConfigSchema = z.object({
   // Required: which schema to use (e.g., "spec-driven", or project-local schema name)

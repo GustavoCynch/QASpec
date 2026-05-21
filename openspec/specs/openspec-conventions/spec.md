@@ -6,61 +6,51 @@ OpenSpec conventions SHALL define how system capabilities are documented, how ch
 ## Requirements
 ### Requirement: Structured conventions for specs and changes
 
-OpenSpec conventions SHALL mandate a structured spec format with clear requirement and scenario sections so tooling can parse consistently.
+QASpec conventions SHALL mandate a structured spec format with clear requirement and scenario sections so tooling can parse consistently.
 
 #### Scenario: Following the structured spec format
 
-- **WHEN** writing or updating OpenSpec specifications
+- **WHEN** writing or updating QASpec specifications
 - **THEN** authors SHALL use `### Requirement: ...` followed by at least one `#### Scenario: ...` section
 
 ### Requirement: Behavior-First Specification Boundary
-OpenSpec specifications SHALL capture verifiable behavior contracts and avoid internal implementation detail.
+
+QASpec specifications SHALL capture verifiable behavior contracts and avoid internal implementation detail.
 
 #### Scenario: Writing behavior requirements
+
 - **WHEN** documenting a capability in `spec.md`
 - **THEN** requirements focus on externally observable behavior, interfaces, error handling, and constraints
 - **AND** scenarios remain testable or explicitly verifiable
 
 #### Scenario: Avoiding implementation leakage
+
 - **WHEN** details involve concrete library choices, class/function structure, or execution mechanics
 - **THEN** those details SHALL be documented in `design.md` or `tasks.md` instead of behavioral requirements
 
 ### Requirement: Progressive Rigor
-OpenSpec conventions SHALL keep specs lightweight by default and scale rigor only when risk or coordination complexity demands it.
+
+QASpec conventions SHALL keep specs lightweight by default and scale rigor only when risk or coordination complexity demands it.
 
 #### Scenario: Routine change specification
+
 - **WHEN** a change is local and low-risk
 - **THEN** authors use concise, behavior-first requirements with minimal ceremony
 
 #### Scenario: High-risk or cross-boundary change specification
+
 - **WHEN** a change is cross-team, cross-repo, API-contract breaking, migration-heavy, or security/privacy sensitive
 - **THEN** authors increase detail and explicit validation expectations proportionally
 
 ### Requirement: Project Structure
-An OpenSpec project SHALL maintain a consistent directory structure for specifications and changes.
+
+A QASpec project SHALL maintain a consistent directory structure for specifications and changes under the resolved planning home.
 
 #### Scenario: Initializing project structure
-- **WHEN** an OpenSpec project is initialized
-- **THEN** it SHALL have this structure:
-```
-openspec/
-├── project.md              # Project-specific context
-├── AGENTS.md               # AI assistant instructions
-├── specs/                  # Current deployed capabilities
-│   └── [capability]/       # Single, focused capability
-│       ├── spec.md         # WHAT and WHY
-│       └── design.md       # HOW (optional, for established patterns)
-└── changes/                # Proposed changes
-    ├── [change-name]/      # Descriptive change identifier
-    │   ├── proposal.md     # Why, what, and impact
-    │   ├── tasks.md        # Implementation checklist
-    │   ├── design.md       # Technical decisions (optional)
-    │   └── specs/          # Complete future state
-    │       └── [capability]/
-    │           └── spec.md # Clean markdown (no diff syntax)
-    └── archive/            # Completed changes
-        └── YYYY-MM-DD-[name]/
-```
+
+- **WHEN** a QASpec project is initialized (greenfield, after planning-home rename)
+- **THEN** it SHALL use the canonical planning layout under `qaspec/` as defined by the planning-home capability
+- **AND** legacy `openspec/` layouts remain valid when only the legacy directory exists
 
 ### Requirement: Structured Format for Behavioral Specs
 

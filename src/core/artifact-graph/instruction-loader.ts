@@ -464,7 +464,7 @@ function buildNextSteps(
 
   if (readyArtifact) {
     steps.push(
-      `Run openspec instructions ${readyArtifact.id} --change "${context.changeName}" --json before writing that artifact.`
+      `Run qaspec instructions ${readyArtifact.id} --change "${context.changeName}" --json before writing that artifact.`
     );
   } else if (context.graph.isComplete(context.completed)) {
     steps.push('All planning artifacts are complete; review tasks before implementation.');

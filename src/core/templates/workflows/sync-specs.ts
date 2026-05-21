@@ -5,6 +5,7 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getSyncSpecsSkillTemplate(): SkillTemplate {
   return {
@@ -20,7 +21,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -30,7 +31,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
 
    If status reports \`actionContext.mode: "workspace-planning"\`, explain that workspace spec sync is not supported in this slice and STOP. Do not fall back to repo-local paths or edit linked repos.
@@ -156,7 +157,7 @@ export function getOpsxSyncCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Sync',
     description: 'Sync delta specs from a change to main specs',
-    category: 'Workflow',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'specs', 'experimental'],
     content: `Sync delta specs from a change to main specs.
 
@@ -168,7 +169,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -178,7 +179,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   qaspec status --change "<name>" --json
    \`\`\`
 
    If status reports \`actionContext.mode: "workspace-planning"\`, explain that workspace spec sync is not supported in this slice and STOP. Do not fall back to repo-local paths or edit linked repos.

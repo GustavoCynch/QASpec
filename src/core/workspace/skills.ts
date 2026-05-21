@@ -274,7 +274,7 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
-function isOpenSpecManagedSkillDir(skillDir: string): boolean {
+function isQASpecManagedSkillDir(skillDir: string): boolean {
   const skillFile = FileSystemUtils.joinPath(skillDir, 'SKILL.md');
   return extractGeneratedByVersion(skillFile) !== null;
 }
@@ -299,7 +299,7 @@ async function removeManagedWorkflowSkillDirs(
       continue;
     }
 
-    if (!isOpenSpecManagedSkillDir(skillDir)) {
+    if (!isQASpecManagedSkillDir(skillDir)) {
       continue;
     }
 

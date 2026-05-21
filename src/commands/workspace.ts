@@ -333,7 +333,7 @@ async function promptWorkspaceSkillAgents(
   }
 
   return searchableMultiSelect({
-    message: 'Which agents should get OpenSpec skills in this workspace?',
+    message: 'Which agents should get QASpec skills in this workspace?',
     pageSize: 15,
     choices: sortedChoices,
   });
@@ -423,7 +423,7 @@ function printDoctorHuman(result: { workspace: WorkspaceOutput; status: Workspac
 }
 
 function printWorkspaceListHuman(workspaces: WorkspaceListOutput[]): void {
-  console.log(chalk.bold(`OpenSpec workspaces (${workspaces.length})`));
+  console.log(chalk.bold(`QASpec workspaces (${workspaces.length})`));
 
   for (const workspace of workspaces) {
     console.log('');
@@ -635,7 +635,7 @@ function assertWorkspaceOpenSupportedOptions(options: WorkspaceOpenOptions): voi
       'workspace_open_prepare_only_unsupported',
       {
         target: 'workspace.open',
-        fix: 'Run openspec workspace open with --agent <tool> or --editor.',
+        fix: 'Run qaspec workspace open with --agent <tool> or --editor.',
       }
     );
   }
@@ -646,7 +646,7 @@ function assertWorkspaceOpenSupportedOptions(options: WorkspaceOpenOptions): voi
       'workspace_open_json_unsupported',
       {
         target: 'workspace.open',
-        fix: 'Use openspec workspace doctor --json for current workspace status.',
+        fix: 'Use qaspec workspace doctor --json for current workspace status.',
       }
     );
   }
@@ -719,7 +719,7 @@ function printWorkspaceOpenHuman(
     const location = link.path ?? '(no local path recorded)';
     console.log(`  ${link.name} -> ${location}`);
   }
-  console.log('Repair skipped links with openspec workspace doctor.');
+  console.log('Repair skipped links with qaspec workspace doctor.');
 }
 
 class WorkspaceCommand {
@@ -732,7 +732,7 @@ class WorkspaceCommand {
           'workspace setup --json requires --no-interactive.',
           'setup_json_requires_no_interactive',
           {
-            fix: 'openspec workspace setup --no-interactive --json --name <name> --link <path>',
+            fix: 'qaspec workspace setup --no-interactive --json --name <name> --link <path>',
           }
         );
       }
@@ -747,7 +747,7 @@ class WorkspaceCommand {
           'workspace setup --no-interactive requires --name <name> and at least one --link <path>.',
           'missing_setup_inputs',
           {
-            fix: 'openspec workspace setup --no-interactive --name platform --link /path/to/repo',
+            fix: 'qaspec workspace setup --no-interactive --name platform --link /path/to/repo',
           }
         );
       }
@@ -770,7 +770,7 @@ class WorkspaceCommand {
       } else if (interactive) {
         console.log('');
         console.log(chalk.bold('[4/5] Install agent skills'));
-        console.log(chalk.dim('Choose which coding agents should get OpenSpec skills in this workspace.'));
+        console.log(chalk.dim('Choose which coding agents should get QASpec skills in this workspace.'));
         console.log(chalk.dim('Press Enter with no agents selected to skip skill installation for now.'));
         console.log('');
         selectedWorkspaceSkillAgents = await promptWorkspaceSkillAgents(preferredOpener);
@@ -781,7 +781,7 @@ class WorkspaceCommand {
           'workspace setup --no-interactive requires --name <name> and at least one --link <path>.',
           'missing_setup_inputs',
           {
-            fix: 'openspec workspace setup --no-interactive --name platform --link /path/to/repo',
+            fix: 'qaspec workspace setup --no-interactive --name platform --link /path/to/repo',
           }
         );
       }
@@ -796,7 +796,7 @@ class WorkspaceCommand {
         selectedWorkspaceSkillAgents === undefined
           ? createWorkspaceSkillSkippedReport(
               'tools_omitted',
-              'No workspace skills were installed. Run openspec workspace update --tools <ids> to install them later.'
+              'No workspace skills were installed. Run qaspec workspace update --tools <ids> to install them later.'
             )
           : await generateWorkspaceAgentSkills(workspace.root, selectedWorkspaceSkillAgents);
 
@@ -833,9 +833,9 @@ class WorkspaceCommand {
       printWorkspaceSkillReportHuman(skillReport);
       console.log('');
       console.log('Next useful commands:');
-      console.log(`  openspec workspace doctor --workspace ${workspace.name}`);
-      console.log(`  openspec workspace update --workspace ${workspace.name} --tools <ids>`);
-      console.log('  openspec workspace list');
+      console.log(`  qaspec workspace doctor --workspace ${workspace.name}`);
+      console.log(`  qaspec workspace update --workspace ${workspace.name} --tools <ids>`);
+      console.log('  qaspec workspace list');
 
       setWorkspaceSkillFailureExitCode(skillReport);
     } catch (error) {
@@ -856,7 +856,7 @@ class WorkspaceCommand {
       }
 
       if (workspaces.length === 0) {
-        console.log("No OpenSpec workspaces found. Run 'openspec workspace setup' first.");
+        console.log("No QASpec workspaces found. Run 'qaspec workspace setup' first.");
         return;
       }
 
@@ -877,7 +877,7 @@ class WorkspaceCommand {
           'workspace link requires a repo or folder path.',
           'missing_link_path',
           {
-            fix: 'openspec workspace link /path/to/repo',
+            fix: 'qaspec workspace link /path/to/repo',
           }
         );
       }
@@ -907,7 +907,7 @@ class WorkspaceCommand {
           'workspace relink requires a link name and repo or folder path.',
           'missing_relink_arguments',
           {
-            fix: 'openspec workspace relink <name> /path/to/repo',
+            fix: 'qaspec workspace relink <name> /path/to/repo',
           }
         );
       }
@@ -1019,8 +1019,8 @@ class WorkspaceCommand {
     printWorkspaceSkillReportHuman(skillReport);
     console.log('');
     console.log('Next useful commands:');
-    console.log(`  openspec workspace doctor --workspace ${doctorResult.workspace.name}`);
-    console.log(`  openspec workspace update --workspace ${doctorResult.workspace.name} --tools <ids>`);
+    console.log(`  qaspec workspace doctor --workspace ${doctorResult.workspace.name}`);
+    console.log(`  qaspec workspace update --workspace ${doctorResult.workspace.name} --tools <ids>`);
 
     setWorkspaceSkillFailureExitCode(skillReport);
   }
@@ -1131,7 +1131,7 @@ export function registerWorkspaceCommand(program: Command): void {
     .option('--opener <id>', 'Preferred opener: codex, claude, github-copilot, or editor')
     .option(
       '--tools <tools>',
-      `Install OpenSpec skills for agents. Use "all", "none", or a comma-separated list of: ${getWorkspaceSkillToolIds().join(', ')}`
+      `Install QASpec skills for agents. Use "all", "none", or a comma-separated list of: ${getWorkspaceSkillToolIds().join(', ')}`
     )
     .option('--json', 'Output as JSON')
     .option('--no-interactive', 'Disable prompts')
@@ -1141,7 +1141,7 @@ export function registerWorkspaceCommand(program: Command): void {
 
   workspace
     .command('list')
-    .description('List known OpenSpec workspaces')
+    .description('List known QASpec workspaces')
     .option('--json', 'Output as JSON')
     .action(async (options: WorkspaceListOptions) => {
       await workspaceCommand.list(options);
@@ -1149,7 +1149,7 @@ export function registerWorkspaceCommand(program: Command): void {
 
   workspace
     .command('ls')
-    .description('List known OpenSpec workspaces')
+    .description('List known QASpec workspaces')
     .option('--json', 'Output as JSON')
     .action(async (options: WorkspaceListOptions) => {
       await workspaceCommand.list(options);
@@ -1189,7 +1189,7 @@ export function registerWorkspaceCommand(program: Command): void {
 
   workspace
     .command('update [name]')
-    .description('Refresh workspace-local OpenSpec agent skills from the active global profile')
+    .description('Refresh workspace-local QASpec agent skills from the active global profile')
     .option('--workspace <name>', 'Workspace name from the local workspace registry')
     .option(
       '--tools <tools>',

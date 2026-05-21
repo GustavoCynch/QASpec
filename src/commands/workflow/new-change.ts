@@ -113,7 +113,7 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
       } else {
         console.log('Affected areas: unresolved; identify them in workspace specs or tasks as planning continues.');
       }
-      console.log('Next: run openspec status --change "' + name + '" to inspect workspace planning artifacts.');
+      console.log('Next: run qaspec status --change "' + name + '" to inspect workspace planning artifacts.');
     }
   } catch (error) {
     spinner.fail(`Failed to create change '${name}'`);

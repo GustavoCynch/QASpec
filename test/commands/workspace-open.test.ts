@@ -50,7 +50,7 @@ describe('workspace open launchers', () => {
         '/repos/api',
         '--add-dir',
         '/repos/web',
-        'Open this OpenSpec workspace.',
+        'Open this QASpec workspace.',
       ],
       cwd: '/workspace',
       openerLabel: 'Codex',
@@ -65,7 +65,7 @@ describe('workspace open launchers', () => {
       )
     ).toEqual({
       executable: 'claude',
-      args: ['--add-dir', '/repos/api', 'Open this OpenSpec workspace.'],
+      args: ['--add-dir', '/repos/api', 'Open this QASpec workspace.'],
       cwd: '/workspace',
       openerLabel: 'Claude',
     });
@@ -109,7 +109,7 @@ describe('workspace open launchers', () => {
           '/repos/api',
           '--add-dir',
           'C:\\Program Files\\repo',
-          'Open this OpenSpec workspace.',
+          'Open this QASpec workspace.',
         ],
         cwd: '/workspace',
         shell: false,

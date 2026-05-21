@@ -440,7 +440,7 @@ describe('config profile interactive flow', () => {
       default: true,
     });
     expect(execSync).not.toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalledWith('Config updated. Run `openspec workspace update` to apply it to workspace-local skills.');
+    expect(consoleLogSpy).toHaveBeenCalledWith('Config updated. Run `qaspec workspace update` to apply it to workspace-local skills.');
   });
 
   it('confirmed workspace apply should run workspace update instead of repo-local update', async () => {
@@ -457,11 +457,11 @@ describe('config profile interactive flow', () => {
 
     await runConfigCommand(['profile']);
 
-    expect(execSync).toHaveBeenCalledWith('npx openspec workspace update', {
+    expect(execSync).toHaveBeenCalledWith('npx qaspec workspace update', {
       stdio: 'inherit',
       cwd: process.cwd(),
     });
-    expect(execSync).not.toHaveBeenCalledWith('npx openspec update', expect.anything());
+    expect(execSync).not.toHaveBeenCalledWith('npx qaspec update', expect.anything());
   });
 
   it('no-op inside a workspace should warn when workspace skills drift', async () => {
@@ -479,7 +479,7 @@ describe('config profile interactive flow', () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Workspace-local agent skills are out of sync'));
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('openspec workspace update'));
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('qaspec workspace update'));
   });
 
   it('core preset should preserve delivery setting', async () => {
@@ -514,7 +514,7 @@ describe('config profile interactive flow', () => {
     expect(select).not.toHaveBeenCalled();
     expect(checkbox).not.toHaveBeenCalled();
     expect(confirm).not.toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalledWith('Config updated. Run `openspec workspace update` to apply it to workspace-local skills.');
+    expect(consoleLogSpy).toHaveBeenCalledWith('Config updated. Run `qaspec workspace update` to apply it to workspace-local skills.');
   });
 
   it('Ctrl+C should cancel without stack trace and set interrupted exit code', async () => {

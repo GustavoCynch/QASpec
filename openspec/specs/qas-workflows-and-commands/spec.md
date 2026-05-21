@@ -3,9 +3,7 @@
 ## Purpose
 
 Replace the default OpenSpec **core** agent surface with QASpec QA commands and skills for end users of the fork.
-
 ## Requirements
-
 ### Requirement: Core workflow set
 
 The QASpec product core profile SHALL install exactly these workflow ids: `explore`, `analyze`, `matrix`, `publish`, `archive`.
@@ -146,3 +144,14 @@ Maintainers SHALL validate QASpec agent output by running init in a temporary pr
 - **THEN** verification includes `openspec init` in a temp directory
 - **AND** the temp directory contains `.cursor/commands/qas-analyze.md` (or tool-equivalent) when Cursor is selected
 - **AND** the fork repository is not required to commit those generated files
+
+### Requirement: Core profile product branding
+
+The default QASpec **core** agent surface SHALL present QASpec in user-visible skill and command metadata.
+
+#### Scenario: Core profile is QASpec
+
+- **WHEN** a user initializes with the QASpec core profile
+- **THEN** installed skills and commands SHALL present **QASpec** in names and descriptions visible to the user
+- **AND** SHALL NOT describe the primary product as OpenSpec
+

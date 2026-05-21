@@ -5,6 +5,7 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import { LEGACY_OPENSPEC_COMMAND_CATEGORY } from '../../branding.js';
 
 export function getArchiveChangeSkillTemplate(): SkillTemplate {
   return {
@@ -18,7 +19,7 @@ export function getArchiveChangeSkillTemplate(): SkillTemplate {
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show only active changes (not already archived).
    Include the schema used for each change if available.
@@ -27,7 +28,7 @@ export function getArchiveChangeSkillTemplate(): SkillTemplate {
 
 2. **Check artifact completion status**
 
-   Run \`openspec status --change "<name>" --json\` to check artifact completion.
+   Run \`qaspec status --change "<name>" --json\` to check artifact completion.
 
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used
@@ -110,7 +111,7 @@ All artifacts complete. All tasks complete.
 
 **Guardrails**
 - Always prompt for change selection if not provided
-- Use artifact graph (openspec status --json) for completion checking
+- Use artifact graph (qaspec status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
@@ -126,7 +127,7 @@ export function getOpsxArchiveCommandTemplate(): CommandTemplate {
   return {
     name: 'OPSX: Archive',
     description: 'Archive a completed change in the experimental workflow',
-    category: 'Workflow',
+    category: LEGACY_OPENSPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'archive', 'experimental'],
     content: `Archive a completed change in the experimental workflow.
 
@@ -136,7 +137,7 @@ export function getOpsxArchiveCommandTemplate(): CommandTemplate {
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`qaspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show only active changes (not already archived).
    Include the schema used for each change if available.
@@ -145,7 +146,7 @@ export function getOpsxArchiveCommandTemplate(): CommandTemplate {
 
 2. **Check artifact completion status**
 
-   Run \`openspec status --change "<name>" --json\` to check artifact completion.
+   Run \`qaspec status --change "<name>" --json\` to check artifact completion.
 
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used
@@ -275,7 +276,7 @@ Target archive directory already exists.
 
 **Guardrails**
 - Always prompt for change selection if not provided
-- Use artifact graph (openspec status --json) for completion checking
+- Use artifact graph (qaspec status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened

@@ -29,7 +29,7 @@ Additional connectors may follow the same plugin model.
 
 ## Status
 
-This repository is in **early development** (OpenSpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`).
+This repository is in **early development** (QASpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`).
 
 QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `qaspec init`. Existing projects that still use an `openspec/` planning home continue to work without migration.
 

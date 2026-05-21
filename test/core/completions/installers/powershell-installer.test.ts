@@ -74,13 +74,13 @@ describe('PowerShellInstaller', () => {
       });
 
       const result = installer.getInstallationPath();
-      expect(result).toBe(path.join(testHomeDir, '.config', 'powershell', 'OpenSpecCompletion.ps1'));
+      expect(result).toBe(path.join(testHomeDir, '.config', 'powershell', 'QASpecCompletion.ps1'));
     });
 
     it('should work with custom PROFILE environment variable', () => {
       process.env.PROFILE = path.join(testHomeDir, 'custom', 'profile.ps1');
       const result = installer.getInstallationPath();
-      expect(result).toBe(path.join(testHomeDir, 'custom', 'OpenSpecCompletion.ps1'));
+      expect(result).toBe(path.join(testHomeDir, 'custom', 'QASpecCompletion.ps1'));
     });
 
     it('should return Windows path when on Windows platform', () => {
@@ -90,7 +90,7 @@ describe('PowerShellInstaller', () => {
       });
 
       const result = installer.getInstallationPath();
-      expect(result).toBe(path.join(testHomeDir, 'Documents', 'PowerShell', 'OpenSpecCompletion.ps1'));
+      expect(result).toBe(path.join(testHomeDir, 'Documents', 'PowerShell', 'QASpecCompletion.ps1'));
     });
   });
 
@@ -136,7 +136,7 @@ describe('PowerShellInstaller', () => {
   });
 
   describe('configureProfile', () => {
-    const mockScriptPath = '/path/to/OpenSpecCompletion.ps1';
+    const mockScriptPath = '/path/to/QASpecCompletion.ps1';
 
     // Note: OPENSPEC_NO_AUTO_CONFIG check is now handled in the install() method,
     // not in configureProfile() itself
@@ -179,7 +179,7 @@ describe('PowerShellInstaller', () => {
       await fs.mkdir(path.dirname(profilePath), { recursive: true });
 
       const initialContent = [
-        '# OPENSPEC:START - OpenSpec completion (managed block, do not edit manually)',
+        '# OPENSPEC:START - QASpec completion (managed block, do not edit manually)',
         `. "${mockScriptPath}"`,
         '# OPENSPEC:END',
         '',
@@ -283,7 +283,7 @@ describe('PowerShellInstaller', () => {
 
       const initialContent = [
         '# OPENSPEC:START',
-        '# OpenSpec completions',
+        '# QASpec completions',
         'if (Test-Path "/path") {',
         '    . "/path"',
         '}',
@@ -300,7 +300,7 @@ describe('PowerShellInstaller', () => {
       const content = await fs.readFile(profilePath, 'utf-8');
       expect(content).not.toContain('# OPENSPEC:START');
       expect(content).not.toContain('# OPENSPEC:END');
-      expect(content).not.toContain('# OpenSpec completions');
+      expect(content).not.toContain('# QASpec completions');
       expect(content).toContain('# My config');
     });
 
@@ -367,12 +367,12 @@ describe('PowerShellInstaller', () => {
   });
 
   describe('install', () => {
-    const mockCompletionScript = `# PowerShell completion script for OpenSpec
-$openspecCompleter = {
+    const mockCompletionScript = `# PowerShell completion script for QASpec
+$qaspecCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
     # Completion logic here
 }
-Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
+Register-ArgumentCompleter -CommandName qaspec -ScriptBlock $qaspecCompleter
 `;
 
     it('should install completion script for the first time', async () => {
@@ -381,7 +381,7 @@ Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('installed');
-      expect(result.installedPath).toContain('OpenSpecCompletion.ps1');
+      expect(result.installedPath).toContain('QASpecCompletion.ps1');
       expect(result.backupPath).toBeUndefined();
     });
 
@@ -545,7 +545,7 @@ Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
   });
 
   describe('encoding preservation', () => {
-    const mockScriptPath = '/path/to/OpenSpecCompletion.ps1';
+    const mockScriptPath = '/path/to/QASpecCompletion.ps1';
     const utf16leBom = Buffer.from([0xff, 0xfe]);
     const utf8Bom = Buffer.from([0xef, 0xbb, 0xbf]);
 
@@ -597,7 +597,7 @@ Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
       const textWithBlock = [
         '. "C:\\Code\\profile.ps1"',
         '# OPENSPEC:START',
-        '. "/path/to/OpenSpecCompletion.ps1"',
+        '. "/path/to/QASpecCompletion.ps1"',
         '# OPENSPEC:END',
         '',
       ].join('\n');
@@ -713,8 +713,8 @@ Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
 
   describe('uninstall', () => {
     const mockCompletionScript = `# PowerShell completion script
-$openspecCompleter = {}
-Register-ArgumentCompleter -CommandName openspec -ScriptBlock $openspecCompleter
+$qaspecCompleter = {}
+Register-ArgumentCompleter -CommandName qaspec -ScriptBlock $qaspecCompleter
 `;
 
     it('should successfully uninstall when completion script exists', async () => {

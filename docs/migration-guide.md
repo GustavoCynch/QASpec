@@ -1,6 +1,6 @@
 # Migrating to OPSX
 
-This guide helps you transition from the legacy OpenSpec workflow to OPSX. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
+This guide helps you transition from the legacy QASpec workflow to OPSX. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
 
 ## What's Changing?
 
@@ -31,7 +31,7 @@ The migration process is designed with preservation in mind:
 
 ### What Gets Removed
 
-Only OpenSpec-managed files that are being replaced:
+Only QASpec-managed files that are being replaced:
 
 | What | Why |
 |------|-----|
@@ -51,7 +51,7 @@ Only OpenSpec-managed files that are being replaced:
 
 The migration detects whichever tools you have configured and cleans up their legacy files.
 
-The removal list may seem long, but these are all files that OpenSpec originally created. Your own content is never deleted.
+The removal list may seem long, but these are all files that QASpec originally created. Your own content is never deleted.
 
 ### What Needs Your Attention
 
@@ -67,7 +67,7 @@ One file requires manual migration:
 
 The old `project.md` was passive—agents might read it, might not, might forget what they read. We found reliability was inconsistent.
 
-The new `config.yaml` context is **actively injected into every OpenSpec planning request**. This means your project conventions, tech stack, and rules are always present when the AI is creating artifacts. Higher reliability.
+The new `config.yaml` context is **actively injected into every QASpec planning request**. This means your project conventions, tech stack, and rules are always present when the AI is creating artifacts. Higher reliability.
 
 **The tradeoff:**
 
@@ -82,25 +82,25 @@ Don't worry about getting it perfect. We're still learning what works best here,
 
 ## Running the Migration
 
-Both `openspec init` and `openspec update` detect legacy files and guide you through the same cleanup process. Use whichever fits your situation:
+Both `qaspec init` and `qaspec update` detect legacy files and guide you through the same cleanup process. Use whichever fits your situation:
 
 - New installs default to profile `core` (`propose`, `explore`, `apply`, `sync`, `archive`).
 - Migrated installs preserve your previously installed workflows by writing a `custom` profile when needed.
 
-### Using `openspec init`
+### Using `qaspec init`
 
 Run this if you want to add new tools or reconfigure which tools are set up:
 
 ```bash
-openspec init
+qaspec init
 ```
 
 The init command detects legacy files and guides you through cleanup:
 
 ```
-Upgrading to the new OpenSpec
+Upgrading to the new QASpec
 
-OpenSpec now uses agent skills, the emerging standard across coding
+QASpec now uses agent skills, the emerging standard across coding
 agents. This simplifies your setup while keeping everything working
 as before.
 
@@ -119,7 +119,7 @@ Needs your attention
     We won't delete this file. It may contain useful project context.
 
     The new openspec/config.yaml has a "context:" section for planning
-    context. This is included in every OpenSpec request and works more
+    context. This is included in every QASpec request and works more
     reliably than the old project.md approach.
 
     Review project.md, move any useful content to config.yaml's context
@@ -136,12 +136,12 @@ Needs your attention
 4. New skills are installed in `.claude/skills/`
 5. `openspec/config.yaml` is created with a default schema
 
-### Using `openspec update`
+### Using `qaspec update`
 
 Run this if you just want to migrate and refresh your existing tools to the latest version:
 
 ```bash
-openspec update
+qaspec update
 ```
 
 The update command also detects and cleans up legacy artifacts, then refreshes generated skills/commands to match your current profile and delivery settings.
@@ -151,7 +151,7 @@ The update command also detects and cleans up legacy artifacts, then refreshes g
 For scripted migrations:
 
 ```bash
-openspec init --force --tools claude
+qaspec init --force --tools claude
 ```
 
 The `--force` flag skips prompts and auto-accepts cleanup.
@@ -260,7 +260,7 @@ When migrating, be selective. Ask yourself: "Does the AI need this for *every* p
 If you're unsure how to distill your project.md, ask your AI assistant:
 
 ```
-I'm migrating from OpenSpec's old project.md to the new config.yaml format.
+I'm migrating from QASpec's old project.md to the new config.yaml format.
 
 Here's my current project.md:
 [paste your project.md content]
@@ -301,7 +301,7 @@ Command availability is profile-dependent:
 | `/opsx:bulk-archive` | Archive multiple changes at once |
 | `/opsx:onboard` | Guided end-to-end onboarding workflow |
 
-Enable expanded commands with `openspec config profile`, then run `openspec update`.
+Enable expanded commands with `qaspec config profile`, then run `qaspec update`.
 
 ### Command Mapping from Legacy
 
@@ -432,7 +432,7 @@ Shows what's ready to create based on what already exists.
 **Need to see status?**
 
 ```bash
-openspec status --change add-my-feature
+qaspec status --change add-my-feature
 ```
 
 ---
@@ -482,7 +482,7 @@ When determining which schema to use, OPSX checks in order:
 List all available schemas:
 
 ```bash
-openspec schemas
+qaspec schemas
 ```
 
 ### Custom Schemas
@@ -490,13 +490,13 @@ openspec schemas
 Create your own workflow:
 
 ```bash
-openspec schema init my-workflow
+qaspec schema init my-workflow
 ```
 
 Or fork an existing one:
 
 ```bash
-openspec schema fork spec-driven my-workflow
+qaspec schema fork spec-driven my-workflow
 ```
 
 See [Customization](customization.md) for details.
@@ -510,7 +510,7 @@ See [Customization](customization.md) for details.
 You're running in a CI or non-interactive environment. Use:
 
 ```bash
-openspec init --force
+qaspec init --force
 ```
 
 ### Commands not appearing after migration
@@ -526,7 +526,7 @@ Check that your `rules:` keys match your schema's artifact IDs:
 Run this to see valid artifact IDs:
 
 ```bash
-openspec schemas --json
+qaspec schemas --json
 ```
 
 ### Config not being applied
@@ -592,5 +592,5 @@ project/
 ## Getting Help
 
 - **Discord**: [discord.gg/YctCnvvshC](https://discord.gg/YctCnvvshC)
-- **GitHub Issues**: [github.com/Fission-AI/OpenSpec/issues](https://github.com/Fission-AI/OpenSpec/issues)
+- **GitHub Issues**: [github.com/GustavoCynch/QASpec/issues](https://github.com/GustavoCynch/QASpec/issues)
 - **Documentation**: [docs/opsx.md](opsx.md) for the full OPSX reference

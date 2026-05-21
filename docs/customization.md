@@ -1,6 +1,6 @@
 # Customization
 
-OpenSpec provides three levels of customization:
+QASpec provides three levels of customization:
 
 | Level | What it does | Best for |
 |-------|--------------|----------|
@@ -12,7 +12,7 @@ OpenSpec provides three levels of customization:
 
 ## Project Configuration
 
-The `openspec/config.yaml` file is the easiest way to customize OpenSpec for your team. It lets you:
+The `openspec/config.yaml` file is the easiest way to customize QASpec for your team. It lets you:
 
 - **Set a default schema** - Skip `--schema` on every command
 - **Inject project context** - AI sees your tech stack, conventions, etc.
@@ -21,7 +21,7 @@ The `openspec/config.yaml` file is the easiest way to customize OpenSpec for you
 ### Quick Setup
 
 ```bash
-openspec init
+qaspec init
 ```
 
 This walks you through creating a config interactively. Or create one manually:
@@ -51,10 +51,10 @@ rules:
 
 ```bash
 # Without config
-openspec new change my-feature --schema spec-driven
+qaspec new change my-feature --schema spec-driven
 
 # With config - schema is automatic
-openspec new change my-feature
+qaspec new change my-feature
 ```
 
 **Context and rules injection:**
@@ -82,7 +82,7 @@ Tech stack: TypeScript, React, Node.js, PostgreSQL
 
 ### Schema Resolution Order
 
-When OpenSpec needs a schema, it checks in this order:
+When QASpec needs a schema, it checks in this order:
 
 1. CLI flag: `--schema <name>`
 2. Change metadata (`.openspec.yaml` in the change folder)
@@ -112,7 +112,7 @@ your-project/
 The fastest way to customize is to fork a built-in schema:
 
 ```bash
-openspec schema fork spec-driven my-workflow
+qaspec schema fork spec-driven my-workflow
 ```
 
 This copies the entire `spec-driven` schema to `openspec/schemas/my-workflow/` where you can edit it freely.
@@ -137,10 +137,10 @@ For a completely fresh workflow:
 
 ```bash
 # Interactive
-openspec schema init research-first
+qaspec schema init research-first
 
 # Non-interactive
-openspec schema init rapid \
+qaspec schema init rapid \
   --description "Rapid iteration workflow" \
   --artifacts "proposal,tasks" \
   --default
@@ -226,7 +226,7 @@ Templates can include:
 Before using a custom schema, validate it:
 
 ```bash
-openspec schema validate my-workflow
+qaspec schema validate my-workflow
 ```
 
 This checks:
@@ -241,7 +241,7 @@ Once created, use your schema with:
 
 ```bash
 # Specify on command
-openspec new change feature --schema my-workflow
+qaspec new change feature --schema my-workflow
 
 # Or set as default in config.yaml
 schema: my-workflow
@@ -253,10 +253,10 @@ Not sure which schema is being used? Check with:
 
 ```bash
 # See where a specific schema resolves from
-openspec schema which my-workflow
+qaspec schema which my-workflow
 
 # List all available schemas
-openspec schema which --all
+qaspec schema which --all
 ```
 
 Output shows whether it's from your project, user directory, or the package:
@@ -269,7 +269,7 @@ Path: /path/to/project/openspec/schemas/my-workflow
 
 ---
 
-> **Note:** OpenSpec also supports user-level schemas at `~/.local/share/openspec/schemas/` for sharing across projects, but project-level schemas in `openspec/schemas/` are recommended since they're version-controlled with your code.
+> **Note:** QASpec also supports user-level schemas at `~/.local/share/openspec/schemas/` for sharing across projects, but project-level schemas in `openspec/schemas/` are recommended since they're version-controlled with your code.
 
 ---
 
@@ -311,7 +311,7 @@ apply:
 Fork the default and add a review step:
 
 ```bash
-openspec schema fork spec-driven with-review
+qaspec schema fork spec-driven with-review
 ```
 
 Then edit `schema.yaml` to add:
@@ -339,13 +339,13 @@ Then edit `schema.yaml` to add:
 
 ## Community Schemas
 
-OpenSpec also supports community-maintained schemas distributed via standalone repositories. These provide opinionated workflows that integrate OpenSpec with other tools or systems, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) works for spec-kit.
+QASpec also supports community-maintained schemas distributed via standalone repositories. These provide opinionated workflows that integrate QASpec with other tools or systems, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) works for spec-kit.
 
-Community schemas are not vendored into OpenSpec core — they live in their own repositories with their own release cadence. To use one, copy the schema bundle into your project's `openspec/schemas/<schema-name>/` directory (each repo's README has install instructions).
+Community schemas are not vendored into QASpec core — they live in their own repositories with their own release cadence. To use one, copy the schema bundle into your project's `openspec/schemas/<schema-name>/` directory (each repo's README has install instructions).
 
 | Schema | Maintainer | Repository | Description |
 |--------|-----------|-----------|-------------|
-| `superpowers-bridge` | @JiangWay | [JiangWay/openspec-schemas](https://github.com/JiangWay/openspec-schemas/tree/main/superpowers-bridge) | Integrates OpenSpec's artifact governance with [obra/superpowers](https://github.com/obra/superpowers) execution skills (brainstorming, writing-plans, TDD via subagents, code review, finishing). Adds an evidence-first `retrospective` artifact filling a gap Superpowers does not natively cover. |
+| `superpowers-bridge` | @JiangWay | [JiangWay/openspec-schemas](https://github.com/JiangWay/openspec-schemas/tree/main/superpowers-bridge) | Integrates QASpec's artifact governance with [obra/superpowers](https://github.com/obra/superpowers) execution skills (brainstorming, writing-plans, TDD via subagents, code review, finishing). Adds an evidence-first `retrospective` artifact filling a gap Superpowers does not natively cover. |
 
 > Want to contribute a community schema? Open an issue with a link to your repository, or submit a PR adding a row to this table.
 
