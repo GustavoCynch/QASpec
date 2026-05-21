@@ -1,8 +1,8 @@
 # Fases y comandos QASpec (propuesta de producto)
 
-**Estado:** propuesta — acordar aquí antes del schema `qaspec-pr-review` y antes de implementar skills/comandos en el installer.
+**Estado:** implementado en el fork (schema `qaspec-pr-review`, `qas-*` en init). Este documento sigue siendo la referencia de producto.
 
-**Origen del comportamiento:** la skill `.agents/skills/qa-pr-review` se **convierte** en los comandos y skills `qas` de producto (no queda como pack paralelo ni opcional).
+**Origen del comportamiento:** la skill `.agents/skills/qa-pr-review` se **convirtió** en los comandos y skills `qas` de producto. El pack original **permanece en el repo solo como referencia** (no se instala con init).
 
 **Referencias técnicas:** [06-qa-pr-review-phase-mapping.md](./06-qa-pr-review-phase-mapping.md), [05-custom-schema-and-artifacts.md](./05-custom-schema-and-artifacts.md).
 
@@ -289,9 +289,9 @@ publish (requires test-matrix + specs)  ← prerrequisitos Qase; MCP; tracks tes
 
 ## Implementación en el fork (nota breve)
 
-- Plantillas `qas-*` migradas desde `qa-pr-review/SKILL.md` (contenido de Phase 3 y validación → skill `qas-publish`).
-- `qaspec init`: instala familia `qas-*` y `/qas:*` en agentes; escribe `qaspec/references/`.
-- Schema `qaspec-pr-review`: cuatro nodos en el grafo (`analyze`, `test-matrix`, `specs`, `publish`); `test-matrix` y `specs` son hermanos bajo `analyze`; `apply.requires: [test-matrix, specs]`; plantilla `testmatrix.md` con formato checkbox; `publish.tracks: testmatrix.md`; sin `tasks.md` duplicado ni `intake` obligatorio.
+- **Producto (runtime):** plantillas `qas-*` en `src/core/templates/workflows/`; `openspec init` instala familia `qas-*`, `/qas:*`, y escribe `qaspec/references/` desde seeds empaquetados.
+- **Referencia (repo):** `.agents/skills/qa-pr-review/` conserva SKILL.md y `references/` para auditores; no forma parte del perfil core ni de init.
+- Schema `qaspec-pr-review`: cuatro nodos en el grafo (`analyze`, `test-matrix`, `specs`, `publish`); `test-matrix` y `specs` son hermanos bajo `analyze`; `apply.requires: [test-matrix, specs]`; plantilla `testmatrix.md` con formato checkbox; `publish.tracks: testmatrix.md`; plantillas opcionales `publish-log.md` y `execution-context.md`; sin `tasks.md` duplicado ni `intake` obligatorio.
 
 ---
 

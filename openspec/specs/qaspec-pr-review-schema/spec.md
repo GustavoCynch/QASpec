@@ -90,6 +90,22 @@ The schema SHALL define a publish phase that requires both `test-matrix` and `sp
 - **THEN** the change MAY contain `publish-log.md`
 - **AND** the change MAY contain `execution-context.md` when Qase prerequisites were collected
 
+### Requirement: Publish-side artifact templates
+
+The schema package SHALL include optional templates `publish-log.md` and `execution-context.md` under `schemas/qaspec-pr-review/templates/` for agents to use when the publish (`apply`) phase creates tracking files.
+
+#### Scenario: Publish log template exists
+
+- **WHEN** a maintainer lists templates for `qaspec-pr-review`
+- **THEN** `templates/publish-log.md` exists with section placeholders for suite/case trace
+- **AND** `apply.instruction` in `schema.yaml` remains consistent with those file names
+
+#### Scenario: Execution context template exists
+
+- **WHEN** a maintainer lists templates for `qaspec-pr-review`
+- **THEN** `templates/execution-context.md` exists with placeholders for Qase project code, role, and base URL
+- **AND** instructions state the file is optional and create-if-missing during publish
+
 ### Requirement: No mandatory intake artifact
 
 The schema SHALL NOT require an `intake.md` or separate `tasks.md` for the QA cycle.

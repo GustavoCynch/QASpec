@@ -1,6 +1,6 @@
 ---
 name: qa-pr-review
-description: QA PR Review — senior QA workflow for Cynch pull requests. Use when reviewing PRs for testability and risk, generating test cases from changes, or uploading cases to Qase. Same scope as before (Angular, ERP/inventory/billing, ISTQB); read-only on code; Qase via MCP. For PR diffs use GitHub CLI per `gh-cli`; analysts must fetch artifacts with `gh`/`git`. Phases 1–2 use two parallel blind Task subagents plus orchestrator synthesis; halts unchanged.
+description: Reference only — original Cynch QA PR workflow archive. Not installed by `openspec init`; superseded for execution by `/qas:analyze`, `/qas:matrix`, `/qas:publish`. Retained for domain detail and diffing against `qas-*` templates.
 disable-model-invocation: true
 compatibility: "GitHub CLI (gh) authenticated for the repo when reviewing GitHub PRs (orchestrator and each blind analyst); Git available; Qase MCP server configured; historical_bugs and qase_test_case_rules in skill references"
 metadata:
@@ -12,6 +12,8 @@ metadata:
     - "Generating QA test cases from PR changes"
     - "Uploading approved test cases to Qase"
 ---
+
+> **Reference only** — This pack is **not** installed by `openspec init` and is **not** the product QA workflow. Use **`/qas:analyze`**, **`/qas:matrix`**, and **`/qas:publish`** (from `qas-*` skills after init). Consumer projects use `qaspec/references/`; this directory’s `references/` is for maintainers auditing or porting content.
 
 # Cynch QA PR Review
 

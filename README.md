@@ -31,7 +31,14 @@ Additional connectors may follow the same plugin model.
 
 This repository is in **early development** (OpenSpec fork). The CLI ships as `openspec` today; QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `openspec init`. The standalone `qaspec` binary rename is planned (see `roadmap/`).
 
-The legacy `.agents/skills/qa-pr-review` pack is **superseded** by `/qas:analyze`, `/qas:matrix`, and `/qas:publish`; it will be removed in a follow-up change.
+Migration from the legacy pack is **complete**. Authoritative QA runtime is `openspec init` → `/qas:*` + `qaspec-pr-review` schema. The original `.agents/skills/qa-pr-review/` directory is **retained as reference only** (Cynch/domain detail, not installed by init).
+
+| Path | Role |
+|------|------|
+| `.agents/skills/qa-pr-review/references/` | Maintainer reference (historical bugs, Qase rules source) |
+| `qaspec/references/` (after init) | Project runtime seeds copied by `openspec init` |
+
+This repository keeps `.cursor/commands/opsx-*` for **spec-driven** CLI dogfooding; validating `/qas:*` output uses `openspec init` in a temporary directory, not committed `qas-*.md` here.
 
 ## License
 
