@@ -4,250 +4,111 @@ This guide explains how QASpec works after you've installed and initialized it. 
 
 ## How It Works
 
-QASpec helps you and your AI coding assistant agree on what to build before any code is written.
+QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/` or legacy `openspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to your test management system.
 
-**Default quick path (core profile):**
-
-```text
-/opsx:propose ──► /opsx:apply ──► /opsx:sync ──► /opsx:archive
-```
-
-**Expanded path (custom workflow selection):**
+**Default path (core profile)** — installed by `qaspec init`:
 
 ```text
-/opsx:new ──► /opsx:ff or /opsx:continue ──► /opsx:apply ──► /opsx:verify ──► /opsx:archive
+/qas:explore ──► /qas:analyze ──► /qas:matrix ──► /qas:publish ──► /qas:archive
 ```
 
-The default global profile is `core`, which includes `propose`, `explore`, `apply`, `sync`, and `archive`. You can enable the expanded workflow commands with `qaspec config profile` and then `qaspec update`.
+The global **`core`** profile includes exactly five workflows: `explore`, `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qas-*` skills** and **`/qas:*` commands** (see [Supported Tools](supported-tools.md)).
+
+> **Legacy OPSX / upstream OpenSpec:** QASpec does **not** install `/opsx:*` or `openspec-*` agent commands. See [OPSX (legacy)](opsx.md) and [Migration Guide](migration-guide.md) only if you use upstream tooling separately.
 
 ## What QASpec Creates
 
-After running `qaspec init`, your project has this structure:
-
-```
-qaspec/
-├── specs/              # Source of truth (your system's behavior)
-│   └── <domain>/
-│       └── spec.md
-├── changes/            # Proposed updates (one folder per change)
-│   └── <change-name>/
-│       ├── proposal.md
-│       ├── design.md
-│       ├── tasks.md
-│       └── specs/      # Delta specs (what's changing)
-│           └── <domain>/
-│               └── spec.md
-└── config.yaml         # Project configuration (optional)
-```
-
-**Two key directories:**
-
-- **`specs/`** - The source of truth. These specs describe how your system currently behaves. Organized by domain (e.g., `specs/auth/`, `specs/payments/`).
-
-- **`changes/`** - Proposed modifications. Each change gets its own folder with all related artifacts. When a change is complete, its specs merge into the main `specs/` directory.
-
-## Understanding Artifacts
-
-Each change folder contains artifacts that guide the work:
-
-| Artifact | Purpose |
-|----------|---------|
-| `proposal.md` | The "why" and "what" - captures intent, scope, and approach |
-| `specs/` | Delta specs showing ADDED/MODIFIED/REMOVED requirements |
-| `design.md` | The "how" - technical approach and architecture decisions |
-| `tasks.md` | Implementation checklist with checkboxes |
-
-**Artifacts build on each other:**
-
-```
-proposal ──► specs ──► design ──► tasks ──► implement
-   ▲           ▲          ▲                    │
-   └───────────┴──────────┴────────────────────┘
-            update as you learn
-```
-
-You can always go back and refine earlier artifacts as you learn more during implementation.
-
-## How Delta Specs Work
-
-Delta specs are the key concept in QASpec. They show what's changing relative to your current specs.
-
-### The Format
-
-Delta specs use sections to indicate the type of change:
-
-```markdown
-# Delta for Auth
-
-## ADDED Requirements
-
-### Requirement: Two-Factor Authentication
-The system MUST require a second factor during login.
-
-#### Scenario: OTP required
-- GIVEN a user with 2FA enabled
-- WHEN the user submits valid credentials
-- THEN an OTP challenge is presented
-
-## MODIFIED Requirements
-
-### Requirement: Session Timeout
-The system SHALL expire sessions after 30 minutes of inactivity.
-(Previously: 60 minutes)
-
-#### Scenario: Idle timeout
-- GIVEN an authenticated session
-- WHEN 30 minutes pass without activity
-- THEN the session is invalidated
-
-## REMOVED Requirements
-
-### Requirement: Remember Me
-(Deprecated in favor of 2FA)
-```
-
-### What Happens on Archive
-
-When you archive a change:
-
-1. **ADDED** requirements are appended to the main spec
-2. **MODIFIED** requirements replace the existing version
-3. **REMOVED** requirements are deleted from the main spec
-
-The change folder moves to `qaspec/changes/archive/` for audit history.
-
-## Example: Your First Change
-
-Let's walk through adding dark mode to an application.
-
-### 1. Start the Change (Default)
+After `qaspec init`, a typical project includes:
 
 ```text
-You: /opsx:propose add-dark-mode
-
-AI:  Created qaspec/changes/add-dark-mode/
-     ✓ proposal.md — why we're doing this, what's changing
-     ✓ specs/       — requirements and scenarios
-     ✓ design.md    — technical approach
-     ✓ tasks.md     — implementation checklist
-     Ready for implementation!
+qaspec/                          # Planning home (or openspec/ on legacy projects)
+├── config.yaml                  # QA context, rules, schema (optional)
+├── references/                  # historical_bugs.md, qase_test_case_rules.md, …
+├── specs/                       # Source-of-truth capability specs (when used)
+└── changes/
+    └── <change-name>/
+        ├── analisis.md          # From /qas:analyze
+        ├── testmatrix.md        # From /qas:matrix
+        └── specs/               # Delta specs (from matrix phase)
 ```
 
-If you've enabled the expanded workflow profile, you can also do this as two steps: `/opsx:new` then `/opsx:ff` (or `/opsx:continue` incrementally).
+**Agent artifacts** (per selected AI tool), for example on Cursor:
 
-### 2. What Gets Created
+- Skills: `.cursor/skills/qas-analyze/SKILL.md`, …
+- Commands: `.cursor/commands/qas-analyze.md` with `/qas:analyze` in frontmatter
 
-**proposal.md** - Captures the intent:
+## Core Artifacts
 
-```markdown
-# Proposal: Add Dark Mode
+| Artifact | Produced by | Purpose |
+|----------|-------------|---------|
+| `analisis.md` | `/qas:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
+| `testmatrix.md` | `/qas:matrix` | Test cases with approval checkboxes; may create delta specs |
+| Qase (or TCMS) upload | `/qas:publish` | Publish approved matrix after human approval |
+| Archived change | `/qas:archive` | Close the change and merge deltas when applicable |
 
-## Intent
-Users have requested a dark mode option to reduce eye strain
-during nighttime usage.
+`/qas:explore` investigates ideas without requiring prior artifacts. `/qas:matrix` and `/qas:publish` enforce halts for human approval (see [Workflows](workflows.md)).
 
-## Scope
-- Add theme toggle in settings
-- Support system preference detection
-- Persist preference in localStorage
+## Example: First QA Change
 
-## Approach
-Use CSS custom properties for theming with a React context
-for state management.
+### 1. Explore (optional)
+
+```text
+You: /qas:explore payment edge cases
+
+AI:  Investigates code and references; no analisis.md required yet.
 ```
 
-**specs/ui/spec.md** - Delta showing new requirements:
+### 2. Analyze
 
-```markdown
-# Delta for UI
+```text
+You: /qas:analyze checkout-timeout
 
-## ADDED Requirements
-
-### Requirement: Theme Selection
-The system SHALL allow users to choose between light and dark themes.
-
-#### Scenario: Manual toggle
-- GIVEN a user on any page
-- WHEN the user clicks the theme toggle
-- THEN the theme switches immediately
-- AND the preference persists across sessions
-
-#### Scenario: System preference
-- GIVEN a user with no saved preference
-- WHEN the application loads
-- THEN the system's preferred color scheme is used
+AI:  Creates qaspec/changes/checkout-timeout/analisis.md
+     Halts for your confirmation before matrix work.
 ```
 
-**tasks.md** - Implementation checklist:
+### 3. Matrix
 
-```markdown
-# Tasks
+```text
+You: /qas:matrix
 
-## 1. Theme Infrastructure
-- [ ] 1.1 Create ThemeContext with light/dark state
-- [ ] 1.2 Add CSS custom properties for colors
-- [ ] 1.3 Implement localStorage persistence
-
-## 2. UI Components
-- [ ] 2.1 Create ThemeToggle component
-- [ ] 2.2 Add toggle to settings page
-- [ ] 2.3 Update Header to include quick toggle
-
-## 3. Styling
-- [ ] 3.1 Define dark theme color palette
-- [ ] 3.2 Update components to use CSS variables
+AI:  Creates testmatrix.md and delta specs under the change
+     Halts for approval of cases and requirements.
 ```
 
-### 3. Implement
+### 4. Publish
 
-```
-You: /opsx:apply
+```text
+You: /qas:publish
 
-AI:  Working through tasks...
-     ✓ 1.1 Created ThemeContext with light/dark state
-     ✓ 1.2 Added CSS custom properties to globals.css
-     ✓ 1.3 Implemented localStorage persistence
-     ✓ 2.1 Created ThemeToggle component
-     ...
-     All tasks complete!
+AI:  Uploads approved cases via configured MCP (e.g. Qase) when rules allow.
 ```
 
-During implementation, if you discover the design needs adjustment, just update the artifact and continue.
+### 5. Archive
 
-### 4. Archive
+```text
+You: /qas:archive
 
-```
-You: /opsx:archive
-
-AI:  Archiving add-dark-mode...
-     ✓ Merged specs into qaspec/specs/ui/spec.md
-     ✓ Moved to qaspec/changes/archive/2025-01-24-add-dark-mode/
-     Done! Ready for the next feature.
+AI:  Finalizes the change (merge deltas, move to archive per schema).
 ```
 
-Your delta specs are now part of the main specs, documenting how your system works.
+## CLI Alongside Slash Commands
 
-## Verifying and Reviewing
-
-Use the CLI to check on your changes:
+Use the terminal for status, validation, and config:
 
 ```bash
-# List active changes
 qaspec list
-
-# View change details
-qaspec show add-dark-mode
-
-# Validate spec formatting
-qaspec validate add-dark-mode
-
-# Interactive dashboard
-qaspec view
+qaspec show <change>
+qaspec validate <change> --strict
+qaspec instructions analyze --json   # Rules/context for agents
+qaspec config profile
+qaspec update                        # Sync skills/commands to profile
 ```
 
 ## Next Steps
 
-- [Workflows](workflows.md) - Common patterns and when to use each command
-- [Commands](commands.md) - Full reference for all slash commands
-- [Concepts](concepts.md) - Deeper understanding of specs, changes, and schemas
-- [Customization](customization.md) - Make QASpec work your way
+- [Workflows](workflows.md) — Patterns and halts for the QA pipeline
+- [Commands](commands.md) — `/qas:*` reference
+- [Concepts](concepts.md) — Planning home, changes, schemas
+- [Customization](customization.md) — `config.yaml` context and rules
+- [CLI](cli.md) — Full `qaspec` command reference

@@ -2,7 +2,13 @@
 
 > **QASpec product default (current):** `qaspec init` and `qaspec update` install only **`qas-*` skills** and **`/qas:*` commands** (`explore`, `analyze`, `matrix`, `publish`, `archive`). They do not generate `openspec-*` or `/opsx:*` artifacts. The sections below that reference `/opsx:*` describe the historical OPSX workflow for migration context or upstream coexistence—not what QASpec ships by default.
 
-This guide helps you transition from the legacy QASpec workflow to OPSX. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
+This guide helps you transition from older spec-driven workflows. It is **historical reference** for upstream coexistence—not the default path for new QASpec QA projects (`/qas:*`).
+
+---
+
+## Legacy OPSX
+
+The sections below describe OPSX command names and mappings. QASpec CLI does not generate `/opsx:*` or `openspec-*` skills in consumer projects.
 
 ## What's Changing?
 

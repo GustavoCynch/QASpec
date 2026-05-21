@@ -29,17 +29,14 @@ QASpec organizes your work into two main areas:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│                        openspec/                                   │
+│           qaspec/  (or legacy openspec/ planning home)              │
 │                                                                    │
 │   ┌─────────────────────┐      ┌───────────────────────────────┐   │
 │   │       specs/        │      │         changes/              │   │
-│   │                     │      │                               │   │
-│   │  Source of truth    │◄─────│  Proposed modifications       │   │
-│   │  How your system    │ merge│  Each change = one folder     │   │
-│   │  currently works    │      │  Contains artifacts + deltas  │   │
-│   │                     │      │                               │   │
+│   │  Capability specs   │◄─────│  analisis.md, testmatrix.md   │   │
+│   │  (source of truth)  │ merge│  delta specs per change       │   │
 │   └─────────────────────┘      └───────────────────────────────┘   │
-│                                                                    │
+│   references/  config.yaml                                         │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -696,40 +693,29 @@ openspec/
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                              OPENSPEC FLOW                                   │
+│                         QASPEC QA FLOW (core profile)                        │
 │                                                                              │
 │   ┌────────────────┐                                                         │
-│   │  1. START      │  /opsx:propose (core) or /opsx:new (expanded)           │
-│   │     CHANGE     │                                                         │
+│   │  1. EXPLORE    │  /qas:explore (optional)                                 │
 │   └───────┬────────┘                                                         │
-│           │                                                                  │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  2. CREATE     │  /opsx:ff or /opsx:continue (expanded workflow)         │
-│   │     ARTIFACTS  │  Creates proposal → specs → design → tasks              │
-│   │                │  (based on schema dependencies)                         │
+│   │  2. ANALYZE    │  /qas:analyze → analisis.md (halt)                      │
 │   └───────┬────────┘                                                         │
-│           │                                                                  │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  3. IMPLEMENT  │  /opsx:apply                                            │
-│   │     TASKS      │  Work through tasks, checking them off                  │
-│   │                │◄──── Update artifacts as you learn                      │
+│   │  3. MATRIX     │  /qas:matrix → testmatrix.md + delta specs (halt)       │
 │   └───────┬────────┘                                                         │
-│           │                                                                  │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  4. VERIFY     │  /opsx:verify (optional)                                │
-│   │     WORK       │  Check implementation matches specs                     │
+│   │  4. PUBLISH    │  /qas:publish → TCMS (e.g. Qase) when approved          │
 │   └───────┬────────┘                                                         │
-│           │                                                                  │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │
-│   │  5. ARCHIVE    │────►│  Delta specs merge into main specs           │    │
-│   │     CHANGE     │     │  Change folder moves to archive/             │    │
-│   └────────────────┘     │  Specs are now the updated source of truth   │    │
-│                          └──────────────────────────────────────────────┘    │
+│   │  5. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
+│   └────────────────┘     └──────────────────────────────────────────────┘    │
 │                                                                              │
+│  Legacy OPSX workflow: see opsx.md — not installed by QASpec CLI.          │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 

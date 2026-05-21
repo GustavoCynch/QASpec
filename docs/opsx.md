@@ -1,10 +1,12 @@
-# OPSX Workflow
+# OPSX Workflow (legacy)
+
+> **Not installed by QASpec CLI.** `qaspec init` and `qaspec update` install only **`/qas:*`** commands and **`qas-*` skills**. For the current product path, see [Getting Started](getting-started.md) and [Workflows](workflows.md).
 
 > Feedback welcome on [Discord](https://discord.gg/YctCnvvshC).
 
 ## What Is It?
 
-OPSX is now the standard workflow for QASpec.
+OPSX is a **legacy / upstream-style** fluid workflow for spec-driven changes. It remains documented here for migration and maintainer context—not as the default QASpec QA surface.
 
 It's a **fluid, iterative workflow** for QASpec changes. No more rigid phases — just actions you can take anytime.
 

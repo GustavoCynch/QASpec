@@ -1,6 +1,6 @@
 # CLI Reference
 
-The QASpec CLI (`openspec`) provides terminal commands for project setup, validation, status inspection, and management. These commands complement the AI slash commands (like `/opsx:propose`) documented in [Commands](commands.md).
+The QASpec CLI (`qaspec`) provides terminal commands for project setup, validation, status inspection, and management. These commands complement the AI slash commands (`/qas:analyze`, `/qas:matrix`, etc.) documented in [Commands](commands.md).
 
 ## Summary
 
@@ -1105,7 +1105,7 @@ openspec completion uninstall
 
 ## Related Documentation
 
-- [Commands](commands.md) - AI slash commands (`/opsx:propose`, `/opsx:apply`, etc.)
+- [Commands](commands.md) - AI slash commands (`/qas:explore`, `/qas:analyze`, etc.)
 - [Workflows](workflows.md) - Common patterns and when to use each command
 - [Customization](customization.md) - Create custom schemas and templates
 - [Getting Started](getting-started.md) - First-time setup guide
