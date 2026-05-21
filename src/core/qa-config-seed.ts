@@ -4,8 +4,14 @@ import type { ProjectConfig } from './project-config.js';
  * Default QA project config for schema `qaspec-pr-review`.
  * Teams edit stack, domain, and language in `context`; tune phase rules under `rules`.
  */
-export function getQaspecPrReviewConfigSeed(): Pick<ProjectConfig, 'context' | 'rules'> {
+export function getQaspecPrReviewConfigSeed(): Pick<ProjectConfig, 'context' | 'rules' | 'workflow'> {
   return {
+    workflow: {
+      multipleSubagents: {
+        review: false,
+        matrix: false,
+      },
+    },
     context: `Role: Senior QA Architect and test engineer — read-only on application source under test.
 Outputs: analysis artifacts, test matrix, delta specs, and TCMS publish only. Never create, modify, or delete app code.
 
@@ -24,8 +30,9 @@ PRs are test targets, not ground truth.`,
       analyze: [
         'Re-read qaspec/references/historical_bugs.md every analyze pass; apply patterns only when activation signals match',
         'Dual source of truth: compare functional notes/description vs diff; flag intent vs implementation mismatches',
-        'Each blind analyst MUST fetch the change set (gh pr diff/view for GitHub PRs, or git diff / patch per brief) — not a prose-only summary',
-        'Synthesize with Agreed / Single-analyst (lower confidence) / Contradiction; record synthesis in analisis.md',
+        'Default: orchestrator-only (workflow.multipleSubagents.review: false) — fetch change set yourself; no Task subagents',
+        'When workflow.multipleSubagents.review is true: two parallel blind Task analysts; each MUST fetch the change set (gh pr diff/view or git diff / patch)',
+        'When review flag true: synthesize Agreed / Single-analyst / Contradiction in analisis.md Synthesis notes',
         'Cover functional impact, framework/UI risks, API/backend risks, settings/feature flags, regression, responsive/usability, localization when UI touched',
         'List Affected capabilities in kebab-case for the matrix phase; do not write specs/**/*.md or testmatrix.md in analyze',
         'End with exactly one halt question in project language; do not continue to matrix in the same message',
@@ -46,7 +53,8 @@ PRs are test targets, not ground truth.`,
         'Settings toggles: cover enabled and disabled when behavior depends on configuration',
         'Co-produce specs/<capability>/spec.md deltas aligned with matrix cases; no orphan requirements',
         'Checkbox format: ## Suite: <name> then - [ ] N.N Observable title per case with enriched body below',
-        'Dual blind analysts for draft lists; merge by intent, dedupe only when behavior and boundaries match',
+        'Default: orchestrator-only (workflow.multipleSubagents.matrix: false) — draft matrix and specs without Task subagents',
+        'When workflow.multipleSubagents.matrix is true: dual blind Task analysts for draft lists; merge by intent, dedupe only when behavior and boundaries match',
         'Self-audit before halt: every step traceable to a source unless marked as documented gap',
         'End with exactly one approval question covering both testmatrix.md and specs together',
       ],

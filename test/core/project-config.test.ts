@@ -416,6 +416,63 @@ context: |
       });
     });
 
+    describe('workflow.multipleSubagents', () => {
+      it('should parse valid review and matrix flags', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+workflow:
+  multipleSubagents:
+    review: true
+    matrix: false
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.workflow?.multipleSubagents?.review).toBe(true);
+        expect(config?.workflow?.multipleSubagents?.matrix).toBe(false);
+      });
+
+      it('should omit workflow when flags are absent', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.workflow).toBeUndefined();
+      });
+
+      it('should warn and ignore invalid review flag type', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+workflow:
+  multipleSubagents:
+    review: "yes"
+    matrix: true
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('workflow.multipleSubagents.review')
+        );
+        expect(config?.workflow?.multipleSubagents?.review).toBeUndefined();
+        expect(config?.workflow?.multipleSubagents?.matrix).toBe(true);
+      });
+    });
+
     describe('multi-line and special characters', () => {
       it('should preserve multi-line context', () => {
         const configDir = path.join(tempDir, 'openspec');

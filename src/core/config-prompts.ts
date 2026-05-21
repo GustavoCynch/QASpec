@@ -8,6 +8,10 @@ const CONFIG_HEADER = `# QASpec project config
 
 /** Optional footer hints appended after the active qaspec-pr-review seed (not injected into prompts). */
 const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
+# workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
+# workflow.multipleSubagents.matrix — dual Task analysts for /qsx:matrix (default: false)
+# When false, the orchestrator does the phase with no Task subagents (not a single subagent).
+#
 # Extend context above with your own details (shown to AI on every artifact):
 #   - Tech stack, architectures, integrations, test tools
 #   - Conventions, style guides, environment names, doc links
@@ -34,10 +38,13 @@ export function serializeConfig(config: Partial<ProjectConfig>): string {
       ? { ...getQaspecPrReviewConfigSeed(), ...config, schema }
       : { ...config, schema };
 
-  if (merged.context || merged.rules) {
+  if (merged.context || merged.rules || merged.workflow) {
     const body: Record<string, unknown> = { schema: merged.schema };
     if (merged.context) {
       body.context = merged.context;
+    }
+    if (merged.workflow) {
+      body.workflow = merged.workflow;
     }
     if (merged.rules) {
       body.rules = merged.rules;

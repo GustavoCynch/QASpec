@@ -40,7 +40,22 @@ Typical happy path:
 - **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs Qase MCP only after confirmation.
 - **Explore → matrix without analyze:** Matrix still enforces artifact rules from `qaspec instructions matrix --json`.
 
-Team policy lives in `qaspec/config.yaml` (`context`, `rules`). Generated `qaspec-*` skills stay thin and load policy via:
+Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
+
+### Optional dual subagents per phase
+
+By default both flags are **false** — the **orchestrator** (main agent) runs analyze and matrix without Task subagents:
+
+```yaml
+workflow:
+  multipleSubagents:
+    review: false   # /qsx:analyze — PR analysis (analisis.md)
+    matrix: false   # /qsx:matrix — testmatrix.md + delta specs
+```
+
+Set `review: true` and/or `matrix: true` to restore **two parallel blind Task** analysts for that phase (synthesis merge as today). When a flag is false, do not delegate to even one subagent as a shortcut.
+
+`qaspec instructions analyze --json` and `qaspec instructions test-matrix --json` append a **Subagent mode** block reflecting the resolved flags.
 
 ```bash
 qaspec instructions <artifact> --json

@@ -9,6 +9,10 @@ import {
   formatChangeStatus,
   TemplateLoadError,
 } from '../../../src/core/artifact-graph/instruction-loader.js';
+import {
+  SUBAGENT_MODE_DUAL_ANALYST_MARKER,
+  SUBAGENT_MODE_ORCHESTRATOR_MARKER,
+} from '../../../src/core/subagent-mode.js';
 
 describe('instruction-loader', () => {
   describe('loadTemplate', () => {
@@ -410,6 +414,64 @@ rules:
         expect(instructions.context).toBeUndefined();
         expect(instructions.rules).toBeUndefined();
         expect(instructions.template).toContain('## Why');
+      });
+    });
+
+    describe('qaspec-pr-review subagent mode injection', () => {
+      function setupQaReviewProject(
+        root: string,
+        flags: { review?: boolean; matrix?: boolean }
+      ): void {
+        const configDir = path.join(root, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        const lines = ['schema: qaspec-pr-review', 'workflow:', '  multipleSubagents:'];
+        if (flags.review !== undefined) {
+          lines.push(`    review: ${flags.review}`);
+        }
+        if (flags.matrix !== undefined) {
+          lines.push(`    matrix: ${flags.matrix}`);
+        }
+        fs.writeFileSync(path.join(configDir, 'config.yaml'), `${lines.join('\n')}\n`);
+
+        const changeDir = path.join(root, 'openspec', 'changes', 'qa-change');
+        fs.mkdirSync(changeDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(changeDir, '.openspec.yaml'),
+          'schema: qaspec-pr-review\n'
+        );
+      }
+
+      it('should inject orchestrator-only marker for analyze when review is false', () => {
+        setupQaReviewProject(tempDir, { review: false, matrix: false });
+        const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
+        const instructions = generateInstructions(context, 'analyze', tempDir);
+
+        expect(instructions.instruction).toContain(SUBAGENT_MODE_ORCHESTRATOR_MARKER);
+        expect(instructions.instruction).not.toContain(SUBAGENT_MODE_DUAL_ANALYST_MARKER);
+      });
+
+      it('should inject dual-analyst marker for analyze when review is true', () => {
+        setupQaReviewProject(tempDir, { review: true, matrix: false });
+        const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
+        const instructions = generateInstructions(context, 'analyze', tempDir);
+
+        expect(instructions.instruction).toContain(SUBAGENT_MODE_DUAL_ANALYST_MARKER);
+      });
+
+      it('should inject orchestrator-only marker for test-matrix when matrix is false', () => {
+        setupQaReviewProject(tempDir, { review: false, matrix: false });
+        const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
+        const instructions = generateInstructions(context, 'test-matrix', tempDir);
+
+        expect(instructions.instruction).toContain(SUBAGENT_MODE_ORCHESTRATOR_MARKER);
+      });
+
+      it('should inject dual-analyst marker for test-matrix when matrix is true', () => {
+        setupQaReviewProject(tempDir, { review: false, matrix: true });
+        const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
+        const instructions = generateInstructions(context, 'test-matrix', tempDir);
+
+        expect(instructions.instruction).toContain(SUBAGENT_MODE_DUAL_ANALYST_MARKER);
       });
     });
 

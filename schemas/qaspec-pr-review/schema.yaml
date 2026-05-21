@@ -18,7 +18,7 @@ artifacts:
       - Run `/qas:analyze` skill steps: `qaspec instructions analyze --json` for template and resolvedOutputPath.
       - Read `qaspec/references/historical_bugs.md` from the project root (mandatory; re-read every pass).
       - Gather the change set via `gh pr diff` / `gh pr view` when reviewing a GitHub PR, or `git diff` / user-supplied patch otherwise.
-      - Use dual blind analyst Task delegations in parallel (each analyst fetches the diff); synthesize Agreed / Single-analyst / Contradiction in **Synthesis notes**.
+      - Honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations in parallel (each analyst fetches the diff) and synthesize Agreed / Single-analyst / Contradiction in **Synthesis notes**; when false, orchestrator fetches the diff and writes `analisis.md` with no Task subagents.
 
       Fill every section in the template, using N/A when not applicable:
       - Summary, **Affected capabilities** (kebab-case; no delta spec files in this step)
@@ -58,7 +58,7 @@ artifacts:
       - Read `analisis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
         **Functional intent vs implementation**, **Risks for matrix phase**, **Synthesis notes**.
       - For each capability listed in `analisis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
-      - Use dual blind analyst Task delegations for draft lists; pass the full `analisis.md` body in each analyst brief as binding constraints.
+      - Honor `workflow.multipleSubagents.matrix` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations for draft lists and pass the full `analisis.md` body in each analyst brief as binding constraints; when false, orchestrator drafts matrix and specs with no Task subagents.
       - Use the PR diff only to derive how to observe/test agreed behavior — not to override validated analysis.
       - Merge analyst drafts by intent; dedupe only when behavior and boundaries match.
 

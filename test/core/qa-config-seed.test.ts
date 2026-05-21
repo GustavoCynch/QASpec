@@ -24,15 +24,24 @@ describe('qa-config-seed', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('seed includes workflow.multipleSubagents defaults false', () => {
+    const seed = getQaspecPrReviewConfigSeed();
+    expect(seed.workflow?.multipleSubagents?.review).toBe(false);
+    expect(seed.workflow?.multipleSubagents?.matrix).toBe(false);
+  });
+
   it('serializeConfig for qaspec-pr-review emits parseable YAML with active rules', () => {
     const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
     const parsed = parseYaml(yaml.replace(/^#.*\n/gm, '')) as {
       schema: string;
       context: string;
+      workflow?: { multipleSubagents?: { review?: boolean; matrix?: boolean } };
       rules: Record<string, string[]>;
     };
 
     expect(parsed.schema).toBe('qaspec-pr-review');
+    expect(parsed.workflow?.multipleSubagents?.review).toBe(false);
+    expect(parsed.workflow?.multipleSubagents?.matrix).toBe(false);
     expect(parsed.context).toContain('read-only');
     expect(parsed.context).toContain('Language: (edit');
     expect(parsed.context).not.toContain('<!--');
@@ -74,6 +83,15 @@ describe('qa-config-seed', () => {
     expect(content).toContain('**Preconditions:**');
     expect(content).toContain('**Steps:**');
     expect(content).toMatch(/\| # \| Action \| Expected \|/);
+  });
+
+  it('qaspec-pr-review schema references multipleSubagents config flags', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..');
+    const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
+    const content = fs.readFileSync(schemaPath, 'utf-8');
+
+    expect(content).toContain('workflow.multipleSubagents.review');
+    expect(content).toContain('workflow.multipleSubagents.matrix');
   });
 
   it('qaspec-pr-review schema test-matrix instruction requires enriched case body', () => {

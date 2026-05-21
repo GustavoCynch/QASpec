@@ -7,6 +7,10 @@ import { resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
 import { readProjectConfig, validateConfigRules } from '../project-config.js';
+import {
+  getSubagentModeInstructionAppendix,
+  resolveMultipleSubagents,
+} from '../subagent-mode.js';
 import { joinPlanningPath } from '../planning-dir.js';
 import type { PlanningHome } from '../planning-home.js';
 import type { Artifact, CompletedSet } from './types.js';
@@ -323,6 +327,22 @@ export function generateInstructions(
   const rulesForArtifact = projectConfig?.rules?.[artifactId];
   const configRules = rulesForArtifact && rulesForArtifact.length > 0 ? rulesForArtifact : undefined;
 
+  let enrichedInstruction = artifact.instruction;
+  if (context.schemaName === 'qaspec-pr-review') {
+    const subagentFlags = resolveMultipleSubagents(projectConfig);
+    if (artifactId === 'analyze') {
+      const appendix = getSubagentModeInstructionAppendix('analyze', subagentFlags.review);
+      enrichedInstruction = enrichedInstruction
+        ? `${enrichedInstruction}\n\n${appendix}`
+        : appendix;
+    } else if (artifactId === 'test-matrix') {
+      const appendix = getSubagentModeInstructionAppendix('test-matrix', subagentFlags.matrix);
+      enrichedInstruction = enrichedInstruction
+        ? `${enrichedInstruction}\n\n${appendix}`
+        : appendix;
+    }
+  }
+
   return {
     changeName: context.changeName,
     artifactId: artifact.id,
@@ -333,7 +353,7 @@ export function generateInstructions(
     resolvedOutputPath: path.join(context.changeDir, artifact.generates),
     existingOutputPaths: resolveArtifactOutputs(context.changeDir, artifact.generates),
     description: artifact.description,
-    instruction: artifact.instruction,
+    instruction: enrichedInstruction,
     context: configContext,
     rules: configRules,
     template: templateContent,

@@ -17,6 +17,15 @@ import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js'
  * - Single source of truth for type and validation
  * - Consistent with other QASpec schemas
  */
+const MultipleSubagentsConfigSchema = z.object({
+  review: z.boolean().optional().describe('Dual Task analysts for analyze/review phase'),
+  matrix: z.boolean().optional().describe('Dual Task analysts for matrix phase'),
+});
+
+const WorkflowConfigSchema = z.object({
+  multipleSubagents: MultipleSubagentsConfigSchema.optional(),
+});
+
 export const ProjectConfigSchema = z.object({
   // Required: which schema to use (e.g., "spec-driven", or project-local schema name)
   schema: z
@@ -39,6 +48,9 @@ export const ProjectConfigSchema = z.object({
     )
     .optional()
     .describe('Per-artifact rules, keyed by artifact ID'),
+
+  // Optional: workflow execution toggles (e.g. dual blind subagents per phase)
+  workflow: WorkflowConfigSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
@@ -153,6 +165,53 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
         }
       } else {
         console.warn(`Invalid 'rules' field in config (must be object)`);
+      }
+    }
+
+    // Parse workflow.multipleSubagents (resilient per flag)
+    if (raw.workflow !== undefined) {
+      if (typeof raw.workflow === 'object' && raw.workflow !== null && !Array.isArray(raw.workflow)) {
+        const workflowRaw = raw.workflow as Record<string, unknown>;
+        const msRaw = workflowRaw.multipleSubagents;
+        if (msRaw !== undefined) {
+          if (typeof msRaw === 'object' && msRaw !== null && !Array.isArray(msRaw)) {
+            const msObj = msRaw as Record<string, unknown>;
+            const parsedMs: { review?: boolean; matrix?: boolean } = {};
+            let hasMs = false;
+
+            if (msObj.review !== undefined) {
+              const reviewResult = z.boolean().safeParse(msObj.review);
+              if (reviewResult.success) {
+                parsedMs.review = reviewResult.data;
+                hasMs = true;
+              } else {
+                console.warn(
+                  `Invalid 'workflow.multipleSubagents.review' in config (must be boolean)`
+                );
+              }
+            }
+
+            if (msObj.matrix !== undefined) {
+              const matrixResult = z.boolean().safeParse(msObj.matrix);
+              if (matrixResult.success) {
+                parsedMs.matrix = matrixResult.data;
+                hasMs = true;
+              } else {
+                console.warn(
+                  `Invalid 'workflow.multipleSubagents.matrix' in config (must be boolean)`
+                );
+              }
+            }
+
+            if (hasMs) {
+              config.workflow = { multipleSubagents: parsedMs };
+            }
+          } else {
+            console.warn(`Invalid 'workflow.multipleSubagents' in config (must be object)`);
+          }
+        }
+      } else {
+        console.warn(`Invalid 'workflow' field in config (must be object)`);
       }
     }
 
