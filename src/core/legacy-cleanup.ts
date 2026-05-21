@@ -45,7 +45,7 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   'lingma': { type: 'directory', path: '.lingma/commands/openspec' },
   'crush': { type: 'directory', path: '.crush/commands/openspec' },
   'gemini': { type: 'directory', path: '.gemini/commands/openspec' },
-  'costrict': { type: 'directory', path: '.cospec/openspec/commands' },
+  'costrict': { type: 'directory', path: '.cospec/commands' },
 
   // File-based: individual openspec-*.md files in a commands/workflows/prompts folder
   'cursor': {

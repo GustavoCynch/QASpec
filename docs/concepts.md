@@ -29,7 +29,7 @@ QASpec organizes your work into two main areas:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│           qaspec/  (or legacy openspec/ planning home)              │
+│           qaspec/  (planning home)                                   │
 │                                                                    │
 │   ┌─────────────────────┐      ┌───────────────────────────────┐   │
 │   │       specs/        │      │         changes/              │   │
@@ -67,7 +67,7 @@ A workspace has a different shape from a repo-local project:
 ```text
 workspace-folder/
 ├── changes/                       # Workspace-level planning
-└── .qaspec-workspace/   # legacy installs may use .openspec-workspace/
+└── .qaspec-workspace/
     ├── workspace.yaml             # Shared workspace identity and link names
     └── local.yaml                 # This machine's local paths
 ```
@@ -81,7 +81,7 @@ repo-root/
     └── changes/
 ```
 
-That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's planning home (`qaspec/` or legacy `openspec/`) remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `qaspec init` inside a workspace folder.
+That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's `qaspec/` planning home remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `qaspec init` inside a workspace folder.
 
 Stable link names are how workspace planning refers to repos and folders. The shared workspace state keeps names such as `api`, `web`, or `checkout`; each machine maps those names to its own local paths in `.qaspec-workspace/local.yaml`.
 
@@ -122,7 +122,7 @@ Managed workspaces live under the standard QASpec data directory:
 getGlobalDataDir()/workspaces
 ```
 
-That means `$XDG_DATA_HOME/openspec/workspaces` when `XDG_DATA_HOME` is set, `~/.local/share/openspec/workspaces` on Unix-style fallback, and `%LOCALAPPDATA%\openspec\workspaces` on native Windows fallback. Native Windows shells, PowerShell, and WSL2 each keep the path strings for the runtime running QASpec. This foundation does not translate between `D:\repo`, `/mnt/d/repo`, and UNC WSL paths.
+Managed workspaces live under the QASpec global data directory's `workspaces/` subdirectory (platform-specific; see `getGlobalDataDir()` in the CLI sources). Native Windows shells, PowerShell, and WSL2 each keep the path strings for the runtime running QASpec. This foundation does not translate between `D:\repo`, `/mnt/d/repo`, and UNC WSL paths.
 
 QASpec also keeps a machine-local registry at:
 
@@ -324,7 +324,7 @@ qaspec/changes/add-dark-mode/
 ├── proposal.md           # Why and what
 ├── design.md             # How (technical approach)
 ├── tasks.md              # Implementation checklist
-├── .openspec.yaml        # Change metadata (optional)
+├── (change metadata)     # Optional; see change folder metadata file
 └── specs/                # Delta specs
     └── ui/
         └── spec.md       # What's changing in ui/spec.md
@@ -715,7 +715,7 @@ qaspec/
 │   │  5. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
 │   └────────────────┘     └──────────────────────────────────────────────┘    │
 │                                                                              │
-│  Legacy OPSX workflow: legacy `/opsx:*` — not installed by QASpec CLI.          │
+│  Default workflow: `/qas:*` commands installed by `qaspec init`.                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 

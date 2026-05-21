@@ -4,7 +4,7 @@ Reference for QASpec **slash commands** installed by `qaspec init` and `qaspec u
 
 For workflow patterns, see [Workflows](workflows.md). For terminal commands, see [CLI](cli.md).
 
-> **Not installed by QASpec:** `/opsx:*` and `openspec-*` skills are legacy/upstream surfaces only. QASpec ships `/qas:*` commands via `qaspec init`.
+> **Not installed by QASpec:** legacy upstream slash-command workflows and third-party skill packs. QASpec ships `/qas:*` commands via `qaspec init`.
 
 ## Quick Reference (core profile)
 
@@ -58,7 +58,7 @@ Produce **`analisis.md`** for the active change: risks, affected capabilities (k
 
 **What it does:**
 
-- Creates or updates a folder under `qaspec/changes/<change>/` (or `openspec/changes/` on legacy homes)
+- Creates or updates a folder under `qaspec/changes/<change>/`
 - Writes `analisis.md`; reads `qaspec/references/historical_bugs.md` when present
 - Does **not** write `specs/**/*.md` in this step
 - Ends with a **halt** for human confirmation before matrix work in the same turn
@@ -85,7 +85,7 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 - Prior `/qas:analyze` (or manually authored `analisis.md`) unless you explicitly accept gaps
 - Reads `qaspec/references/qase_test_case_rules.md` when publishing to Qase later
-- Reads `openspec/specs/<capability>/spec.md` or `qaspec/specs/...` for capabilities listed in `analisis.md`
+- Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md`
 
 **What it does:**
 

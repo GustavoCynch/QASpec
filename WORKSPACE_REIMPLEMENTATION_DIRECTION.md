@@ -89,7 +89,7 @@ workspace-folder/
 
 Product decisions:
 
-- Use `.qaspec-workspace/`, not the planning home (`qaspec/` or legacy `openspec/`), for workspace metadata.
+- Use `.qaspec-workspace/`, not the repo planning home (`qaspec/`), for workspace metadata.
 - Keep `changes/` visible in the workspace folder.
 - Keep setup as the only public creation path for the first release; do not expose `workspace create`.
 - Use `workspace link` and `workspace relink`, not POC-era `add-repo` or `update-repo`.
@@ -326,7 +326,7 @@ This likely wants a normalized context command internally, but that is supportin
   "mode": "workspace",
   "change": "integrate-docs",
   "target": "landing",
-  "implementationRoot": "/repos/openspec-landing",
+  "implementationRoot": "/repos/qaspec-landing",
   "contextFiles": [
     "changes/integrate-docs/proposal.md",
     "changes/integrate-docs/design.md",
@@ -334,7 +334,7 @@ This likely wants a normalized context command internally, but that is supportin
     "changes/integrate-docs/specs/landing/docs-routing/spec.md"
   ],
   "allowedEditRoots": [
-    "/repos/openspec-landing"
+    "/repos/qaspec-landing"
   ],
   "tasksFile": "changes/integrate-docs/tasks.md"
 }

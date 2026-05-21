@@ -4,7 +4,7 @@ This guide explains how QASpec works after you've installed and initialized it. 
 
 ## How It Works
 
-QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/` or legacy `openspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to your test management system.
+QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to your test management system.
 
 **Default path (core profile)** — installed by `qaspec init`:
 
@@ -14,14 +14,14 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 
 The global **`core`** profile includes exactly five workflows: `explore`, `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qas-*` skills** and **`/qas:*` commands** (see [Supported Tools](supported-tools.md)).
 
-> **Legacy upstream tooling:** QASpec does **not** install `/opsx:*` or `openspec-*` agent commands. Use `/qas:*` from `qaspec init` unless you maintain separate upstream tooling.
+> **Default install:** QASpec ships `/qas:*` agent commands via `qaspec init`. Third-party upstream tooling is not installed by this CLI.
 
 ## What QASpec Creates
 
 After `qaspec init`, a typical project includes:
 
 ```text
-qaspec/                          # Planning home (or openspec/ on legacy projects)
+qaspec/                          # Planning home
 ├── config.yaml                  # QA context, rules, schema (optional)
 ├── references/                  # historical_bugs.md, qase_test_case_rules.md, …
 ├── specs/                       # Source-of-truth capability specs (when used)

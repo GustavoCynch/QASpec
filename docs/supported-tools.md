@@ -15,7 +15,7 @@ By default, QASpec uses the **`core`** profile:
 
 Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
 
-QASpec does **not** install legacy `openspec-*` skills or `/opsx:*` commands. It installs `qas-*` skills and `/qas:*` commands via `qaspec init`.
+QASpec installs `qas-*` skills and `/qas:*` commands via `qaspec init` (not third-party upstream skill packs).
 
 ## Tool Directory Reference
 
@@ -33,7 +33,7 @@ Patterns below use `<id>` as one of: `explore`, `analyze`, `matrix`, `publish`, 
 | Codex (`codex`) | `.codex/skills/qas-*/SKILL.md` | `$CODEX_HOME/prompts/qas-<id>.md`\* |
 | ForgeCode (`forgecode`) | `.forge/skills/qas-*/SKILL.md` | Not generated (skills only) |
 | Continue (`continue`) | `.continue/skills/qas-*/SKILL.md` | `.continue/prompts/qas-<id>.prompt` |
-| CoStrict (`costrict`) | `.cospec/skills/qas-*/SKILL.md` | `.cospec/openspec/commands/qas-<id>.md` |
+| CoStrict (`costrict`) | `.cospec/skills/qas-*/SKILL.md` | `.cospec/commands/qas-<id>.md` |
 | Crush (`crush`) | `.crush/skills/qas-*/SKILL.md` | `.crush/commands/qas/<id>.md` |
 | Cursor (`cursor`) | `.cursor/skills/qas-*/SKILL.md` | `.cursor/commands/qas-<id>.md` |
 | Factory Droid (`factory`) | `.factory/skills/qas-*/SKILL.md` | `.factory/commands/qas-<id>.md` |

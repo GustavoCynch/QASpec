@@ -93,7 +93,7 @@ On first init with the QASpec default schema, `config.yaml` includes active `con
 When QASpec needs a schema, it checks in this order:
 
 1. CLI flag: `--schema <name>`
-2. Change metadata (`.openspec.yaml` in the change folder)
+2. Change metadata file in the change folder
 3. Project config (`qaspec/config.yaml`)
 4. Default (`spec-driven`)
 

@@ -240,7 +240,7 @@ qaspec workspace link api-service /repos/api
 qaspec workspace link --workspace platform /repos/platform/apps/checkout
 ```
 
-The path must already exist. Relative paths are resolved against the command's current directory before QASpec stores the verified absolute path in machine-local workspace state. Linked paths can be full repos, packages, services, apps, or folders without repo-local `openspec/` state.
+The path must already exist. Relative paths are resolved against the command's current directory before QASpec stores the verified absolute path in machine-local workspace state. Linked paths can be full repos, packages, services, apps, or folders without a repo-local QASpec planning home.
 
 ### `qaspec workspace relink`
 
@@ -568,14 +568,14 @@ qaspec archive update-ci-config --skip-specs
 
 1. Validates the change (unless `--no-validate`)
 2. Prompts for confirmation (unless `--yes`)
-3. Merges delta specs into `openspec/specs/`
-4. Moves change folder to `openspec/changes/archive/YYYY-MM-DD-<name>/`
+3. Merges delta specs into `qaspec/specs/`
+4. Moves change folder to `qaspec/changes/archive/YYYY-MM-DD-<name>/`
 
 ---
 
 ## Workflow Commands
 
-These commands support the artifact-driven OPSX workflow. They're useful for both humans checking progress and agents determining next steps.
+These commands support QASpec's artifact-driven workflow. They're useful for both humans checking progress and agents determining next steps.
 
 ### `qaspec status`
 
@@ -721,10 +721,12 @@ qaspec templates --json
 Schema: spec-driven
 
 Templates:
-  proposal  → ~/.local/share/openspec/schemas/spec-driven/templates/proposal.md
-  specs     → ~/.local/share/openspec/schemas/spec-driven/templates/specs.md
-  design    → ~/.local/share/openspec/schemas/spec-driven/templates/design.md
-  tasks     → ~/.local/share/openspec/schemas/spec-driven/templates/tasks.md
+  proposal  → <user-schema-dir>/spec-driven/templates/proposal.md
+  specs     → <user-schema-dir>/spec-driven/templates/specs.md
+  design    → <user-schema-dir>/spec-driven/templates/design.md
+  tasks     → <user-schema-dir>/spec-driven/templates/tasks.md
+
+Use `qaspec templates --json` for resolved paths on your machine.
 ```
 
 ---
@@ -810,7 +812,7 @@ qaspec schema init rapid \
 **What it creates:**
 
 ```
-openspec/schemas/<name>/
+qaspec/schemas/<name>/
 ├── schema.yaml           # Schema definition
 └── templates/
     ├── proposal.md       # Template for each artifact
@@ -917,13 +919,13 @@ qaspec schema which spec-driven
 
 ```
 spec-driven resolves from: package
-  Source: /usr/local/lib/node_modules/@fission-ai/openspec/schemas/spec-driven
+  Source: /usr/local/lib/node_modules/@qaspec/cli/schemas/spec-driven
 ```
 
 **Schema precedence:**
 
-1. Project: `openspec/schemas/<name>/`
-2. User: `~/.local/share/openspec/schemas/<name>/`
+1. Project: `qaspec/schemas/<name>/`
+2. User: user-level schema directory (see `qaspec schema which --all`)
 3. Package: Built-in schemas
 
 ---
@@ -1073,7 +1075,7 @@ qaspec completion install
 qaspec completion install zsh
 
 # Generate script for manual installation
-qaspec completion generate bash > ~/.bash_completion.d/openspec
+qaspec completion generate bash > ~/.bash_completion.d/qaspec
 
 # Uninstall
 qaspec completion uninstall
