@@ -41,6 +41,12 @@ const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
 
+const CLI_PROGRAM_NAME = 'qaspec';
+
+if (process.env.QASPEC_DEPRECATED_SHIM === '1') {
+  console.error('openspec is deprecated; use qaspec');
+}
+
 /**
  * Get the full command path for nested commands.
  * For example: 'change show' -> 'change:show'
@@ -51,19 +57,18 @@ function getCommandPath(command: Command): string {
 
   while (current) {
     const name = current.name();
-    // Skip the root 'openspec' command
-    if (name && name !== 'openspec') {
+    if (name && name !== CLI_PROGRAM_NAME) {
       names.unshift(name);
     }
     current = current.parent;
   }
 
-  return names.join(':') || 'openspec';
+  return names.join(':') || CLI_PROGRAM_NAME;
 }
 
 program
-  .name('openspec')
-  .description('AI-native system for spec-driven development')
+  .name(CLI_PROGRAM_NAME)
+  .description('QASpec — AI-native QA planning and spec-driven workflows')
   .version(version);
 
 // Global options
@@ -97,7 +102,7 @@ const toolsOptionDescription = `Configure AI tools non-interactively. Use "all",
 
 program
   .command('init [path]')
-  .description('Initialize OpenSpec in your project')
+  .description('Initialize QASpec in your project')
   .option('--tools <tools>', toolsOptionDescription)
   .option('--force', 'Auto-cleanup legacy files without prompting')
   .option('--profile <profile>', 'Override global config profile (core or custom)')
@@ -144,7 +149,7 @@ program
   .option('--no-interactive', 'Disable interactive prompts')
   .action(async (options?: { tool?: string; noInteractive?: boolean }) => {
     try {
-      console.log('Note: "openspec experimental" is deprecated. Use "openspec init" instead.');
+      console.log('Note: "qaspec experimental" is deprecated. Use "qaspec init" instead.');
       const { InitCommand } = await import('../core/init.js');
       const initCommand = new InitCommand({
         tools: options?.tool,
@@ -221,7 +226,7 @@ const changeCmd = program
 
 // Deprecation notice for noun-based commands
 changeCmd.hook('preAction', () => {
-  console.error('Warning: The "openspec change ..." commands are deprecated. Prefer verb-first commands (e.g., "openspec list", "openspec validate --changes").');
+  console.error('Warning: The "qaspec change ..." commands are deprecated. Prefer verb-first commands (e.g., "qaspec list", "qaspec validate --changes").');
 });
 
 changeCmd
@@ -243,12 +248,12 @@ changeCmd
 
 changeCmd
   .command('list')
-  .description('List all active changes (DEPRECATED: use "openspec list" instead)')
+  .description('List all active changes (DEPRECATED: use "qaspec list" instead)')
   .option('--json', 'Output as JSON')
   .option('--long', 'Show id and title with counts')
   .action(async (options?: { json?: boolean; long?: boolean }) => {
     try {
-      console.error('Warning: "openspec change list" is deprecated. Use "openspec list".');
+      console.error('Warning: "qaspec change list" is deprecated. Use "qaspec list".');
       const changeCommand = new ChangeCommand();
       await changeCommand.list(options);
     } catch (error) {

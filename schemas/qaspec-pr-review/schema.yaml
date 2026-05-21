@@ -10,7 +10,7 @@ artifacts:
       Create `analisis.md` as the testable-change analysis artifact.
 
       **Language:** Write all artifact body text and halt messages in the project language from
-      `openspec/config.yaml` `context` and `rules` (see docs/multi-language.md).
+      `qaspec/config.yaml` `context` and `rules` (see docs/multi-language.md).
 
       Before writing:
       - Read `qaspec/references/historical_bugs.md` from the project root (mandatory; re-read every pass).
@@ -36,12 +36,12 @@ artifacts:
       Create or update `testmatrix.md` as the QA task list (equivalent to `tasks.md` in spec-driven).
 
       **Language:** Write all artifact body text and halt messages in the project language from
-      `openspec/config.yaml` `context` and `rules`.
+      `qaspec/config.yaml` `context` and `rules`.
 
       Before writing:
       - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
       - Read `analisis.md` for context, including **Affected capabilities**.
-      - For each capability listed in `analisis.md`, read `openspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
+      - For each capability listed in `analisis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
       - Use dual blind analyst Task delegations for draft lists, merge, then one synthesized matrix.
 
       **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this change for testable behavior introduced or changed. Align requirements and scenarios with cases in `testmatrix.md` (no orphan requirements). Use the `specs` artifact instructions and `templates/spec.md` delta format.
@@ -71,7 +71,7 @@ artifacts:
       Before writing:
       - Read `analisis.md` (**Affected capabilities** section).
       - Read `testmatrix.md` when it exists; keep requirements aligned with listed cases.
-      - For each affected capability, read `openspec/specs/<capability>/spec.md` when present before writing MODIFIED blocks.
+      - For each affected capability, read `qaspec/specs/<capability>/spec.md` when present before writing MODIFIED blocks.
 
       Create one spec file per affected capability: `specs/<capability>/spec.md`.
 

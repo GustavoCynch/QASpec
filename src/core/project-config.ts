@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
+import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js';
 
 /**
  * Zod schema for project configuration.
@@ -64,10 +65,13 @@ const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit
  * @returns Parsed config or null if file doesn't exist
  */
 export function readProjectConfig(projectRoot: string): ProjectConfig | null {
+  const configRelYaml = formatPlanningRelativePath(projectRoot, 'config.yaml');
+  const configRelYml = formatPlanningRelativePath(projectRoot, 'config.yml');
+
   // Try both .yaml and .yml, prefer .yaml
-  let configPath = path.join(projectRoot, 'openspec', 'config.yaml');
+  let configPath = joinPlanningPath(projectRoot, 'config.yaml');
   if (!existsSync(configPath)) {
-    configPath = path.join(projectRoot, 'openspec', 'config.yml');
+    configPath = joinPlanningPath(projectRoot, 'config.yml');
     if (!existsSync(configPath)) {
       return null; // No config is OK
     }
@@ -78,7 +82,7 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
     const raw = parseYaml(content);
 
     if (!raw || typeof raw !== 'object') {
-      console.warn(`openspec/config.yaml is not a valid YAML object`);
+      console.warn(`${configRelYaml} is not a valid YAML object`);
       return null;
     }
 
@@ -155,7 +159,7 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
     // Return partial config even if some fields failed
     return Object.keys(config).length > 0 ? (config as ProjectConfig) : null;
   } catch (error) {
-    console.warn(`Failed to parse openspec/config.yaml:`, error);
+    console.warn(`Failed to parse ${configRelYaml}:`, error);
     return null;
   }
 }
@@ -200,7 +204,8 @@ export function validateConfigRules(
  */
 export function suggestSchemas(
   invalidSchemaName: string,
-  availableSchemas: { name: string; isBuiltIn: boolean }[]
+  availableSchemas: { name: string; isBuiltIn: boolean }[],
+  projectRoot: string = process.cwd()
 ): string {
   // Simple fuzzy match: Levenshtein distance
   function levenshtein(a: string, b: string): number {
@@ -237,7 +242,8 @@ export function suggestSchemas(
   const builtIn = availableSchemas.filter((s) => s.isBuiltIn).map((s) => s.name);
   const projectLocal = availableSchemas.filter((s) => !s.isBuiltIn).map((s) => s.name);
 
-  let message = `Schema '${invalidSchemaName}' not found in openspec/config.yaml\n\n`;
+  const configRel = formatPlanningRelativePath(projectRoot, 'config.yaml');
+  let message = `Schema '${invalidSchemaName}' not found in ${configRel}\n\n`;
 
   if (suggestions.length > 0) {
     message += `Did you mean one of these?\n`;
@@ -258,7 +264,7 @@ export function suggestSchemas(
     message += `  Project-local: (none found)\n`;
   }
 
-  message += `\nFix: Edit openspec/config.yaml and change 'schema: ${invalidSchemaName}' to a valid schema name`;
+  message += `\nFix: Edit ${configRel} and change 'schema: ${invalidSchemaName}' to a valid schema name`;
 
   return message;
 }

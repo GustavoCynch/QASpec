@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getGlobalDataDir } from '../global-config.js';
+import { joinPlanningPath } from '../planning-dir.js';
 import { parseSchema, SchemaValidationError } from './schema.js';
 import type { SchemaYaml } from './types.js';
 
@@ -42,7 +43,7 @@ export function getUserSchemasDir(): string {
  * @returns The path to the project's schemas directory
  */
 export function getProjectSchemasDir(projectRoot: string): string {
-  return path.join(projectRoot, 'openspec', 'schemas');
+  return joinPlanningPath(projectRoot, 'schemas');
 }
 
 /**

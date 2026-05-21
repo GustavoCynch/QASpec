@@ -1,6 +1,6 @@
 # Roadmap: renombre de comandos y CLI
 
-**Estado:** pendiente — el fork actual mantiene OpenSpec sin cambios.
+**Estado:** hecho — binario primario `qaspec`, paquete `@qaspec/cli`, planning home `qaspec/` con fallback `openspec/`.
 
 ## Objetivo final
 

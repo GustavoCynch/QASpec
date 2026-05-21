@@ -9,28 +9,30 @@
 ### npm
 
 ```bash
-npm install -g @fission-ai/openspec@latest
+npm install -g @qaspec/cli@latest
 ```
+
+The package also exposes a deprecated `openspec` shim that prints a one-line notice and delegates to `qaspec`.
 
 ### pnpm
 
 ```bash
-pnpm add -g @fission-ai/openspec@latest
+pnpm add -g @qaspec/cli@latest
 ```
 
 ### yarn
 
 ```bash
-yarn global add @fission-ai/openspec@latest
+yarn global add @qaspec/cli@latest
 ```
 
 ### bun
 
-Bun can install OpenSpec globally, but OpenSpec currently runs on Node.js.
+Bun can install QASpec globally, but the CLI currently runs on Node.js.
 You still need Node.js 20.19.0 or higher available on `PATH`.
 
 ```bash
-bun add -g @fission-ai/openspec@latest
+bun add -g @qaspec/cli@latest
 ```
 
 ## Nix

@@ -778,7 +778,7 @@ E1 updated`);
       
       await expect(
         archiveCommand.execute('any-change', { yes: true })
-      ).rejects.toThrow("No OpenSpec changes directory found. Run 'openspec init' first.");
+      ).rejects.toThrow("No QASpec changes directory found. Run 'qaspec init' first.");
     });
   });
 

@@ -206,8 +206,12 @@ jobs:
             echo "Error: Nix build output 'result' symlink not found"
             exit 1
           fi
+          if [ ! -f "result/bin/qaspec" ]; then
+            echo "Error: qaspec binary not found in build output"
+            exit 1
+          fi
           if [ ! -f "result/bin/openspec" ]; then
-            echo "Error: openspec binary not found in build output"
+            echo "Error: openspec shim binary not found in build output"
             exit 1
           fi
           echo "✅ Build output verified"
@@ -215,7 +219,7 @@ jobs:
       - name: Test binary execution
         run: |
           VERSION=$(nix run . -- --version)
-          echo "OpenSpec version: $VERSION"
+          echo "QASpec version: $VERSION"
           if [ -z "$VERSION" ]; then
             echo "Error: Version command returned empty output"
             exit 1

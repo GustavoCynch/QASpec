@@ -1,21 +1,22 @@
 {
-  "name": "@fission-ai/openspec",
+  "name": "@qaspec/cli",
   "version": "1.3.1",
-  "description": "AI-native system for spec-driven development",
+  "description": "QASpec CLI — AI-native QA planning and spec-driven workflows",
   "keywords": [
-    "openspec",
+    "qaspec",
+    "qa",
     "specs",
     "cli",
     "ai",
-    "development"
+    "testing"
   ],
-  "homepage": "https://github.com/Fission-AI/OpenSpec",
+  "homepage": "https://github.com/GustavoCynch/QASpec",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Fission-AI/OpenSpec"
+    "url": "https://github.com/GustavoCynch/QASpec"
   },
   "license": "MIT",
-  "author": "OpenSpec Contributors",
+  "author": "QASpec Contributors",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -27,6 +28,7 @@
     }
   },
   "bin": {
+    "qaspec": "./bin/qaspec.js",
     "openspec": "./bin/openspec.js"
   },
   "files": [
@@ -42,7 +44,7 @@
     "lint": "eslint src/",
     "build": "node build.js",
     "dev": "tsc --watch",
-    "dev:cli": "pnpm build && node bin/openspec.js",
+    "dev:cli": "pnpm build && node bin/qaspec.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

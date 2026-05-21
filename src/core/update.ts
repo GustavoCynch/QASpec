@@ -12,7 +12,8 @@ import * as fs from 'fs';
 import { createRequire } from 'module';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
-import { AI_TOOLS, OPENSPEC_DIR_NAME } from './config.js';
+import { AI_TOOLS } from './config.js';
+import { getPlanningDir } from './planning-dir.js';
 import {
   generateCommands,
   CommandAdapterRegistry,
@@ -82,11 +83,11 @@ export class UpdateCommand {
 
   async execute(projectPath: string): Promise<void> {
     const resolvedProjectPath = path.resolve(projectPath);
-    const openspecPath = path.join(resolvedProjectPath, OPENSPEC_DIR_NAME);
+    const openspecPath = getPlanningDir(resolvedProjectPath);
 
-    // 1. Check openspec directory exists
+    // 1. Check planning home exists
     if (!await FileSystemUtils.directoryExists(openspecPath)) {
-      throw new Error(`No OpenSpec directory found. Run 'openspec init' first.`);
+      throw new Error(`No QASpec planning home found. Run 'qaspec init' first.`);
     }
 
     // 2. Perform one-time migration if needed before any legacy upgrade generation.

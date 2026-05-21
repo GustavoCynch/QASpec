@@ -23,6 +23,7 @@ import {
   writeWorkspaceSharedState,
 } from '../../core/workspace/index.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
+import { joinPlanningPath } from '../../core/planning-dir.js';
 import {
   SelectedWorkspace,
   WorkspaceCliError,
@@ -550,7 +551,7 @@ export async function loadWorkspaceForDoctor(
 
     if (localPath) {
       if (await directoryExists(localPath)) {
-        const candidateSpecsPath = path.join(localPath, 'openspec', 'specs');
+        const candidateSpecsPath = joinPlanningPath(localPath, 'specs');
         repoSpecsPath = (await directoryExists(candidateSpecsPath)) ? candidateSpecsPath : null;
       } else {
         linkStatus.push(

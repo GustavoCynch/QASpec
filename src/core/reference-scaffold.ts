@@ -50,7 +50,7 @@ Read before \`/qas:matrix\` and again before \`/qas:publish\`.
 
 ## Cases
 
-- Titles and steps: tester-observable behavior in the **project language** (see \`openspec/config.yaml\`).
+- Titles and steps: tester-observable behavior in the **project language** (see \`qaspec/config.yaml\`).
 - No code identifiers (camelCase fields, selectors, file paths) in Qase-bound text unless shown in the UI.
 - One checkbox in \`testmatrix.md\` maps to one Qase case after publish.
 

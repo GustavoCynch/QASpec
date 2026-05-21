@@ -3,7 +3,7 @@ import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
 
 const QAS_ANALYZE_BODY = `Run QASpec **analyze** (Phase 1). Produce \`analisis.md\` for the active change.
 
-**Language:** Artifact body and halt question use the project language from \`openspec/config.yaml\` \`context\` and \`rules\`.
+**Language:** Artifact body and halt question use the project language from \`qaspec/config.yaml\` \`context\` and \`rules\`.
 
 **Read-only** on application source under test.
 

@@ -29,16 +29,18 @@ Additional connectors may follow the same plugin model.
 
 ## Status
 
-This repository is in **early development** (OpenSpec fork). The CLI ships as `openspec` today; QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `openspec init`. The standalone `qaspec` binary rename is planned (see `roadmap/`).
+This repository is in **early development** (OpenSpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`); the legacy **`openspec`** binary remains as a compatibility shim with a deprecation notice.
 
-Migration from the legacy pack is **complete**. Authoritative QA runtime is `openspec init` → `/qas:*` + `qaspec-pr-review` schema. The original `.agents/skills/qa-pr-review/` directory is **retained as reference only** (Cynch/domain detail, not installed by init).
+QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `qaspec init`. Existing projects that still use an `openspec/` planning home continue to work without migration.
+
+Migration from the legacy pack is **complete**. Authoritative QA runtime is `qaspec init` → `/qas:*` + `qaspec-pr-review` schema. The original `.agents/skills/qa-pr-review/` directory is **retained as reference only** (Cynch/domain detail, not installed by init).
 
 | Path | Role |
 |------|------|
 | `.agents/skills/qa-pr-review/references/` | Maintainer reference (historical bugs, Qase rules source) |
-| `qaspec/references/` (after init) | Project runtime seeds copied by `openspec init` |
+| `qaspec/references/` (after init) | Project runtime seeds copied by `qaspec init` |
 
-This repository keeps `.cursor/commands/opsx-*` for **spec-driven** CLI dogfooding; validating `/qas:*` output uses `openspec init` in a temporary directory, not committed `qas-*.md` here.
+This repository keeps `openspec/changes/` and `.cursor/commands/opsx-*` for **spec-driven** CLI dogfooding; validating `/qas:*` output uses `qaspec init` in a temporary directory, not committed `qas-*.md` here.
 
 ## License
 

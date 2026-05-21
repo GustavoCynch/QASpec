@@ -6,6 +6,11 @@ import { ChangeParser } from '../core/parsers/change-parser.js';
 import { Change } from '../core/schemas/index.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getActiveChangeIds } from '../utils/item-discovery.js';
+import { resolveCurrentPlanningHomeSync } from '../core/planning-home.js';
+
+function getChangesPath(): string {
+  return resolveCurrentPlanningHomeSync().changesDir;
+}
 
 // Constants for better maintainability
 const ARCHIVE_DIR = 'archive';
@@ -26,7 +31,7 @@ export class ChangeCommand {
    *   Note: --requirements-only is deprecated alias for --deltas-only
    */
   async show(changeName?: string, options?: { json?: boolean; requirementsOnly?: boolean; deltasOnly?: boolean; noInteractive?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = getChangesPath();
 
     if (!changeName) {
       const canPrompt = isInteractive(options);
@@ -44,7 +49,7 @@ export class ChangeCommand {
         } else {
           console.error(`No change specified. Available IDs: ${changes.join(', ')}`);
         }
-        console.error('Hint: use "openspec change list" to view available changes.');
+        console.error('Hint: use "qaspec change list" to view available changes.');
         process.exitCode = 1;
         return;
       }
@@ -95,7 +100,7 @@ export class ChangeCommand {
    * - JSON: array of { id, title, deltaCount, taskStatus }, sorted by id
    */
   async list(options?: { json?: boolean; long?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = getChangesPath();
     
     const changes = await this.getActiveChanges(changesPath);
     
@@ -183,7 +188,7 @@ export class ChangeCommand {
   }
 
   async validate(changeName?: string, options?: { strict?: boolean; json?: boolean; noInteractive?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = getChangesPath();
     
     if (!changeName) {
       const canPrompt = isInteractive(options);
@@ -201,7 +206,7 @@ export class ChangeCommand {
         } else {
           console.error(`No change specified. Available IDs: ${changes.join(', ')}`);
         }
-        console.error('Hint: use "openspec change list" to view available changes.');
+        console.error('Hint: use "qaspec change list" to view available changes.');
         process.exitCode = 1;
         return;
       }
@@ -285,7 +290,7 @@ export class ChangeCommand {
     const bullets: string[] = [];
     bullets.push('- Ensure change has deltas in specs/: use headers ## ADDED/MODIFIED/REMOVED/RENAMED Requirements');
     bullets.push('- Each requirement MUST include at least one #### Scenario: block');
-    bullets.push('- Debug parsed deltas: openspec change show <id> --json --deltas-only');
+    bullets.push('- Debug parsed deltas: qaspec change show <id> --json --deltas-only');
     console.error('Next steps:');
     bullets.forEach(b => console.error(`  ${b}`));
   }

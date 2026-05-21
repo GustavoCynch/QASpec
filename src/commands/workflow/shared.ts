@@ -10,6 +10,7 @@ import path from 'path';
 import * as fs from 'fs';
 import { getSchemaDir, listSchemas } from '../../core/artifact-graph/index.js';
 import { validateChangeName } from '../../utils/change-utils.js';
+import { joinPlanningPath } from '../../core/planning-dir.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -92,7 +93,7 @@ export function getStatusIndicator(status: 'done' | 'ready' | 'blocked'): string
  */
 export async function getAvailableChanges(
   projectRoot: string,
-  changesDir = path.join(projectRoot, 'openspec', 'changes')
+  changesDir = joinPlanningPath(projectRoot, 'changes')
 ): Promise<string[]> {
   const changesPath = changesDir;
   try {
@@ -113,12 +114,12 @@ export async function getAvailableChanges(
 export async function validateChangeExists(
   changeName: string | undefined,
   projectRoot: string,
-  changesDir = path.join(projectRoot, 'openspec', 'changes')
+  changesDir = joinPlanningPath(projectRoot, 'changes')
 ): Promise<string> {
   if (!changeName) {
     const available = await getAvailableChanges(projectRoot, changesDir);
     if (available.length === 0) {
-      throw new Error('No changes found. Create one with: openspec new change <name>');
+      throw new Error('No changes found. Create one with: qaspec new change <name>');
     }
     throw new Error(
       `Missing required option --change. Available changes:\n  ${available.join('\n  ')}`

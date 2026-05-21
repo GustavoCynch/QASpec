@@ -5,7 +5,7 @@ const QAS_EXPLORE_BODY = `Enter QASpec explore mode. Think deeply about test str
 
 **IMPORTANT: Explore mode is for thinking, not implementing.** Read files and investigate; do NOT write application code under test. Do NOT publish to Qase. You MAY discuss or draft ideas without creating required cycle artifacts unless the user asks.
 
-**Language:** User-facing messages follow the project language in \`openspec/config.yaml\` \`context\` and \`rules\`.
+**Language:** User-facing messages follow the project language in \`qaspec/config.yaml\` \`context\` and \`rules\`.
 
 **Does NOT replace:** halts for \`/qas:analyze\`, \`/qas:matrix\`, or \`/qas:publish\`.
 

@@ -14,7 +14,9 @@ import { FileSystemUtils } from '../utils/file-system.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
 import {
   AI_TOOLS,
-  OPENSPEC_DIR_NAME,
+  QASPEC_DIR_NAME,
+  formatPlanningRelativePath,
+  getPlanningDir,
   AIToolOption,
 } from './config.js';
 import { PALETTE } from './styles/palette.js';
@@ -108,8 +110,8 @@ export class InitCommand {
 
   async execute(targetPath: string): Promise<void> {
     const projectPath = path.resolve(targetPath);
-    const openspecDir = OPENSPEC_DIR_NAME;
-    const openspecPath = path.join(projectPath, openspecDir);
+    const planningDirName = QASPEC_DIR_NAME;
+    const openspecPath = path.join(projectPath, planningDirName);
 
     // Validation happens silently in the background
     const extendMode = await this.validate(projectPath, openspecPath);
@@ -473,7 +475,7 @@ export class InitCommand {
       return;
     }
 
-    const spinner = this.startSpinner('Creating OpenSpec structure...');
+    const spinner = this.startSpinner('Creating QASpec structure...');
 
     const directories = [
       openspecPath,
@@ -488,7 +490,7 @@ export class InitCommand {
 
     spinner.stopAndPersist({
       symbol: PALETTE.white('▌'),
-      text: PALETTE.white('OpenSpec structure created'),
+      text: PALETTE.white('QASpec structure created'),
     });
   }
 
@@ -642,7 +644,7 @@ export class InitCommand {
     configStatus: 'created' | 'exists' | 'skipped'
   ): void {
     console.log();
-    console.log(chalk.bold('OpenSpec Setup Complete'));
+    console.log(chalk.bold('QASpec Setup Complete'));
     console.log();
 
     // Show created vs refreshed tools
@@ -690,13 +692,14 @@ export class InitCommand {
 
     // Config status
     if (configStatus === 'created') {
-      console.log(`Config: openspec/config.yaml (schema: ${DEFAULT_SCHEMA})`);
+      console.log(`Config: ${formatPlanningRelativePath(projectPath, 'config.yaml')} (schema: ${DEFAULT_SCHEMA})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
-      const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
-      const configYml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yml');
+      const planningDir = getPlanningDir(projectPath);
+      const configYaml = path.join(planningDir, 'config.yaml');
+      const configYml = path.join(planningDir, 'config.yml');
       const configName = fs.existsSync(configYaml) ? 'config.yaml' : fs.existsSync(configYml) ? 'config.yml' : 'config.yaml';
-      console.log(`Config: openspec/${configName} (exists)`);
+      console.log(`Config: ${formatPlanningRelativePath(projectPath, configName)} (exists)`);
     } else {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
     }
@@ -708,7 +711,7 @@ export class InitCommand {
     console.log();
     if (activeWorkflows.includes('analyze')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  openspec new change <name>   Create a QA change');
+      console.log('  qaspec new change <name>   Create a QA change');
       console.log('  /qas:explore                 Think before the formal cycle');
       console.log('  /qas:analyze                 Analysis (analisis.md)');
       console.log('  /qas:matrix                  Test matrix (testmatrix.md)');

@@ -1,4 +1,12 @@
-export const OPENSPEC_DIR_NAME = 'openspec';
+export {
+  QASPEC_DIR_NAME,
+  OPENSPEC_DIR_NAME,
+  getPlanningDir,
+  joinPlanningPath,
+  resolvePlanningDirName,
+  formatPlanningRelativePath,
+  hasPlanningHome,
+} from './planning-dir.js';
 
 export const OPENSPEC_MARKERS = {
   start: '<!-- OPENSPEC:START -->',

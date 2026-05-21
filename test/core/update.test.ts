@@ -77,7 +77,7 @@ describe('UpdateCommand', () => {
       });
 
       await expect(updateCommand.execute(testDir)).rejects.toThrow(
-        "No OpenSpec directory found. Run 'openspec init' first."
+        "No QASpec planning home found. Run 'qaspec init' first."
       );
     });
 

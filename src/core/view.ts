@@ -3,22 +3,23 @@ import * as path from 'path';
 import chalk from 'chalk';
 import { getTaskProgressForChange, formatTaskStatus } from '../utils/task-progress.js';
 import { MarkdownParser } from './parsers/markdown-parser.js';
+import { getPlanningDir } from './planning-dir.js';
 
 export class ViewCommand {
   async execute(targetPath: string = '.'): Promise<void> {
-    const openspecDir = path.join(targetPath, 'openspec');
+    const planningDir = getPlanningDir(path.resolve(targetPath));
     
-    if (!fs.existsSync(openspecDir)) {
-      console.error(chalk.red('No openspec directory found'));
+    if (!fs.existsSync(planningDir)) {
+      console.error(chalk.red('No QASpec planning home found'));
       process.exit(1);
     }
 
-    console.log(chalk.bold('\nOpenSpec Dashboard\n'));
+    console.log(chalk.bold('\nQASpec Dashboard\n'));
     console.log('═'.repeat(60));
 
     // Get changes and specs data
-    const changesData = await this.getChangesData(openspecDir);
-    const specsData = await this.getSpecsData(openspecDir);
+    const changesData = await this.getChangesData(planningDir);
+    const specsData = await this.getSpecsData(planningDir);
 
     // Display summary metrics
     this.displaySummary(changesData, specsData);

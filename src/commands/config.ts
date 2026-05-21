@@ -20,7 +20,7 @@ import {
   DEFAULT_CONFIG,
 } from '../core/config-schema.js';
 import { CORE_WORKFLOWS, ALL_WORKFLOWS, getProfileWorkflows } from '../core/profiles.js';
-import { OPENSPEC_DIR_NAME } from '../core/config.js';
+import { getPlanningDir } from '../core/planning-dir.js';
 import { hasProjectConfigDrift } from '../core/profile-sync-drift.js';
 import {
   findWorkspaceRoot,
@@ -213,7 +213,7 @@ function maybeWarnProjectConfigDrift(
   state: ProfileState,
   colorize: (message: string) => string
 ): void {
-  const openspecDir = path.join(projectDir, OPENSPEC_DIR_NAME);
+  const openspecDir = getPlanningDir(projectDir);
   if (!fs.existsSync(openspecDir)) {
     return;
   }
@@ -696,7 +696,7 @@ export function registerConfigCommand(program: Command): void {
 
         // Check if inside an OpenSpec project
         const projectDir = process.cwd();
-        const openspecDir = path.join(projectDir, OPENSPEC_DIR_NAME);
+        const openspecDir = getPlanningDir(projectDir);
         if (fs.existsSync(openspecDir)) {
           const applyNow = await confirm({
             message: 'Apply changes to this project now?',

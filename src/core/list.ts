@@ -4,6 +4,7 @@ import { getTaskProgressForChange, formatTaskStatus } from '../utils/task-progre
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { MarkdownParser } from './parsers/markdown-parser.js';
+import { joinPlanningPath } from './planning-dir.js';
 
 interface ChangeInfo {
   name: string;
@@ -79,13 +80,13 @@ export class ListCommand {
     const { sort = 'recent', json = false } = options;
 
     if (mode === 'changes') {
-      const changesDir = path.join(targetPath, 'openspec', 'changes');
+      const changesDir = joinPlanningPath(path.resolve(targetPath), 'changes');
 
       // Check if changes directory exists
       try {
         await fs.access(changesDir);
       } catch {
-        throw new Error("No OpenSpec changes directory found. Run 'openspec init' first.");
+        throw new Error("No QASpec changes directory found. Run 'qaspec init' first.");
       }
 
       // Get all directories in changes (excluding archive)
@@ -152,7 +153,7 @@ export class ListCommand {
     }
 
     // specs mode
-    const specsDir = path.join(targetPath, 'openspec', 'specs');
+    const specsDir = joinPlanningPath(path.resolve(targetPath), 'specs');
     try {
       await fs.access(specsDir);
     } catch {

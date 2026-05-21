@@ -2,6 +2,7 @@ import path from 'path';
 import { FileSystemUtils } from './file-system.js';
 import { writeChangeMetadata, validateSchemaName } from './change-metadata.js';
 import { readProjectConfig } from '../core/project-config.js';
+import { joinPlanningPath } from '../core/planning-dir.js';
 import type { ChangeMetadata } from '../core/artifact-graph/types.js';
 
 const DEFAULT_SCHEMA = 'spec-driven';
@@ -150,7 +151,7 @@ export async function createChange(
   validateSchemaName(schemaName, projectRoot);
 
   // Build the change directory path
-  const changeDir = path.join(options.changesDir ?? path.join(projectRoot, 'openspec', 'changes'), name);
+  const changeDir = path.join(options.changesDir ?? joinPlanningPath(projectRoot, 'changes'), name);
 
   // Check if change already exists
   if (await FileSystemUtils.directoryExists(changeDir)) {

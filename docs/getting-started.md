@@ -18,14 +18,14 @@ OpenSpec helps you and your AI coding assistant agree on what to build before an
 /opsx:new ──► /opsx:ff or /opsx:continue ──► /opsx:apply ──► /opsx:verify ──► /opsx:archive
 ```
 
-The default global profile is `core`, which includes `propose`, `explore`, `apply`, `sync`, and `archive`. You can enable the expanded workflow commands with `openspec config profile` and then `openspec update`.
+The default global profile is `core`, which includes `propose`, `explore`, `apply`, `sync`, and `archive`. You can enable the expanded workflow commands with `qaspec config profile` and then `qaspec update`.
 
 ## What OpenSpec Creates
 
-After running `openspec init`, your project has this structure:
+After running `qaspec init`, your project has this structure:
 
 ```
-openspec/
+qaspec/
 ├── specs/              # Source of truth (your system's behavior)
 │   └── <domain>/
 │       └── spec.md
@@ -114,7 +114,7 @@ When you archive a change:
 2. **MODIFIED** requirements replace the existing version
 3. **REMOVED** requirements are deleted from the main spec
 
-The change folder moves to `openspec/changes/archive/` for audit history.
+The change folder moves to `qaspec/changes/archive/` for audit history.
 
 ## Example: Your First Change
 
@@ -125,7 +125,7 @@ Let's walk through adding dark mode to an application.
 ```text
 You: /opsx:propose add-dark-mode
 
-AI:  Created openspec/changes/add-dark-mode/
+AI:  Created qaspec/changes/add-dark-mode/
      ✓ proposal.md — why we're doing this, what's changing
      ✓ specs/       — requirements and scenarios
      ✓ design.md    — technical approach
@@ -220,8 +220,8 @@ During implementation, if you discover the design needs adjustment, just update 
 You: /opsx:archive
 
 AI:  Archiving add-dark-mode...
-     ✓ Merged specs into openspec/specs/ui/spec.md
-     ✓ Moved to openspec/changes/archive/2025-01-24-add-dark-mode/
+     ✓ Merged specs into qaspec/specs/ui/spec.md
+     ✓ Moved to qaspec/changes/archive/2025-01-24-add-dark-mode/
      Done! Ready for the next feature.
 ```
 
@@ -233,16 +233,16 @@ Use the CLI to check on your changes:
 
 ```bash
 # List active changes
-openspec list
+qaspec list
 
 # View change details
-openspec show add-dark-mode
+qaspec show add-dark-mode
 
 # Validate spec formatting
-openspec validate add-dark-mode
+qaspec validate add-dark-mode
 
 # Interactive dashboard
-openspec view
+qaspec view
 ```
 
 ## Next Steps

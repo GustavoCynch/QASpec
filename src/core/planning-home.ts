@@ -8,6 +8,7 @@ import {
   type WorkspaceSharedState,
 } from './workspace/index.js';
 import { FileSystemUtils } from '../utils/file-system.js';
+import { hasPlanningHome, joinPlanningPath } from './planning-dir.js';
 
 export type PlanningHomeKind = 'repo' | 'workspace';
 
@@ -81,9 +82,7 @@ export function findWorkspacePlanningRootSync(startPath = process.cwd()): string
 }
 
 export function findRepoPlanningRootSync(startPath = process.cwd()): string | null {
-  return findNearestAncestor(startPath, (dirPath) =>
-    pathExistsAsDirectory(path.join(dirPath, 'openspec'))
-  );
+  return findNearestAncestor(startPath, (dirPath) => hasPlanningHome(dirPath));
 }
 
 function isSameOrDescendant(rootPath: string, candidatePath: string): boolean {
@@ -136,7 +135,7 @@ function repoPlanningHome(repoRoot: string): PlanningHome {
   return {
     kind: 'repo',
     root: repoRoot,
-    changesDir: path.join(repoRoot, 'openspec', 'changes'),
+    changesDir: joinPlanningPath(repoRoot, 'changes'),
     defaultSchema: REPO_DEFAULT_SCHEMA,
   };
 }
@@ -160,7 +159,7 @@ export function resolveCurrentPlanningHomeSync(
   }
 
   if (options.allowImplicitRepoRoot === false) {
-    throw new Error('No OpenSpec planning home found from the current directory.');
+    throw new Error('No QASpec planning home found from the current directory.');
   }
 
   return repoPlanningHome(FileSystemUtils.canonicalizeExistingPath(searchStart));

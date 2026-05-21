@@ -7,6 +7,7 @@ import { resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
 import { readProjectConfig, validateConfigRules } from '../project-config.js';
+import { joinPlanningPath } from '../planning-dir.js';
 import type { PlanningHome } from '../planning-home.js';
 import type { Artifact, CompletedSet } from './types.js';
 
@@ -237,7 +238,7 @@ export function loadChangeContext(
   options: LoadChangeContextOptions = {}
 ): ChangeContext {
   const changeDir = FileSystemUtils.canonicalizeExistingPath(
-    options.changeDir ?? path.join(projectRoot, 'openspec', 'changes', changeName)
+    options.changeDir ?? joinPlanningPath(projectRoot, 'changes', changeName)
   );
 
   // Resolve schema: explicit > metadata > default

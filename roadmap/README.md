@@ -6,10 +6,10 @@ Este directorio documenta el plan acordado para evolucionar este repositorio **d
 
 | Qué | Estado |
 |-----|--------|
-| Código CLI | Fork **sin modificar** de OpenSpec: binario `openspec`, paquete `@fission-ai/openspec` |
+| Código CLI | Binario primario `qaspec`, shim `openspec`, paquete `@qaspec/cli` |
 | README raíz | Visión de producto **QASpec** (QA, no dev) |
 | `.agents/skills/qa-pr-review` | Skill de referencia conservada; no forma parte del fork |
-| Cambios de marca/comandos | **Pendientes** — ver documentos abajo |
+| Renombre CLI / planning home | **Hecho** — ver [07](./07-commands-and-cli-rename.md) |
 
 ## Orden sugerido de lectura
 
