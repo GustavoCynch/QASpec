@@ -34,12 +34,11 @@ describe('InitCommand upstream coexistence skills', () => {
     vi.restoreAllMocks();
   });
 
-  it('creates missing openspec skills when only qaspec/ and opsx commands exist (no openspec/)', async () => {
+  it('installs qas-* skills when upstream opsx commands exist without creating openspec-* skills', async () => {
     saveGlobalConfig({
       featureFlags: {},
-      profile: 'custom',
+      profile: 'core',
       delivery: 'commands',
-      workflows: ['explore', 'propose', 'apply', 'archive'],
     });
 
     const cursorCommandsDir = path.join(testDir, '.cursor', 'commands');
@@ -56,9 +55,9 @@ describe('InitCommand upstream coexistence skills', () => {
     await initCommand.execute(testDir);
 
     expect(await fs.readFile(path.join(exploreDir, 'SKILL.md'), 'utf-8')).toContain('keep');
-    expect(await fileExists(path.join(cursorSkillsDir, 'openspec-propose', 'SKILL.md'))).toBe(true);
-    expect(await fileExists(path.join(cursorSkillsDir, 'openspec-apply-change', 'SKILL.md'))).toBe(true);
-    expect(await fileExists(path.join(cursorSkillsDir, 'openspec-archive-change', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'openspec-propose', 'SKILL.md'))).toBe(false);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qas-analyze', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qas-publish', 'SKILL.md'))).toBe(true);
   });
 
   it('creates qas-* skills when all upstream openspec-* skills exist (fork scenario)', async () => {
@@ -67,6 +66,10 @@ describe('InitCommand upstream coexistence skills', () => {
       profile: 'core',
       delivery: 'commands',
     });
+
+    const cursorCommandsDir = path.join(testDir, '.cursor', 'commands');
+    await fs.mkdir(cursorCommandsDir, { recursive: true });
+    await fs.writeFile(path.join(cursorCommandsDir, 'opsx-explore.md'), 'upstream opsx');
 
     const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
     for (const dirName of [

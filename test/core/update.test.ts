@@ -25,7 +25,9 @@ vi.mock('../../src/core/global-config.js', async (importOriginal) => {
   return {
     ...actual,
     getGlobalConfig: () => ({ ...mockState.config }),
-    saveGlobalConfig: vi.fn(),
+    saveGlobalConfig: vi.fn((config: GlobalConfig) => {
+      mockState.config = { ...config };
+    }),
   };
 });
 
@@ -261,8 +263,8 @@ Old instructions content
       expect(await fs.readFile(path.join(skillsDir, 'openspec-sync-specs', 'SKILL.md'), 'utf-8')).toContain(
         existingMarker
       );
-      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-propose', 'SKILL.md'))).toBe(true);
-      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-apply-change', 'SKILL.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-propose', 'SKILL.md'))).toBe(false);
+      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-apply-change', 'SKILL.md'))).toBe(false);
     });
   });
 
@@ -280,7 +282,7 @@ Old instructions content
 
       await updateCommand.execute(testDir);
 
-      // Check opsx command files were created
+      // Check qas command files were created
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qas');
       const exploreCmd = path.join(commandsDir, 'explore.md');
       const exists = await FileSystemUtils.fileExists(exploreCmd);
@@ -543,7 +545,7 @@ Old instructions content
         testDir,
         '.claude',
         'skills',
-        'openspec-archive-change'
+        'qas-archive'
       );
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'old');
@@ -1468,7 +1470,6 @@ More user content after markers.
 
   describe('profile-aware updates', () => {
     it('should generate only profile workflows when custom profile is set', async () => {
-      // Set custom profile with only explore and new
       setMockConfig({
         featureFlags: {},
         profile: 'custom',
@@ -1476,22 +1477,18 @@ More user content after markers.
         workflows: ['explore', 'new'],
       });
 
-      // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(skillsDir, 'qas-explore'), { recursive: true });
       await fs.writeFile(path.join(skillsDir, 'qas-explore', 'SKILL.md'), 'old');
 
       await updateCommand.execute(testDir);
 
-      // Should create explore and new skills
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'qas-explore', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'openspec-new-change', 'SKILL.md')
-      )).toBe(true);
-
-      // Should NOT create non-profile skills
+      )).toBe(false);
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'qas-matrix', 'SKILL.md')
       )).toBe(false);
@@ -1500,39 +1497,25 @@ More user content after markers.
       )).toBe(false);
     });
 
-    it('should suggest core preset when custom profile preserves the old core workflow set', async () => {
+    it('should migrate legacy four-workflow custom profile to core on init', async () => {
+      await fs.rm(path.join(testDir, 'openspec'), { recursive: true, force: true });
+      await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
+
       setMockConfig({
         featureFlags: {},
-        profile: 'custom',
+        profile: 'core',
         delivery: 'both',
-        workflows: ['propose', 'explore', 'apply', 'archive'],
       });
 
       const initCommand = new InitCommand({ tools: 'claude', force: true });
       await initCommand.execute(testDir);
 
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      await updateCommand.execute(testDir);
-
-      const calls = consoleSpy.mock.calls.map(call =>
-        call.map(arg => String(arg)).join(' ')
-      );
-      expect(calls.some(call =>
-        call.includes('The core profile now includes sync')
-      )).toBe(true);
-      expect(calls.some(call =>
-        call.includes('qaspec config profile core') && call.includes('qaspec update')
-      )).toBe(true);
-
       expect(await FileSystemUtils.fileExists(
         path.join(testDir, '.claude', 'skills', 'qas-publish', 'SKILL.md')
-      )).toBe(false);
+      )).toBe(true);
       expect(await FileSystemUtils.fileExists(
-        path.join(testDir, '.claude', 'commands', 'qas', 'sync.md')
+        path.join(testDir, '.claude', 'skills', 'openspec-propose', 'SKILL.md')
       )).toBe(false);
-
-      consoleSpy.mockRestore();
     });
 
     it('should respect skills-only delivery setting', async () => {
@@ -1678,14 +1661,15 @@ content
     });
 
     it('should remove workflows outside profile during update sync', async () => {
-      // Set core profile (propose, explore, apply, sync, archive)
+      await fs.rm(path.join(testDir, 'openspec'), { recursive: true, force: true });
+      await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
+
       setMockConfig({
         featureFlags: {},
         profile: 'core',
         delivery: 'both',
       });
 
-      // Set up tool with extra workflows beyond core profile
       const skillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(skillsDir, 'qas-explore'), { recursive: true });
       await fs.writeFile(path.join(skillsDir, 'qas-explore', 'SKILL.md'), 'old');
@@ -1693,13 +1677,14 @@ content
       // Add a non-core workflow
       await fs.mkdir(path.join(skillsDir, 'openspec-new-change'), { recursive: true });
       await fs.writeFile(path.join(skillsDir, 'openspec-new-change', 'SKILL.md'), 'old');
-      const extraCommandFile = path.join(testDir, '.claude', 'commands', 'qas', 'new.md');
+      const extraCommandFile = path.join(testDir, '.claude', 'commands', 'qas', 'stale-workflow.md');
       await fs.mkdir(path.dirname(extraCommandFile), { recursive: true });
       await fs.writeFile(extraCommandFile, 'old');
 
       const consoleSpy = vi.spyOn(console, 'log');
 
-      await updateCommand.execute(testDir);
+      const forceUpdate = new UpdateCommand({ force: true });
+      await forceUpdate.execute(testDir);
 
       // Deselected workflow artifacts should be removed for both delivery surfaces.
       expect(await FileSystemUtils.fileExists(

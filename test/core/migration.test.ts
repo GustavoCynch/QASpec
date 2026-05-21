@@ -67,14 +67,14 @@ describe('migration', () => {
 
   it('migrates to custom skills delivery when only managed skills are detected', async () => {
     await writeSkill(projectDir, 'qas-explore');
-    await writeSkill(projectDir, 'openspec-apply-change');
+    await writeSkill(projectDir, 'qas-analyze');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
     const config = readRawConfig();
     expect(config.profile).toBe('custom');
     expect(config.delivery).toBe('skills');
-    expect(config.workflows).toEqual(['explore', 'apply']);
+    expect(config.workflows).toEqual(['explore', 'analyze']);
   });
 
   it('migrates to custom commands delivery when only managed commands are detected', async () => {
@@ -89,30 +89,30 @@ describe('migration', () => {
     expect(config.workflows).toEqual(['explore', 'archive']);
   });
 
-  it('migrates to both delivery when upstream openspec skills and opsx commands coexist', async () => {
-    await writeSkill(projectDir, 'openspec-explore');
-    await writeSkill(projectDir, 'openspec-archive-change');
-    await writeManagedCommand(projectDir, 'propose');
-    await writeManagedCommand(projectDir, 'apply');
+  it('migrates to both delivery when qas skills and commands coexist', async () => {
+    await writeSkill(projectDir, 'qas-explore');
+    await writeSkill(projectDir, 'qas-archive');
+    await writeManagedCommand(projectDir, 'explore');
+    await writeManagedCommand(projectDir, 'publish');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
     const config = readRawConfig();
     expect(config.profile).toBe('custom');
     expect(config.delivery).toBe('both');
-    expect(config.workflows).toEqual(expect.arrayContaining(['explore', 'archive', 'propose', 'apply']));
+    expect(config.workflows).toEqual(expect.arrayContaining(['explore', 'archive', 'publish']));
   });
 
   it('migrates to custom both delivery when managed skills and commands are detected', async () => {
     await writeSkill(projectDir, 'qas-explore');
-    await writeManagedCommand(projectDir, 'apply');
+    await writeManagedCommand(projectDir, 'explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
     const config = readRawConfig();
     expect(config.profile).toBe('custom');
     expect(config.delivery).toBe('both');
-    expect(config.workflows).toEqual(['explore', 'apply']);
+    expect(config.workflows).toEqual(['explore']);
   });
 
   it('does not migrate when profile is already explicitly configured', async () => {

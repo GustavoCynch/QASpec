@@ -27,23 +27,13 @@ describe('tool-detection', () => {
   });
 
   describe('SKILL_NAMES', () => {
-    it('should contain QASpec and legacy skill directory names', () => {
-      expect(SKILL_NAMES).toHaveLength(16);
+    it('should contain only QASpec core skill directory names', () => {
+      expect(SKILL_NAMES).toHaveLength(5);
       expect(SKILL_NAMES).toContain('qas-explore');
       expect(SKILL_NAMES).toContain('qas-analyze');
       expect(SKILL_NAMES).toContain('qas-matrix');
       expect(SKILL_NAMES).toContain('qas-publish');
       expect(SKILL_NAMES).toContain('qas-archive');
-      expect(SKILL_NAMES).toContain('openspec-new-change');
-      expect(SKILL_NAMES).toContain('openspec-continue-change');
-      expect(SKILL_NAMES).toContain('openspec-apply-change');
-      expect(SKILL_NAMES).toContain('openspec-ff-change');
-      expect(SKILL_NAMES).toContain('openspec-sync-specs');
-      expect(SKILL_NAMES).toContain('openspec-archive-change');
-      expect(SKILL_NAMES).toContain('openspec-bulk-archive-change');
-      expect(SKILL_NAMES).toContain('openspec-verify-change');
-      expect(SKILL_NAMES).toContain('openspec-onboard');
-      expect(SKILL_NAMES).toContain('openspec-propose');
     });
   });
 

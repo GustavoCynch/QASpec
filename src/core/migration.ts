@@ -156,5 +156,5 @@ export function migrateIfNeeded(projectPath: string, tools: AIToolOption[]): voi
   saveGlobalConfig(config);
 
   console.log(`Migrated: custom profile with ${installedWorkflows.length} workflows`);
-  console.log("New in this version: /opsx:propose. Try 'qaspec config profile core' for the streamlined experience.");
+  console.log("Try 'qaspec config profile core' for the QASpec QA workflow (/qas:explore, /qas:analyze, /qas:matrix, /qas:publish).");
 }

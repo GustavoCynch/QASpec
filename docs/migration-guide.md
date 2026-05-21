@@ -1,5 +1,7 @@
 # Migrating to OPSX
 
+> **QASpec product default (current):** `qaspec init` and `qaspec update` install only **`qas-*` skills** and **`/qas:*` commands** (`explore`, `analyze`, `matrix`, `publish`, `archive`). They do not generate `openspec-*` or `/opsx:*` artifacts. The sections below that reference `/opsx:*` describe the historical OPSX workflow for migration context or upstream coexistence—not what QASpec ships by default.
+
 This guide helps you transition from the legacy QASpec workflow to OPSX. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
 
 ## What's Changing?

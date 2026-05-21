@@ -16,27 +16,10 @@ describe('resolveEffectiveDelivery', () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
 
-  it('upgrades commands-only to both when upstream openspec skills exist (all legacy templates present)', async () => {
-    const skillsDir = path.join(testDir, '.cursor', 'skills');
-    for (const dirName of ['openspec-explore', 'openspec-propose', 'openspec-apply-change']) {
-      await fs.mkdir(path.join(skillsDir, dirName), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, dirName, 'SKILL.md'), 'existing');
-    }
-
-    const delivery = await resolveEffectiveDelivery(
-      testDir,
-      'commands',
-      ['explore', 'propose', 'apply'],
-      ['cursor']
-    );
-
-    expect(delivery).toBe('both');
-  });
-
-  it('upgrades commands-only to both when qas-* skills are missing beside upstream openspec', async () => {
-    const skillsDir = path.join(testDir, '.cursor', 'skills');
-    await fs.mkdir(path.join(skillsDir, 'openspec-explore'), { recursive: true });
-    await fs.writeFile(path.join(skillsDir, 'openspec-explore', 'SKILL.md'), 'existing');
+  it('upgrades commands-only to both when upstream opsx commands exist', async () => {
+    const commandsDir = path.join(testDir, '.cursor', 'commands');
+    await fs.mkdir(commandsDir, { recursive: true });
+    await fs.writeFile(path.join(commandsDir, 'opsx-explore.md'), 'upstream');
 
     const delivery = await resolveEffectiveDelivery(
       testDir,
@@ -48,18 +31,23 @@ describe('resolveEffectiveDelivery', () => {
     expect(delivery).toBe('both');
   });
 
-  it('keeps commands-only on greenfield when no upstream signals and no skill templates', async () => {
+  it('keeps commands-only when no upstream signals are present', async () => {
+    const delivery = await resolveEffectiveDelivery(
+      testDir,
+      'commands',
+      ['explore', 'analyze', 'matrix', 'publish', 'archive'],
+      ['cursor']
+    );
+    expect(delivery).toBe('commands');
+  });
+
+  it('keeps commands-only on greenfield when no workflows are configured', async () => {
     const delivery = await resolveEffectiveDelivery(testDir, 'commands', [], ['cursor']);
     expect(delivery).toBe('commands');
   });
 
-  it('upgrades to both when skill templates are missing and no upstream', async () => {
-    const delivery = await resolveEffectiveDelivery(
-      testDir,
-      'commands',
-      ['explore', 'propose'],
-      ['cursor']
-    );
-    expect(delivery).toBe('both');
+  it('keeps skills-only delivery unchanged', async () => {
+    const delivery = await resolveEffectiveDelivery(testDir, 'skills', ['explore'], ['cursor']);
+    expect(delivery).toBe('skills');
   });
 });

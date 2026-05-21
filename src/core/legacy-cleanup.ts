@@ -50,7 +50,7 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   // File-based: individual openspec-*.md files in a commands/workflows/prompts folder
   'cursor': {
     type: 'files',
-    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/openspec-*.md'],
+    pattern: ['.cursor/commands/qas-*.md', '.cursor/commands/openspec-*.md', '.cursor/commands/opsx-*.md'],
   },
   'windsurf': { type: 'files', pattern: '.windsurf/workflows/openspec-*.md' },
   'kilocode': { type: 'files', pattern: '.kilocode/workflows/openspec-*.md' },
@@ -114,9 +114,6 @@ export async function hasActiveUpstreamOpenSpec(projectRoot: string): Promise<bo
 
   // Coexistence signals work without openspec/ (e.g. qaspec-only projects with opsx commands).
   if (await hasUpstreamOpsxSlashCommands(projectRoot)) {
-    return true;
-  }
-  if (await hasUpstreamOpenspecSkills(projectRoot)) {
     return true;
   }
 
@@ -201,7 +198,9 @@ export async function detectLegacyArtifacts(
   // Detect legacy slash commands
   const slashResult = await detectLegacySlashCommands(projectPath);
   result.slashCommandDirs = slashResult.directories;
-  result.slashCommandFiles = slashResult.files;
+  result.slashCommandFiles = upstreamOpenSpecActive
+    ? slashResult.files.filter((filePath) => !isUpstreamManagedSlashCommandPath(filePath))
+    : slashResult.files;
 
   // Detect legacy structure files
   const structureResult = await detectLegacyStructureFiles(projectPath, upstreamOpenSpecActive);
@@ -252,6 +251,11 @@ export async function detectLegacyConfigFiles(
   }
 
   return { allFiles, filesToUpdate };
+}
+
+function isUpstreamManagedSlashCommandPath(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.includes('/opsx-') || normalized.includes('/openspec-');
 }
 
 /**

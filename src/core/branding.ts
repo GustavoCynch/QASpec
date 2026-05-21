@@ -39,6 +39,7 @@ export const OPENSPEC_PRODUCT_STRING_ALLOWLIST: RegExp[] = [
   /\bhasOpenSpec\w*/i,
   /\bisOnlyOpenSpec\w*/i,
   /\bhasActiveUpstreamOpenSpec\b/,
+  /\bupstreamOpenSpecActive\b/,
   /\bOpenSpecConfig\b/,
   /\bOPENSPEC_/,
   /OpenSpec markers?/i,

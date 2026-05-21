@@ -1,7 +1,7 @@
 # qaspec-branding Specification
 
 ## Purpose
-TBD - created by archiving change rebrand-openspec-to-qaspec. Update Purpose after archive.
+Define consistent QASpec product naming in user-facing copy, CLI messages, and generated artifacts so the fork is clearly distinguished from upstream tooling.
 ## Requirements
 ### Requirement: Product naming matrix
 

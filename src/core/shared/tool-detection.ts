@@ -7,6 +7,7 @@
 import path from 'path';
 import * as fs from 'fs';
 import { AI_TOOLS } from '../config.js';
+import { CORE_WORKFLOWS } from '../profiles.js';
 
 /**
  * Names of skill directories created by qaspec init.
@@ -17,17 +18,6 @@ export const SKILL_NAMES = [
   'qas-matrix',
   'qas-publish',
   'qas-archive',
-  'openspec-explore',
-  'openspec-new-change',
-  'openspec-continue-change',
-  'openspec-apply-change',
-  'openspec-ff-change',
-  'openspec-sync-specs',
-  'openspec-archive-change',
-  'openspec-bulk-archive-change',
-  'openspec-verify-change',
-  'openspec-onboard',
-  'openspec-propose',
 ] as const;
 
 export type SkillName = (typeof SKILL_NAMES)[number];
@@ -35,22 +25,7 @@ export type SkillName = (typeof SKILL_NAMES)[number];
 /**
  * IDs of command templates created by qaspec init.
  */
-export const COMMAND_IDS = [
-  'explore',
-  'analyze',
-  'matrix',
-  'publish',
-  'new',
-  'continue',
-  'apply',
-  'ff',
-  'sync',
-  'archive',
-  'bulk-archive',
-  'verify',
-  'onboard',
-  'propose',
-] as const;
+export const COMMAND_IDS = [...CORE_WORKFLOWS] as const;
 
 export type CommandId = (typeof COMMAND_IDS)[number];
 
@@ -141,15 +116,6 @@ export function extractGeneratedByVersion(skillFilePath: string): string | null 
 
     const content = fs.readFileSync(skillFilePath, 'utf-8');
 
-    // Look for generatedBy in the YAML frontmatter
-    // The file format is:
-    // ---
-    // ...
-    // metadata:
-    //   author: openspec
-    //   version: "1.0"
-    //   generatedBy: "0.23.0"
-    // ---
     const generatedByMatch = content.match(/^\s*generatedBy:\s*["']?([^"'\n]+)["']?\s*$/m);
 
     if (generatedByMatch && generatedByMatch[1]) {
@@ -184,7 +150,6 @@ export function getToolVersionStatus(
   const skillsDir = path.join(projectRoot, tool.skillsDir, 'skills');
   let generatedByVersion: string | null = null;
 
-  // Find the first skill file that exists and read its version
   for (const skillName of SKILL_NAMES) {
     const skillFile = path.join(skillsDir, skillName, 'SKILL.md');
     if (fs.existsSync(skillFile)) {

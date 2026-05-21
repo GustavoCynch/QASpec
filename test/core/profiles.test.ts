@@ -20,28 +20,12 @@ describe('profiles', () => {
   });
 
   describe('ALL_WORKFLOWS', () => {
-    it('should contain all 14 workflows', () => {
-      expect(ALL_WORKFLOWS).toHaveLength(14);
+    it('should contain all QASpec core workflows', () => {
+      expect(ALL_WORKFLOWS).toHaveLength(5);
     });
 
-    it('should contain expected workflow IDs', () => {
-      const expected = [
-        'propose',
-        'explore',
-        'analyze',
-        'matrix',
-        'publish',
-        'new',
-        'continue',
-        'apply',
-        'ff',
-        'sync',
-        'archive',
-        'bulk-archive',
-        'verify',
-        'onboard',
-      ];
-      expect([...ALL_WORKFLOWS]).toEqual(expected);
+    it('should match CORE_WORKFLOWS', () => {
+      expect([...ALL_WORKFLOWS]).toEqual([...CORE_WORKFLOWS]);
     });
   });
 
@@ -56,10 +40,10 @@ describe('profiles', () => {
       expect(result).toEqual(CORE_WORKFLOWS);
     });
 
-    it('should return custom workflows for custom profile', () => {
-      const customWorkflows = ['explore', 'new', 'apply', 'ff'];
+    it('should return only QASpec workflow ids for custom profile', () => {
+      const customWorkflows = ['explore', 'new', 'apply', 'ff', 'matrix'];
       const result = getProfileWorkflows('custom', customWorkflows);
-      expect(result).toEqual(customWorkflows);
+      expect(result).toEqual(['explore', 'matrix']);
     });
 
     it('should return empty array for custom profile with no customWorkflows', () => {

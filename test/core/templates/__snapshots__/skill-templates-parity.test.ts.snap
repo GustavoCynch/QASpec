@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`skill templates split parity > preserves QASpec template function payloads exactly 1`] = `
+{
+  "getFeedbackSkillTemplate": "8f3b0dc3b4f06a168604416690873a62c7f85f35f9832db70a667c6e1f8823de",
+  "getQasAnalyzeCommandTemplate": "f4addcb8fef7ffa4f8217a1ec8c4b80b3f202d0ee6be7f267c9b35411656ea9b",
+  "getQasAnalyzeSkillTemplate": "b5730d922166d89c96dd5f00ba8bd723b7c0b68055522cc39152769aa3abd5d9",
+  "getQasArchiveCommandTemplate": "080e51f5633df9f35b70fc6373ecc1e2940f09bbc29753c91b9530fb9b239353",
+  "getQasArchiveSkillTemplate": "48aed1e4877fe7d5ef8e7518b49713cbb7c582cc177e69aab2e79532e641ec31",
+  "getQasExploreCommandTemplate": "917114b306702c9daa8015e0fd8c5bcfd30aa8ba840bd3f9ca7d2d4c0341d531",
+  "getQasExploreSkillTemplate": "3fbda525d556972351493fc13a72a6bc2a3643b21015c254af6a68ad6d956c28",
+  "getQasMatrixCommandTemplate": "8378e4317dee6eb1789599e0edbfb7d29d2d2b8c092d5ad4c1631a8480ac7f57",
+  "getQasMatrixSkillTemplate": "c452b1f633daf256c5bb63ce679edccb54cb5a80074f370e401839bfa49b68b2",
+  "getQasPublishCommandTemplate": "557c8d10e5ae5933f53deb3b398610ffdd2c8a54bd0607b9eb07276ce6442584",
+  "getQasPublishSkillTemplate": "2184f1ccdb71aaae02699963d24c2ddb144b55cff00481778166845f6aaf0fbc",
+}
+`;
+
+exports[`skill templates split parity > preserves generated QASpec skill file content exactly 1`] = `
+{
+  "qas-analyze": "f4f6c4d7338de5419124397a2ee2374e160d722dc26f2cb7d4ba4c7be452539f",
+  "qas-archive": "51e281f7abda422789067a4a1bf049214f52d88e9b5ffe1b87158a7d3fc73906",
+  "qas-explore": "420888f81af2499cbc8c16c87facde6faa6e0862510218b6fef163efa63cc5ca",
+  "qas-matrix": "71fe743a9ad604071478ce391fd549340bcc9f7a82e69e84a9b6c0eb66f9553f",
+  "qas-publish": "42e719ce8f3c137a61d492604466642adff3f7c7b435e0e9b135d3d147f5faac",
+}
+`;

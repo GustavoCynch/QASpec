@@ -397,11 +397,11 @@ ${OPENSPEC_MARKERS.end}`);
       }
     });
 
-    it('should return true when openspec-propose skill exists', async () => {
+    it('should return false when only a leftover openspec-propose skill exists without planning config or opsx commands', async () => {
       const skillDir = path.join(testDir, '.cursor', 'skills', 'openspec-propose');
       await fs.mkdir(skillDir, { recursive: true });
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), '---\nname: openspec-propose\n---\n');
-      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(true);
+      expect(await hasActiveUpstreamOpenSpec(testDir)).toBe(false);
     });
   });
 
@@ -990,6 +990,7 @@ ${OPENSPEC_MARKERS.end}`);
         pattern: [
           '.cursor/commands/qas-*.md',
           '.cursor/commands/openspec-*.md',
+          '.cursor/commands/opsx-*.md',
         ],
       });
 

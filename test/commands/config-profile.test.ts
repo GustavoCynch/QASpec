@@ -123,14 +123,14 @@ describe('config profile interactive flow', () => {
     }
   }
 
-  function addExtraVerifyWorkflowArtifacts(projectDir: string): void {
-    const verifySkillPath = path.join(projectDir, '.claude', 'skills', 'openspec-verify-change', 'SKILL.md');
-    fs.mkdirSync(path.dirname(verifySkillPath), { recursive: true });
-    fs.writeFileSync(verifySkillPath, 'name: openspec-verify-change\n', 'utf-8');
+  function addExtraWorkflowArtifactsBeyondGlobal(projectDir: string): void {
+    const archiveSkillPath = path.join(projectDir, '.claude', 'skills', 'qas-archive', 'SKILL.md');
+    fs.mkdirSync(path.dirname(archiveSkillPath), { recursive: true });
+    fs.writeFileSync(archiveSkillPath, 'name: qas-archive\n', 'utf-8');
 
-    const verifyCommandPath = path.join(projectDir, '.claude', 'commands', 'opsx', 'verify.md');
-    fs.mkdirSync(path.dirname(verifyCommandPath), { recursive: true });
-    fs.writeFileSync(verifyCommandPath, '# verify\n', 'utf-8');
+    const archiveCommandPath = path.join(projectDir, '.claude', 'commands', 'qas', 'archive.md');
+    fs.mkdirSync(path.dirname(archiveCommandPath), { recursive: true });
+    fs.writeFileSync(archiveCommandPath, '# archive\n', 'utf-8');
   }
 
   function setupWorkspaceState(
@@ -256,9 +256,9 @@ describe('config profile interactive flow', () => {
     const { ALL_WORKFLOWS } = await import('../../src/core/profiles.js');
     const { select, checkbox } = await getPromptMocks();
 
-    saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['explore', 'analyze', 'matrix', 'publish', 'archive'] });
+    saveGlobalConfig({ featureFlags: {}, profile: 'custom', delivery: 'both', workflows: ['explore'] });
     select.mockResolvedValueOnce('workflows');
-    checkbox.mockResolvedValueOnce(['propose', 'explore']);
+    checkbox.mockResolvedValueOnce(['explore', 'analyze']);
 
     await runConfigCommand(['profile']);
 
@@ -272,11 +272,11 @@ describe('config profile interactive flow', () => {
         unchecked: '[ ]',
       },
     });
-    const proposeChoice = checkboxCall.choices.find((choice: { value: string }) => choice.value === 'propose');
-    const onboardChoice = checkboxCall.choices.find((choice: { value: string }) => choice.value === 'onboard');
-    expect(proposeChoice.checked).toBe(false);
-    expect(onboardChoice.checked).toBe(false);
-    expect(getGlobalConfig().workflows).toEqual(['propose', 'explore']);
+    const matrixChoice = checkboxCall.choices.find((choice: { value: string }) => choice.value === 'matrix');
+    const publishChoice = checkboxCall.choices.find((choice: { value: string }) => choice.value === 'publish');
+    expect(matrixChoice.checked).toBe(false);
+    expect(publishChoice.checked).toBe(false);
+    expect(getGlobalConfig().workflows).toEqual(['explore', 'analyze']);
   });
 
   it('delivery picker should mark current option inline', async () => {
@@ -310,14 +310,14 @@ describe('config profile interactive flow', () => {
     expect(checkboxCall.message).toBe('Select workflows to make available:');
     expect(checkboxCall.choices).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        value: 'propose',
-        name: 'Propose change',
-        description: 'Create proposal, design, and tasks from a request',
+        value: 'explore',
+        name: 'Explore ideas',
+        description: 'Investigate a problem before implementation',
       }),
       expect.objectContaining({
-        value: 'verify',
-        name: 'Verify change',
-        description: 'Run verification checks against a change',
+        value: 'matrix',
+        name: 'Test matrix',
+        description: 'Build test matrix and delta specs (testmatrix.md)',
       }),
     ]));
   });
@@ -390,9 +390,8 @@ describe('config profile interactive flow', () => {
     const { saveGlobalConfig } = await import('../../src/core/global-config.js');
     const { select } = await getPromptMocks();
 
-    saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['explore', 'analyze', 'matrix', 'publish', 'archive'] });
+    saveGlobalConfig({ featureFlags: {}, profile: 'custom', delivery: 'both', workflows: ['explore', 'analyze', 'matrix', 'publish'] });
     setupSyncedCoreBothArtifacts(tempDir);
-    addExtraVerifyWorkflowArtifacts(tempDir);
     select.mockResolvedValueOnce('keep');
 
     await runConfigCommand(['profile']);

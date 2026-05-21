@@ -44,6 +44,9 @@ import {
   formatUpstreamCoexistenceSummary,
   isUpstreamOpenspecSkillDir,
   isUpstreamLegacyWorkflow,
+  removeLegacyQaspecSkillDirs,
+  removeLegacyQaspecCommandFiles,
+  removeDeselectedQasSubdirCommands,
 } from './upstream-coexistence.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getGlobalConfig, type Delivery } from './global-config.js';
@@ -240,6 +243,10 @@ export class UpdateCommand {
             desiredWorkflows,
             upstreamOpenSpecActive
           );
+          removedDeselectedSkillCount += await removeLegacyQaspecSkillDirs(
+            skillsDir,
+            upstreamOpenSpecActive
+          );
         }
 
         // Delete skill directories if delivery is commands-only (never strip upstream skills)
@@ -269,6 +276,14 @@ export class UpdateCommand {
               toolId,
               desiredWorkflows,
               upstreamOpenSpecActive
+            );
+            removedDeselectedCommandCount += await removeLegacyQaspecCommandFiles(
+              resolvedProjectPath,
+              upstreamOpenSpecActive
+            );
+            removedDeselectedCommandCount += await removeDeselectedQasSubdirCommands(
+              resolvedProjectPath,
+              desiredWorkflows
             );
           }
         }
@@ -326,19 +341,13 @@ export class UpdateCommand {
     if (newlyConfiguredTools.length > 0) {
       const activeWorkflows = [...getProfileWorkflows(profile, globalConfig.workflows)];
       console.log();
-      if (usesQasWorkflowSurface(activeWorkflows)) {
+      if (activeWorkflows.length > 0) {
         console.log(chalk.bold('Getting started:'));
         console.log('  qaspec new change <name>   Create a QA change');
         console.log('  /qas:explore                 Think before the formal cycle');
         console.log('  /qas:analyze                 Analysis (analisis.md)');
         console.log('  /qas:matrix                  Test matrix (testmatrix.md)');
         console.log('  /qas:publish                 Publish to Qase');
-      } else if (activeWorkflows.includes('propose')) {
-        console.log(chalk.bold('Getting started:'));
-        console.log('  Start your first change: /opsx:propose "your idea"');
-      } else if (activeWorkflows.includes('new')) {
-        console.log(chalk.bold('Getting started:'));
-        console.log('  Start your first change: /opsx:new "your idea"');
       }
       console.log();
       console.log(`Learn more: ${chalk.cyan(DOCS_URL)}`);

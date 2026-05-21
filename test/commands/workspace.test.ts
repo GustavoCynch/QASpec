@@ -275,7 +275,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'commands',
-      workflows: ['apply', 'archive'],
+      workflows: ['analyze', 'archive'],
     });
 
     const result = await runCLI(
@@ -309,14 +309,14 @@ describe('workspace command', () => {
       expect.objectContaining({
         profile: 'custom',
         delivery: 'commands',
-        workflow_ids: ['apply', 'archive'],
+        workflow_ids: ['analyze', 'archive'],
         selected_agents: ['codex'],
         skills_only: true,
         delivery_notice: expect.stringContaining('skills only'),
         generated: [
           expect.objectContaining({
             tool_id: 'codex',
-            workflow_ids: ['apply', 'archive'],
+            workflow_ids: ['analyze', 'archive'],
           }),
         ],
         refreshed: [],
@@ -324,9 +324,9 @@ describe('workspace command', () => {
       })
     );
 
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-apply-change', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-archive', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-propose', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
     expect(fs.existsSync(path.join(codexHome, 'prompts'))).toBe(false);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
     expect(fs.existsSync(path.join(api, '.codex'))).toBe(false);
@@ -336,7 +336,7 @@ describe('workspace command', () => {
         selected_agents: ['codex'],
         last_applied_profile: 'custom',
         last_applied_delivery: 'commands',
-        last_applied_workflow_ids: ['apply', 'archive'],
+        last_applied_workflow_ids: ['analyze', 'archive'],
         last_applied_at: expect.any(String),
       })
     );
@@ -373,7 +373,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'commands',
-      workflows: ['apply', 'verify'],
+      workflows: ['analyze', 'matrix'],
     });
     const setup = await setupWorkspace('profile-sync', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
@@ -381,8 +381,8 @@ describe('workspace command', () => {
     fs.mkdirSync(customSkillDir, { recursive: true });
     fs.writeFileSync(path.join(customSkillDir, 'README.md'), 'user-owned\n');
 
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-apply-change', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-verify-change', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
 
     writeGlobalConfig({
       profile: 'core',
@@ -423,13 +423,7 @@ describe('workspace command', () => {
             workflow_ids: ['explore', 'analyze', 'matrix', 'publish', 'archive'],
           }),
         ],
-        removed: [
-          expect.objectContaining({
-            tool_id: 'codex',
-            reason: 'workflow_unselected',
-            workflow_ids: expect.arrayContaining(['apply', 'verify']),
-          }),
-        ],
+        removed: [],
         failed: [],
       })
     );
@@ -438,7 +432,7 @@ describe('workspace command', () => {
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-publish', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-archive', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-verify-change'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(customSkillDir, 'README.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'prompts'))).toBe(false);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
@@ -470,12 +464,12 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'commands',
-      workflows: ['apply'],
+      workflows: ['analyze'],
     });
     const setup = await setupWorkspace('update-redirect', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-apply-change', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-propose', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-explore', 'SKILL.md'))).toBe(false);
 
     writeGlobalConfig({
       profile: 'core',
@@ -502,7 +496,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'commands',
-      workflows: ['apply'],
+      workflows: ['analyze'],
     });
     const first = await setupWorkspace('target-first', [`api=${firstApi}`], ['--tools', 'codex']);
     const second = await setupWorkspace('target-second', [`api=${secondApi}`], ['--tools', 'codex']);
@@ -530,7 +524,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'skills',
-      workflows: ['apply'],
+      workflows: ['analyze'],
     });
     const setup = await setupWorkspace('agent-change', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
@@ -545,12 +539,12 @@ describe('workspace command', () => {
     expect(addAgent.exitCode).toBe(0);
     const addPayload = parseJson(addAgent);
     expect(addPayload.workspace_skills.refreshed).toEqual([
-      expect.objectContaining({ tool_id: 'codex', workflow_ids: ['apply'] }),
+      expect.objectContaining({ tool_id: 'codex', workflow_ids: ['analyze'] }),
     ]);
     expect(addPayload.workspace_skills.added).toEqual([
-      expect.objectContaining({ tool_id: 'claude', workflow_ids: ['apply'] }),
+      expect.objectContaining({ tool_id: 'claude', workflow_ids: ['analyze'] }),
     ]);
-    expect(fs.existsSync(path.join(workspaceRoot, '.claude', 'skills', 'openspec-apply-change', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.claude', 'skills', 'qas-analyze', 'SKILL.md'))).toBe(true);
     expect(readLocalState(workspaceRoot).workspace_skills?.selected_agents).toEqual(['codex', 'claude']);
 
     const removeAgent = await runCLI(
@@ -563,13 +557,13 @@ describe('workspace command', () => {
       expect.objectContaining({
         tool_id: 'codex',
         reason: 'agent_unselected',
-        workflow_ids: ['apply'],
+        workflow_ids: ['analyze'],
       }),
     ]);
     expect(removePayload.workspace_skills.refreshed).toEqual([
-      expect.objectContaining({ tool_id: 'claude', workflow_ids: ['apply'] }),
+      expect.objectContaining({ tool_id: 'claude', workflow_ids: ['analyze'] }),
     ]);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'openspec-apply-change'))).toBe(false);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qas-analyze'))).toBe(false);
     expect(fs.existsSync(path.join(userSkillDir, 'SKILL.md'))).toBe(true);
     expect(readLocalState(workspaceRoot).workspace_skills?.selected_agents).toEqual(['claude']);
   });
@@ -579,12 +573,12 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'skills',
-      workflows: ['verify'],
+      workflows: ['matrix'],
     });
     const setup = await setupWorkspace('unmanaged-collision', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'openspec-verify-change');
-    fs.writeFileSync(path.join(collidingSkillDir, 'SKILL.md'), 'name: user-owned-verify\n');
+    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'qas-matrix');
+    fs.writeFileSync(path.join(collidingSkillDir, 'SKILL.md'), 'name: user-owned-matrix\n');
 
     const update = await runCLI(
       ['workspace', 'update', '--workspace', 'unmanaged-collision', '--tools', 'none', '--json'],
@@ -602,7 +596,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'skills',
-      workflows: ['apply'],
+      workflows: ['analyze'],
     });
     const setup = await setupWorkspace('failed-update-state', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
@@ -629,7 +623,7 @@ describe('workspace command', () => {
       expect.objectContaining({
         selected_agents: ['codex'],
         last_applied_profile: 'custom',
-        last_applied_workflow_ids: ['apply'],
+        last_applied_workflow_ids: ['analyze'],
       })
     );
   });

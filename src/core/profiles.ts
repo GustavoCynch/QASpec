@@ -31,40 +31,31 @@ export function isLegacyCoreWorkflowSet(workflows: readonly string[] | undefined
 }
 
 /**
- * All available workflows in the system.
+ * All QASpec workflow ids available for profile configuration.
  */
-export const ALL_WORKFLOWS = [
-  'propose',
-  'explore',
-  'analyze',
-  'matrix',
-  'publish',
-  'new',
-  'continue',
-  'apply',
-  'ff',
-  'sync',
-  'archive',
-  'bulk-archive',
-  'verify',
-  'onboard',
-] as const;
+export const ALL_WORKFLOWS = [...CORE_WORKFLOWS] as const;
 
 export type WorkflowId = (typeof ALL_WORKFLOWS)[number];
 export type CoreWorkflowId = (typeof CORE_WORKFLOWS)[number];
+
+const CORE_WORKFLOW_SET = new Set<string>(CORE_WORKFLOWS);
+
+function filterToQasWorkflows(workflows: readonly string[]): readonly string[] {
+  return workflows.filter((workflow) => CORE_WORKFLOW_SET.has(workflow));
+}
 
 /**
  * Resolves which workflows should be active for a given profile configuration.
  *
  * - 'core' profile always returns CORE_WORKFLOWS
- * - 'custom' profile returns the provided customWorkflows, or empty array if not provided
+ * - 'custom' profile returns only QASpec workflow ids from customWorkflows
  */
 export function getProfileWorkflows(
   profile: Profile,
   customWorkflows?: string[]
 ): readonly string[] {
   if (profile === 'custom') {
-    return customWorkflows ?? [];
+    return filterToQasWorkflows(customWorkflows ?? []);
   }
   return CORE_WORKFLOWS;
 }

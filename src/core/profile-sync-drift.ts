@@ -17,15 +17,6 @@ export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
   matrix: 'qas-matrix',
   publish: 'qas-publish',
   archive: 'qas-archive',
-  new: 'openspec-new-change',
-  continue: 'openspec-continue-change',
-  apply: 'openspec-apply-change',
-  ff: 'openspec-ff-change',
-  sync: 'openspec-sync-specs',
-  'bulk-archive': 'openspec-bulk-archive-change',
-  verify: 'openspec-verify-change',
-  onboard: 'openspec-onboard',
-  propose: 'openspec-propose',
 };
 
 function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {
