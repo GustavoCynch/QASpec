@@ -28,8 +28,7 @@
     }
   },
   "bin": {
-    "qaspec": "./bin/qaspec.js",
-    "openspec": "./bin/openspec.js"
+    "qaspec": "./bin/qaspec.js"
   },
   "files": [
     "dist",

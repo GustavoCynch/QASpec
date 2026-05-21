@@ -43,10 +43,6 @@ const { version } = require('../../package.json');
 
 const CLI_PROGRAM_NAME = 'qaspec';
 
-if (process.env.QASPEC_DEPRECATED_SHIM === '1') {
-  console.error('openspec is deprecated; use qaspec');
-}
-
 /**
  * Get the full command path for nested commands.
  * For example: 'change show' -> 'change:show'

@@ -210,10 +210,6 @@ jobs:
             echo "Error: qaspec binary not found in build output"
             exit 1
           fi
-          if [ ! -f "result/bin/openspec" ]; then
-            echo "Error: openspec shim binary not found in build output"
-            exit 1
-          fi
           echo "✅ Build output verified"
 
       - name: Test binary execution

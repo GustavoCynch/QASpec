@@ -1,4 +1,11 @@
-# @fission-ai/openspec
+# @qaspec/cli
+
+## Unreleased
+
+### Breaking Changes
+
+- **Removed `openspec` npm binary** — The package exposes only `qaspec`. Replace `openspec` with `qaspec` in scripts and CI.
+- **Fork planning home** — This repository dogfoods under `qaspec/` (`qaspec/changes/`, `qaspec/specs/`, `qaspec/config.yaml`). Consumer repos with only `openspec/` are still supported by the CLI resolver.
 
 ## 1.3.1
 

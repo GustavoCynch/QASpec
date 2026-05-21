@@ -19,8 +19,8 @@ start here
 Read these files in order:
 
 1. `WORKSPACE_REIMPLEMENTATION_DIRECTION.md`
-2. `openspec/changes/workspace-reimplementation-roadmap/README.md`
-3. `openspec/changes/workspace-reimplementation-roadmap/POC_REFERENCE_GUIDE.md`
+2. `qaspec/changes/workspace-reimplementation-roadmap/README.md`
+3. `qaspec/changes/workspace-reimplementation-roadmap/POC_REFERENCE_GUIDE.md`
 4. The proposal for the next implementation slice
 
 The POC reference commit is:

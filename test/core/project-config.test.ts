@@ -579,7 +579,7 @@ rules:
       const message = suggestSchemas('wrong-schema', availableSchemas);
 
       expect(message).toContain(
-        "Fix: Edit openspec/config.yaml and change 'schema: wrong-schema' to a valid schema name"
+        "Fix: Edit qaspec/config.yaml and change 'schema: wrong-schema' to a valid schema name"
       );
     });
 

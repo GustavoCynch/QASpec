@@ -1,7 +1,8 @@
 # qaspec-cli Specification
 
 ## Purpose
-TBD - created by archiving change qaspec-cli-rename. Update Purpose after archive.
+
+QASpec ships a single CLI binary (`qaspec`) for planning-home resolution, schema-driven changes, QA workflow scaffolding (`qaspec init` / `qaspec update`), and spec-driven tooling inherited from the OpenSpec fork. The fork repository dogfoods under `qaspec/`; consumer projects may use `qaspec/` or legacy `openspec/` until they migrate.
 ## Requirements
 ### Requirement: Primary CLI binary name
 
@@ -19,21 +20,6 @@ The published package SHALL expose `qaspec` as the primary executable name for a
 - **THEN** `qaspec` is available on PATH via npm `bin` mapping
 - **AND** package name in `package.json` is `@qaspec/cli` (or documented equivalent)
 
-### Requirement: Deprecated openspec binary shim
-
-The package SHALL continue to expose an `openspec` executable that delegates to the same implementation as `qaspec`.
-
-#### Scenario: Legacy invocation
-
-- **WHEN** a user runs `openspec status`
-- **THEN** the command succeeds with identical behavior to `qaspec status`
-- **AND** stderr includes a one-time deprecation notice recommending `qaspec`
-
-#### Scenario: No separate openspec codebase
-
-- **WHEN** maintainers inspect `bin/`
-- **THEN** `openspec` and `qaspec` entrypoints share one implementation path (no duplicated CLI logic)
-
 ### Requirement: No qas CLI binary
 
 The product SHALL NOT register a `qas` npm binary; the short prefix `qas` remains reserved for agent slash commands (`/qas:analyze`, etc.).
@@ -41,6 +27,6 @@ The product SHALL NOT register a `qas` npm binary; the short prefix `qas` remain
 #### Scenario: Package bin field
 
 - **WHEN** reading `package.json` `bin` map
-- **THEN** only `qaspec` and `openspec` (shim) are listed
-- **AND** no `qas` key exists
+- **THEN** only `qaspec` is listed
+- **AND** no `openspec` or `qas` key exists
 

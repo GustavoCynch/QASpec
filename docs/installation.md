@@ -12,8 +12,6 @@
 npm install -g @qaspec/cli@latest
 ```
 
-The package also exposes a deprecated `openspec` shim that prints a one-line notice and delegates to `qaspec`.
-
 ### pnpm
 
 ```bash
@@ -69,16 +67,16 @@ Or add to your development environment in `flake.nix`:
 ## Verify Installation
 
 ```bash
-openspec --version
+qaspec --version
 ```
 
 ## Next Steps
 
-After installing, initialize OpenSpec in your project:
+After installing, initialize QASpec in your project:
 
 ```bash
 cd your-project
-openspec init
+qaspec init
 ```
 
 See [Getting Started](getting-started.md) for a full walkthrough.

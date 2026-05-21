@@ -29,7 +29,7 @@ Additional connectors may follow the same plugin model.
 
 ## Status
 
-This repository is in **early development** (OpenSpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`); the legacy **`openspec`** binary remains as a compatibility shim with a deprecation notice.
+This repository is in **early development** (OpenSpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`).
 
 QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `qaspec init`. Existing projects that still use an `openspec/` planning home continue to work without migration.
 
@@ -40,7 +40,7 @@ Migration from the legacy pack is **complete**. Authoritative QA runtime is `qas
 | `.agents/skills/qa-pr-review/references/` | Maintainer reference (historical bugs, Qase rules source) |
 | `qaspec/references/` (after init) | Project runtime seeds copied by `qaspec init` |
 
-This repository keeps `openspec/changes/` and `.cursor/commands/opsx-*` for **spec-driven** CLI dogfooding; validating `/qas:*` output uses `qaspec init` in a temporary directory, not committed `qas-*.md` here.
+This repository keeps `qaspec/changes/` and `.cursor/commands/opsx-*` for **spec-driven** CLI dogfooding, plus committed `.cursor/commands/qas-*` and `.cursor/skills/qas-*` as QA workflow samples.
 
 ## License
 
