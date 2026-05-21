@@ -4,9 +4,9 @@ Date: 2026-04-30
 
 Fresh-agent entry point: read `WORKSPACE_REIMPLEMENTATION_START_HERE.md` first, then return to this document for the full product direction.
 
-This document captures the intended direction for reimplementing OpenSpec workspace support from scratch, based on what we learned from the workspace POC.
+This document captures the intended direction for reimplementing QASpec workspace support from scratch, based on what we learned from the workspace POC.
 
-The reimplementation should be ordered around the path a real user takes through OpenSpec:
+The reimplementation should be ordered around the path a real user takes through QASpec:
 
 ```text
 set up workspace
@@ -27,7 +27,7 @@ A user should think:
 
 ```text
 I have a multi-repo product goal.
-I set up an OpenSpec workspace.
+I set up an QASpec workspace.
 I open it with my agent.
 The agent can see the linked repos or folders.
 We explore until the scope is clear.
@@ -61,20 +61,20 @@ First make workspace setup boring and solid.
 User goal:
 
 ```text
-Create a planning home and link the repos or folders OpenSpec should know about.
+Create a planning home and link the repos or folders QASpec should know about.
 ```
 
 Expected surface:
 
 ```bash
-openspec workspace setup
-openspec workspace setup --no-interactive --name platform --link /path/to/api --link web=/path/to/web
-openspec workspace list
-openspec workspace ls
-openspec workspace link /path/to/api
-openspec workspace link api-service /path/to/api
-openspec workspace relink api /new/path/to/api
-openspec workspace doctor
+qaspec workspace setup
+qaspec workspace setup --no-interactive --name platform --link /path/to/api --link web=/path/to/web
+qaspec workspace list
+qaspec workspace ls
+qaspec workspace link /path/to/api
+qaspec workspace link api-service /path/to/api
+qaspec workspace relink api /new/path/to/api
+qaspec workspace doctor
 ```
 
 Expected outcome:
@@ -82,18 +82,18 @@ Expected outcome:
 ```text
 workspace-folder/
   changes/
-  .openspec-workspace/
+  .qaspec-workspace/
     workspace.yaml
     local.yaml
 ```
 
 Product decisions:
 
-- Use `.openspec-workspace/`, not `.openspec/`, for workspace metadata.
+- Use `.qaspec-workspace/`, not the planning home (`qaspec/` or legacy `openspec/`), for workspace metadata.
 - Keep `changes/` visible in the workspace folder.
 - Keep setup as the only public creation path for the first release; do not expose `workspace create`.
 - Use `workspace link` and `workspace relink`, not POC-era `add-repo` or `update-repo`.
-- Allow linked repos or folders without repo-local `openspec/` state.
+- Allow linked repos or folders without repo-local planning home state.
 - Keep stable link names in shared workspace state and local paths in machine-local state.
 - Make `doctor` show link names, resolved paths, repo-local specs paths when present, and suggested fixes.
 
@@ -109,7 +109,7 @@ Defer:
 - Archive.
 - Complex target lifecycle.
 
-Done when a user can set up a workspace, link repos or folders, list known workspaces, relink local paths, and run `doctor` to see exactly what OpenSpec can resolve.
+Done when a user can set up a workspace, link repos or folders, list known workspaces, relink local paths, and run `doctor` to see exactly what QASpec can resolve.
 
 ### 2. Workspace Open
 
@@ -124,9 +124,9 @@ Open this multi-repo planning context with my coding agent.
 Expected surface:
 
 ```bash
-openspec workspace open
-openspec workspace open --agent codex
-openspec workspace open --agent github-copilot
+qaspec workspace open
+qaspec workspace open --agent codex
+qaspec workspace open --agent github-copilot
 ```
 
 Product behavior:
@@ -167,7 +167,7 @@ Tell the agent a rough product goal and have it inspect the repos before creatin
 Expected user prompt:
 
 ```text
-Explore how we should make the OpenSpec docs available on the landing page.
+Explore how we should make the QASpec docs available on the landing page.
 Look across the linked repos or folders, but do not implement yet.
 ```
 
@@ -182,7 +182,7 @@ Agent behavior:
 Build:
 
 - Workspace-level `AGENTS.md` guidance.
-- Normal OpenSpec skills and commands in workspace sessions.
+- Normal QASpec skills and commands in workspace sessions.
 - Workspace-specific guidance layered on top of normal `/explore`, not replacing it.
 
 Defer:
@@ -218,7 +218,7 @@ changes/integrate-docs/
   design.md
   tasks.md
   specs/
-    openspec/
+    qaspec/
       docs-conventions/spec.md
     landing/
       docs-routing/spec.md
@@ -256,15 +256,15 @@ Where are we, what repos are involved, and is this ready to implement?
 Expected surface:
 
 ```bash
-openspec status
-openspec status --change integrate-docs
+qaspec status
+qaspec status --change integrate-docs
 ```
 
 Human output should answer:
 
 ```text
 Change: integrate-docs
-Scope: openspec, landing
+Scope: qaspec, landing
 Proposal: present
 Design: present
 Tasks: present
@@ -306,13 +306,13 @@ It does not mean:
 
 ```text
 copy planning files
-materialize repo-local OpenSpec state
+materialize repo-local planning state
 create the proposal files for the first time
 ```
 
 Agent behavior:
 
-1. Ask OpenSpec for apply context.
+1. Ask QASpec for apply context.
 2. Read proposal, design, tasks, and relevant specs.
 3. Confirm the target repo checkout.
 4. Edit only that repo.
@@ -345,7 +345,7 @@ Defer:
 - Applying multiple repos at once.
 - Automatic branch creation.
 - Worktree management.
-- Repo-local OpenSpec mirroring.
+- Repo-local planning mirroring.
 
 Done when one repo slice can be implemented from the central workspace plan.
 
@@ -397,7 +397,7 @@ Behavior:
 
 - Require all targeted repo slices to be complete or explicitly accepted.
 - Archive the workspace change.
-- Do not require repo-local planning copies unless OpenSpec later decides that repo-local archival matters.
+- Do not require repo-local planning copies unless QASpec later decides that repo-local archival matters.
 
 Done when a user can complete the full lifecycle:
 
@@ -445,7 +445,7 @@ Those may matter later, but they should not define the first reimplementation pa
 
 ## Product Shape
 
-The workspace should feel like OpenSpec's normal workflow stretched across multiple repos, not a second product with its own lifecycle.
+The workspace should feel like QASpec's normal workflow stretched across multiple repos, not a second product with its own lifecycle.
 
 The durable product model is:
 

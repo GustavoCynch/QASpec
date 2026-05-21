@@ -15,7 +15,7 @@ By default, QASpec uses the **`core`** profile:
 
 Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
 
-QASpec does **not** install legacy `openspec-*` skills or `/opsx:*` commands. See [OPSX (legacy)](opsx.md).
+QASpec does **not** install legacy `openspec-*` skills or `/opsx:*` commands. It installs `qas-*` skills and `/qas:*` commands via `qaspec init`.
 
 ## Tool Directory Reference
 
@@ -94,4 +94,3 @@ Slash command frontmatter uses `/qas:<id>` (e.g. `/qas:analyze`). See [Commands]
 - [CLI Reference](cli.md) — Terminal commands
 - [Commands](commands.md) — Slash commands
 - [Getting Started](getting-started.md) — First-time setup
-- [OPSX (legacy)](opsx.md) — Historical `/opsx:*` (not installed by QASpec)

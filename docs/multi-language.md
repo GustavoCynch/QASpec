@@ -4,7 +4,7 @@ Configure QASpec to generate artifacts in languages other than English.
 
 ## Quick Setup
 
-Add a language instruction to your `openspec/config.yaml`:
+Add a language instruction to your `qaspec/config.yaml`:
 
 ```yaml
 schema: spec-driven
@@ -113,7 +113,7 @@ qaspec instructions proposal --change my-change
 
 The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, tests) in **English**.
 
-**User-facing** content follows `qaspec/config.yaml` (or `openspec/config.yaml` in legacy layouts):
+**User-facing** content follows the planning-home config file (`qaspec/config.yaml` after `qaspec init`):
 
 | Layer | Location | What it controls |
 |-------|----------|------------------|

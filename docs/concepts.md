@@ -67,7 +67,7 @@ A workspace has a different shape from a repo-local project:
 ```text
 workspace-folder/
 ├── changes/                       # Workspace-level planning
-└── .openspec-workspace/
+└── .qaspec-workspace/   # legacy installs may use .openspec-workspace/
     ├── workspace.yaml             # Shared workspace identity and link names
     └── local.yaml                 # This machine's local paths
 ```
@@ -76,17 +76,17 @@ Repo-local QASpec state keeps the existing shape:
 
 ```text
 repo-root/
-└── openspec/
+└── qaspec/
     ├── specs/
     └── changes/
 ```
 
-That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's `openspec/` directory remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `qaspec init` inside a workspace folder.
+That distinction matters. The workspace folder is a coordination surface for planning across linked repos or folders. Each repo's planning home (`qaspec/` or legacy `openspec/`) remains the home for repo-owned specs, repo-local changes, and implementation planning. Users do not need to run repo-local `qaspec init` inside a workspace folder.
 
-Stable link names are how workspace planning refers to repos and folders. The shared workspace state keeps names such as `api`, `web`, or `checkout`; each machine maps those names to its own local paths in `.openspec-workspace/local.yaml`.
+Stable link names are how workspace planning refers to repos and folders. The shared workspace state keeps names such as `api`, `web`, or `checkout`; each machine maps those names to its own local paths in `.qaspec-workspace/local.yaml`.
 
 ```yaml
-# .openspec-workspace/workspace.yaml
+# .qaspec-workspace/workspace.yaml
 version: 1
 name: platform
 links:
@@ -95,16 +95,16 @@ links:
 ```
 
 ```yaml
-# .openspec-workspace/local.yaml
+# .qaspec-workspace/local.yaml
 version: 1
 paths:
   api: /repos/api
   web: /repos/web
 ```
 
-QASpec-created workspaces exclude `.openspec-workspace/local.yaml` from portable collaboration state by default. `.openspec-workspace/workspace.yaml` remains portable because it stores the workspace name and stable link names, not one user's absolute checkout paths.
+QASpec-created workspaces exclude `.qaspec-workspace/local.yaml` from portable collaboration state by default. `.qaspec-workspace/workspace.yaml` remains portable because it stores the workspace name and stable link names, not one user's absolute checkout paths.
 
-Linked paths can be full repos, folders inside a large monorepo, or other existing folders. They do not need repo-local `openspec/` state before they can participate in workspace planning. Later implementation, verify, or archive workflows may require more repo readiness, but planning visibility starts with the link.
+Linked paths can be full repos, folders inside a large monorepo, or other existing folders. They do not need repo-local planning home state before they can participate in workspace planning. Later implementation, verify, or archive workflows may require more repo readiness, but planning visibility starts with the link.
 
 ```text
 multi-repo:
@@ -130,7 +130,7 @@ QASpec also keeps a machine-local registry at:
 getGlobalDataDir()/workspaces/registry.yaml
 ```
 
-The registry maps workspace names to workspace locations so later global commands can list or select known workspaces from anywhere. It is only an index. Each workspace folder remains authoritative for its own `.openspec-workspace/workspace.yaml` and `.openspec-workspace/local.yaml`, so stale registry records can be reported and repaired without redefining the workspace itself.
+The registry maps workspace names to workspace locations so later global commands can list or select known workspaces from anywhere. It is only an index. Each workspace folder remains authoritative for its own `.qaspec-workspace/workspace.yaml` and `.qaspec-workspace/local.yaml`, so stale registry records can be reported and repaired without redefining the workspace itself.
 
 Workspace visibility is not change commitment. Set up a workspace when QASpec should know which repos or folders are relevant; create a change later when you are ready to plan a feature, fix, project, or other piece of work.
 
@@ -190,7 +190,7 @@ Specs describe your system's behavior using structured requirements and scenario
 ### Structure
 
 ```
-openspec/specs/
+qaspec/specs/
 ├── auth/
 │   └── spec.md           # Authentication behavior
 ├── payments/
@@ -320,7 +320,7 @@ A change is a proposed modification to your system, packaged as a folder with ev
 ### Change Structure
 
 ```
-openspec/changes/add-dark-mode/
+qaspec/changes/add-dark-mode/
 ├── proposal.md           # Why and what
 ├── design.md             # How (technical approach)
 ├── tasks.md              # Implementation checklist
@@ -545,7 +545,7 @@ Schemas define the artifact types and their dependencies for a workflow.
 ### How Schemas Work
 
 ```yaml
-# openspec/schemas/spec-driven/schema.yaml
+# qaspec/schemas/spec-driven/schema.yaml
 name: spec-driven
 artifacts:
   - id: proposal
@@ -615,7 +615,7 @@ qaspec schema fork spec-driven research-first
 **Example custom schema:**
 
 ```yaml
-# openspec/schemas/research-first/schema.yaml
+# qaspec/schemas/research-first/schema.yaml
 name: research-first
 artifacts:
   - id: research
@@ -642,7 +642,7 @@ Archiving completes a change by merging its delta specs into the main specs and 
 ```
 Before archive:
 
-openspec/
+qaspec/
 ├── specs/
 │   └── auth/
 │       └── spec.md ◄────────────────┐
@@ -658,7 +658,7 @@ openspec/
 
 After archive:
 
-openspec/
+qaspec/
 ├── specs/
 │   └── auth/
 │       └── spec.md        # Now includes 2FA requirements
@@ -715,7 +715,7 @@ openspec/
 │   │  5. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
 │   └────────────────┘     └──────────────────────────────────────────────┘    │
 │                                                                              │
-│  Legacy OPSX workflow: see opsx.md — not installed by QASpec CLI.          │
+│  Legacy OPSX workflow: legacy `/opsx:*` — not installed by QASpec CLI.          │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -741,7 +741,7 @@ openspec/
 | **Scenario** | A concrete example of a requirement, typically in Given/When/Then format |
 | **Schema** | A definition of artifact types and their dependencies |
 | **Spec** | A specification describing system behavior, containing requirements and scenarios |
-| **Source of truth** | The `openspec/specs/` directory, containing the current agreed-upon behavior |
+| **Source of truth** | The `qaspec/specs/` directory, containing the current agreed-upon behavior |
 
 ## Next Steps
 

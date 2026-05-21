@@ -14,7 +14,7 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 
 The global **`core`** profile includes exactly five workflows: `explore`, `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qas-*` skills** and **`/qas:*` commands** (see [Supported Tools](supported-tools.md)).
 
-> **Legacy OPSX / upstream OpenSpec:** QASpec does **not** install `/opsx:*` or `openspec-*` agent commands. See [OPSX (legacy)](opsx.md) and [Migration Guide](migration-guide.md) only if you use upstream tooling separately.
+> **Legacy upstream tooling:** QASpec does **not** install `/opsx:*` or `openspec-*` agent commands. Use `/qas:*` from `qaspec init` unless you maintain separate upstream tooling.
 
 ## What QASpec Creates
 

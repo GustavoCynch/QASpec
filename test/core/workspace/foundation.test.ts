@@ -90,7 +90,7 @@ paths: {}
 
   describe('path helpers', () => {
     it('exposes the workspace constants', () => {
-      expect(WORKSPACE_METADATA_DIR_NAME).toBe('.openspec-workspace');
+      expect(WORKSPACE_METADATA_DIR_NAME).toBe('.qaspec-workspace');
       expect(WORKSPACE_SHARED_STATE_FILE_NAME).toBe('workspace.yaml');
       expect(WORKSPACE_LOCAL_STATE_FILE_NAME).toBe('local.yaml');
       expect(WORKSPACE_CHANGES_DIR_NAME).toBe('changes');
@@ -102,13 +102,13 @@ paths: {}
       const workspaceRoot = path.join(tempDir, 'platform');
 
       expect(getWorkspaceMetadataDir(workspaceRoot)).toBe(
-        path.join(workspaceRoot, '.openspec-workspace')
+        path.join(workspaceRoot, '.qaspec-workspace')
       );
       expect(getWorkspaceSharedStatePath(workspaceRoot)).toBe(
-        path.join(workspaceRoot, '.openspec-workspace', 'workspace.yaml')
+        path.join(workspaceRoot, '.qaspec-workspace', 'workspace.yaml')
       );
       expect(getWorkspaceLocalStatePath(workspaceRoot)).toBe(
-        path.join(workspaceRoot, '.openspec-workspace', 'local.yaml')
+        path.join(workspaceRoot, '.qaspec-workspace', 'local.yaml')
       );
       expect(getWorkspaceChangesDir(workspaceRoot)).toBe(path.join(workspaceRoot, 'changes'));
       expect(getWorkspaceCodeWorkspaceFileName('platform')).toBe('platform.code-workspace');
@@ -117,14 +117,33 @@ paths: {}
       );
     });
 
+    it('resolves legacy .openspec-workspace metadata when present', () => {
+      const workspaceRoot = path.join(tempDir, 'legacy-platform');
+      fs.mkdirSync(path.join(workspaceRoot, '.openspec-workspace'), { recursive: true });
+      fs.writeFileSync(
+        path.join(workspaceRoot, '.openspec-workspace', WORKSPACE_SHARED_STATE_FILE_NAME),
+        `version: 1
+name: legacy-platform
+links: {}
+`
+      );
+
+      expect(getWorkspaceMetadataDir(workspaceRoot)).toBe(
+        path.join(workspaceRoot, '.openspec-workspace')
+      );
+      expect(getWorkspaceSharedStatePath(workspaceRoot)).toBe(
+        path.join(workspaceRoot, '.openspec-workspace', WORKSPACE_SHARED_STATE_FILE_NAME)
+      );
+    });
+
     it('preserves Windows-style location strings when building workspace file paths', () => {
       const workspaceRoot = 'D:\\repos\\platform-workspace';
 
       expect(getWorkspaceSharedStatePath(workspaceRoot)).toBe(
-        'D:\\repos\\platform-workspace\\.openspec-workspace\\workspace.yaml'
+        'D:\\repos\\platform-workspace\\.qaspec-workspace\\workspace.yaml'
       );
       expect(getWorkspaceLocalStatePath(workspaceRoot)).toBe(
-        'D:\\repos\\platform-workspace\\.openspec-workspace\\local.yaml'
+        'D:\\repos\\platform-workspace\\.qaspec-workspace\\local.yaml'
       );
     });
 
@@ -165,10 +184,10 @@ paths: {}
     });
 
     it('exposes the portable collaboration ignore rule for local state', () => {
-      expect(WORKSPACE_LOCAL_STATE_IGNORE_PATTERN).toBe('.openspec-workspace/local.yaml');
-      expect(getWorkspacePortableIgnorePatterns()).toEqual(['.openspec-workspace/local.yaml']);
+      expect(WORKSPACE_LOCAL_STATE_IGNORE_PATTERN).toBe('.qaspec-workspace/local.yaml');
+      expect(getWorkspacePortableIgnorePatterns()).toEqual(['.qaspec-workspace/local.yaml']);
       expect(getWorkspacePortableIgnorePatterns('platform')).toEqual([
-        '.openspec-workspace/local.yaml',
+        '.qaspec-workspace/local.yaml',
         'platform.code-workspace',
       ]);
     });
@@ -541,7 +560,7 @@ After block.
         },
       ]);
       expect(fs.readFileSync(path.join(workspaceRoot, '.gitignore'), 'utf-8')).toContain(
-        '*.code-workspace\n.openspec-workspace/local.yaml\nplatform.code-workspace\n'
+        '*.code-workspace\n.qaspec-workspace/local.yaml\nplatform.code-workspace\n'
       );
     });
   });

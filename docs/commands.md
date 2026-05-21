@@ -4,7 +4,7 @@ Reference for QASpec **slash commands** installed by `qaspec init` and `qaspec u
 
 For workflow patterns, see [Workflows](workflows.md). For terminal commands, see [CLI](cli.md).
 
-> **Not installed by QASpec:** `/opsx:*` and `openspec-*` skills are legacy/upstream surfaces. See [OPSX (legacy)](opsx.md).
+> **Not installed by QASpec:** `/opsx:*` and `openspec-*` skills are legacy/upstream surfaces only. QASpec ships `/qas:*` commands via `qaspec init`.
 
 ## Quick Reference (core profile)
 
@@ -145,4 +145,3 @@ Delivery mode (`skills`, `commands`, or `both`) controls whether skills, slash c
 
 - [Workflows](workflows.md) — QA pipeline and halts
 - [Getting Started](getting-started.md) — First run
-- [OPSX (legacy)](opsx.md) — Historical `/opsx:*` workflow (not installed by QASpec CLI)

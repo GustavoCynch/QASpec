@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import {
-  LEGACY_OPSX_DOC_PATHS,
+  OPENSPEC_CLI_COMMAND_PATTERN,
   OPSX_SLASH_COMMAND_PATTERN,
   PRIMARY_PRODUCT_DOC_PATHS,
 } from '../../src/core/product-doc-guard.js';
@@ -22,8 +22,22 @@ function isAllowedOpsxMention(line: string): boolean {
     /not generated/i.test(line) ||
     /legacy/i.test(line) ||
     /historical/i.test(line) ||
+    /upstream/i.test(line)
+  );
+}
+
+/** Repo path literals and legacy disclaimers may mention openspec/ without being CLI examples. */
+function isAllowedOpenspecCliMention(line: string): boolean {
+  if (!OPENSPEC_CLI_COMMAND_PATTERN.test(line)) {
+    return true;
+  }
+  OPENSPEC_CLI_COMMAND_PATTERN.lastIndex = 0;
+  return (
+    /legacy/i.test(line) ||
+    /historical/i.test(line) ||
     /upstream/i.test(line) ||
-    /\[OPSX \(legacy\)\]/i.test(line)
+    /not install/i.test(line) ||
+    /openspec\/[a-z]/i.test(line)
   );
 }
 
@@ -46,15 +60,31 @@ describe('product documentation slash commands', () => {
     expect(
       violations,
       violations.length
-        ? `Primary docs must use /qas:* for default install guidance. Move legacy /opsx: content to ${LEGACY_OPSX_DOC_PATHS.join(' or ')}:\n${violations.join('\n')}`
+        ? `Primary docs must use /qas:* for default install guidance:\n${violations.join('\n')}`
         : undefined
     ).toEqual([]);
   });
 
-  it('allowlists legacy docs for /opsx: migration content', async () => {
-    for (const relativePath of LEGACY_OPSX_DOC_PATHS) {
+  it('does not use openspec <subcommand> as primary CLI guidance in product docs', async () => {
+    const violations: string[] = [];
+
+    for (const relativePath of PRIMARY_PRODUCT_DOC_PATHS) {
       const filePath = path.join(REPO_ROOT, relativePath);
-      await expect(fs.stat(filePath)).resolves.toBeDefined();
+      const content = await fs.readFile(filePath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      const disallowed = lines.filter((line) => !isAllowedOpenspecCliMention(line));
+      if (disallowed.length > 0) {
+        violations.push(
+          `${relativePath} (${disallowed.length} openspec CLI example(s), e.g. "${disallowed[0].trim().slice(0, 72)}…")`
+        );
+      }
     }
+
+    expect(
+      violations,
+      violations.length
+        ? `Primary docs must use qaspec <subcommand>, not openspec:\n${violations.join('\n')}`
+        : undefined
+    ).toEqual([]);
   });
 });

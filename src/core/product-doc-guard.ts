@@ -2,9 +2,6 @@
  * Paths and rules for product documentation regression guards.
  */
 
-/** Docs that may mention `/opsx:*` for legacy, upstream, or migration context. */
-export const LEGACY_OPSX_DOC_PATHS = ['docs/opsx.md', 'docs/migration-guide.md'] as const;
-
 /** Primary product guides that must not present `/opsx:` as the default install surface. */
 export const PRIMARY_PRODUCT_DOC_PATHS = [
   'docs/getting-started.md',
@@ -19,3 +16,6 @@ export const PRIMARY_PRODUCT_DOC_PATHS = [
 ] as const;
 
 export const OPSX_SLASH_COMMAND_PATTERN = /\/opsx:/g;
+
+/** `openspec <subcommand>` as a CLI invocation (not repo path literals like `openspec/changes/`). */
+export const OPENSPEC_CLI_COMMAND_PATTERN = /\bopenspec\s+[a-z][a-z0-9-]*/g;

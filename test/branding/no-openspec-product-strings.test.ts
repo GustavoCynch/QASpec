@@ -10,9 +10,15 @@ const SCAN_ROOTS = [
   path.join(REPO_ROOT, 'docs'),
   path.join(REPO_ROOT, 'schemas'),
   path.join(REPO_ROOT, 'README.md'),
+  path.join(REPO_ROOT, 'AGENTS.md'),
+  path.join(REPO_ROOT, 'MAINTAINERS.md'),
+  path.join(REPO_ROOT, 'flake.nix'),
+  ...['WORKSPACE_REIMPLEMENTATION_DIRECTION.md', 'WORKSPACE_REIMPLEMENTATION_START_HERE.md'].map((name) =>
+    path.join(REPO_ROOT, name)
+  ),
 ];
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.md', '.yaml', '.yml']);
+const SCAN_EXTENSIONS = new Set(['.ts', '.md', '.yaml', '.yml', '.nix']);
 
 function isAllowedLine(line: string): boolean {
   return OPENSPEC_PRODUCT_STRING_ALLOWLIST.some((pattern) => pattern.test(line));
@@ -39,7 +45,7 @@ async function collectFiles(dir: string): Promise<string[]> {
 }
 
 describe('no mis-branded OpenSpec product strings', () => {
-  it('allows OpenSpec only on allowlisted lines in src, docs, schemas, README', async () => {
+  it('allows OpenSpec only on allowlisted lines in guarded surfaces', async () => {
     const allFiles: string[] = [];
     for (const root of SCAN_ROOTS) {
       allFiles.push(...(await collectFiles(root)));

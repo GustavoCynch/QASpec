@@ -53,12 +53,12 @@ Or add to your development environment in `flake.nix`:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    openspec.url = "github:GustavoCynch/QASpec";
+    qaspec.url = "github:GustavoCynch/QASpec";
   };
 
-  outputs = { nixpkgs, openspec, ... }: {
+  outputs = { nixpkgs, qaspec, ... }: {
     devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
-      buildInputs = [ openspec.packages.x86_64-linux.default ];
+      buildInputs = [ qaspec.packages.x86_64-linux.default ];
     };
   };
 }

@@ -29,10 +29,10 @@ These commands are interactive and designed for terminal use:
 | Command | Purpose |
 |---------|---------|
 | `qaspec init` | Initialize project (interactive prompts) |
-| `openspec view` | Interactive dashboard |
+| `qaspec view` | Interactive dashboard |
 | `qaspec config edit` | Open config in editor |
-| `openspec feedback` | Submit feedback via GitHub |
-| `openspec completion install` | Install shell completions |
+| `qaspec feedback` | Submit feedback via GitHub |
+| `qaspec completion install` | Install shell completions |
 
 ### Agent-Compatible Commands
 
@@ -45,7 +45,7 @@ These commands support `--json` output for programmatic use by AI agents and scr
 | `qaspec validate` | Check for issues | `--all --json` for bulk validation |
 | `qaspec status` | See artifact progress | `--json` for structured status |
 | `qaspec instructions` | Get next steps | `--json` for agent instructions |
-| `openspec templates` | Find template paths | `--json` for path resolution |
+| `qaspec templates` | Find template paths | `--json` for path resolution |
 | `qaspec schemas` | List available schemas | `--json` for schema discovery |
 | `qaspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
 | `qaspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
@@ -123,7 +123,7 @@ qaspec init --force
 **What it creates:**
 
 ```
-openspec/
+qaspec/
 ├── specs/              # Your specifications (source of truth)
 ├── changes/            # Proposed changes
 └── config.yaml         # Project configuration
@@ -160,8 +160,7 @@ qaspec update [path] [options]
 
 ```bash
 # Update instruction files after npm upgrade
-npm update @fission-ai/openspec
-qaspec update
+npm update @fission-ai/qaspec qaspec update
 ```
 
 ---
@@ -376,12 +375,12 @@ Active changes:
 
 ---
 
-### `openspec view`
+### `qaspec view`
 
 Display an interactive dashboard for exploring specs and changes.
 
 ```
-openspec view
+qaspec view
 ```
 
 Opens a terminal-based interface for navigating your project's specifications and changes.
@@ -688,12 +687,12 @@ qaspec instructions design --change add-dark-mode --json
 
 ---
 
-### `openspec templates`
+### `qaspec templates`
 
 Show resolved template paths for all artifacts in a schema.
 
 ```
-openspec templates [options]
+qaspec templates [options]
 ```
 
 **Options:**
@@ -707,13 +706,13 @@ openspec templates [options]
 
 ```bash
 # Show template paths for default schema
-openspec templates
+qaspec templates
 
 # Show templates for custom schema
-openspec templates --schema my-workflow
+qaspec templates --schema my-workflow
 
 # JSON for programmatic use
-openspec templates --json
+qaspec templates --json
 ```
 
 **Output (text):**
@@ -722,10 +721,10 @@ openspec templates --json
 Schema: spec-driven
 
 Templates:
-  proposal  → ~/.openspec/schemas/spec-driven/templates/proposal.md
-  specs     → ~/.openspec/schemas/spec-driven/templates/specs.md
-  design    → ~/.openspec/schemas/spec-driven/templates/design.md
-  tasks     → ~/.openspec/schemas/spec-driven/templates/tasks.md
+  proposal  → ~/.local/share/openspec/schemas/spec-driven/templates/proposal.md
+  specs     → ~/.local/share/openspec/schemas/spec-driven/templates/specs.md
+  design    → ~/.local/share/openspec/schemas/spec-driven/templates/design.md
+  tasks     → ~/.local/share/openspec/schemas/spec-driven/templates/tasks.md
 ```
 
 ---
@@ -1015,12 +1014,12 @@ qaspec config profile
 
 ## Utility Commands
 
-### `openspec feedback`
+### `qaspec feedback`
 
 Submit feedback about QASpec. Creates a GitHub issue.
 
 ```
-openspec feedback <message> [options]
+qaspec feedback <message> [options]
 ```
 
 **Arguments:**
@@ -1040,18 +1039,18 @@ openspec feedback <message> [options]
 **Example:**
 
 ```bash
-openspec feedback "Add support for custom artifact types" \
+qaspec feedback "Add support for custom artifact types" \
   --body "I'd like to define my own artifact types beyond the built-in ones."
 ```
 
 ---
 
-### `openspec completion`
+### `qaspec completion`
 
 Manage shell completions for the QASpec CLI.
 
 ```
-openspec completion <subcommand> [shell]
+qaspec completion <subcommand> [shell]
 ```
 
 **Subcommands:**
@@ -1068,16 +1067,16 @@ openspec completion <subcommand> [shell]
 
 ```bash
 # Install completions (auto-detects shell)
-openspec completion install
+qaspec completion install
 
 # Install for specific shell
-openspec completion install zsh
+qaspec completion install zsh
 
 # Generate script for manual installation
-openspec completion generate bash > ~/.bash_completion.d/openspec
+qaspec completion generate bash > ~/.bash_completion.d/openspec
 
 # Uninstall
-openspec completion uninstall
+qaspec completion uninstall
 ```
 
 ---

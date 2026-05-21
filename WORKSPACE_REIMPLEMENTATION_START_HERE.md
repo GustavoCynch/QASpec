@@ -33,7 +33,7 @@ Use the POC as research material. Do not merge it into an implementation branch.
 
 ## Implementation Order
 
-Implement these flat OpenSpec changes in order:
+Implement these flat spec-driven changes in order:
 
 1. `workspace-foundation`
 2. `workspace-create-and-register-repos`
@@ -65,4 +65,4 @@ Open design questions:
 - ...
 ```
 
-Capture durable findings in the relevant OpenSpec artifact so future sessions do not depend on chat history.
+Capture durable findings in the relevant spec artifact so future sessions do not depend on chat history.

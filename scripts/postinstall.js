@@ -70,7 +70,7 @@ async function main() {
     }
 
     // Completions are opt-in — just print a hint
-    console.log(`\nTip: Run 'openspec completion install' for shell completions`);
+    console.log(`\nTip: Run 'qaspec completion install' for shell completions`);
   } catch (error) {
     // Fail gracefully - never break npm install
   }
