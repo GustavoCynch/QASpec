@@ -1,0 +1,17 @@
+---
+import { FEATURES } from '../site';
+---
+
+<section id="features" class="section">
+  <div class="container">
+    <h2 class="section-title">Features</h2>
+    <div class="grid-features">
+      {FEATURES.map((feature) => (
+        <article class="card">
+          <h3>{feature.title}</h3>
+          <p>{feature.description}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

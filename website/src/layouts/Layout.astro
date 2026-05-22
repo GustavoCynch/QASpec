@@ -1,0 +1,43 @@
+---
+import '../styles/global.css';
+import { PRODUCT_NAME, GITHUB_REPO } from '../site';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = `${PRODUCT_NAME} — Spec-driven QA`,
+  description = 'Agree on what to test before you run. Spec-driven workflow for quality assurance.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="logo" href="/">{PRODUCT_NAME}</a>
+        <nav class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#open-source">Open source</a>
+          <a href="#install">Install</a>
+          <a href="#tools">Tools</a>
+          <a href="#faq">FAQ</a>
+          <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+---
+import { OPEN_SOURCE, GITHUB_REPO, ISSUES_URL, PULLS_URL } from '../site';
+---
+
+<section id="open-source" class="section">
+  <div class="container">
+    <h2 class="section-title">{OPEN_SOURCE.title}</h2>
+    <p class="muted open-source-lead">{OPEN_SOURCE.lead}</p>
+    <ul class="open-source-list">
+      {OPEN_SOURCE.points.map((point) => (
+        <li>{point}</li>
+      ))}
+    </ul>
+    <div class="open-source-actions">
+      <a class="btn btn-primary" href={GITHUB_REPO} target="_blank" rel="noopener noreferrer"
+        >View on GitHub</a
+      >
+      <a class="btn" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">Open an issue</a>
+      <a class="btn" href={PULLS_URL} target="_blank" rel="noopener noreferrer">Contribute a PR</a>
+    </div>
+    <p class="muted open-source-license">
+      Licensed under <strong>{OPEN_SOURCE.license}</strong>.
+    </p>
+  </div>
+</section>

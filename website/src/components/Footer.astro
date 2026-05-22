@@ -1,0 +1,18 @@
+---
+import { PRODUCT_NAME, GITHUB_REPO, ISSUES_URL } from '../site';
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <p>
+      <strong>{PRODUCT_NAME}</strong> — MIT License
+    </p>
+    <p>
+      <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub</a>
+      ·
+      <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">Issues</a>
+    </p>
+    <p>© {year} QASpec Contributors</p>
+  </div>
+</footer>

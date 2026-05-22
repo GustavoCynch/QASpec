@@ -1,0 +1,25 @@
+---
+import { TAGLINE, SUBTITLE, DOCS_GETTING_STARTED, WORKFLOW_COMMANDS } from '../site';
+
+const workflowLine = WORKFLOW_COMMANDS.map((step) => step.command).join(' → ');
+---
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badges">
+      <span class="badge">Open Source</span>
+      <span class="badge">Spec-driven QA</span>
+      <span class="badge">30+ AI tools</span>
+    </div>
+    <h1>{TAGLINE}</h1>
+    <p class="lead">{SUBTITLE}</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#install">Get started</a>
+      <a class="btn" href={DOCS_GETTING_STARTED} target="_blank" rel="noopener noreferrer"
+        >Read the docs</a
+      >
+    </div>
+    <p class="muted" style="margin-bottom: 0.75rem;">Default workflow</p>
+    <p class="workflow mono" aria-label="QASpec workflow commands">{workflowLine}</p>
+  </div>
+</section>

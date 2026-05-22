@@ -9,6 +9,7 @@ const SCAN_ROOTS = [
   path.join(REPO_ROOT, 'src'),
   path.join(REPO_ROOT, 'docs'),
   path.join(REPO_ROOT, 'schemas'),
+  path.join(REPO_ROOT, 'website', 'src'),
   path.join(REPO_ROOT, 'README.md'),
   path.join(REPO_ROOT, 'AGENTS.md'),
   path.join(REPO_ROOT, 'MAINTAINERS.md'),
@@ -18,7 +19,7 @@ const SCAN_ROOTS = [
   ),
 ];
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.md', '.yaml', '.yml', '.nix']);
+const SCAN_EXTENSIONS = new Set(['.ts', '.md', '.yaml', '.yml', '.nix', '.astro']);
 
 function isAllowedLine(line: string): boolean {
   return OPENSPEC_PRODUCT_STRING_ALLOWLIST.some((pattern) => pattern.test(line));

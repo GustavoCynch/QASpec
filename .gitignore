@@ -84,6 +84,11 @@ out
 # Build output
 dist/
 
+# QASpec website (Astro + Wrangler)
+website/dist/
+website/.wrangler/
+website/.astro/
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js
