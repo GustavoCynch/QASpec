@@ -3,7 +3,7 @@ schema: spec-driven
 context: |
   Product: QASpec — spec-driven workflow for quality assurance (fork of OpenSpec).
   Goal: Agree on what to test and why before execution; keep specs and test artifacts in the repo.
-  Scope: PRs, requirements, user stories, and reference files; outputs include analysis, test cases, prerequisites, and optional TCMS publish (pluggable: Qase, TestRail, Xray planned).
+  Scope: PRs, requirements, user stories, and reference files; outputs include analysis, test cases, prerequisites, and optional TCMS publish (v1: Qase only via MCP; TestRail/Xray/pluggable selection in progress).
 
   Tech stack: TypeScript, Node.js (≥20.19.0), ESM modules
   Package manager: pnpm

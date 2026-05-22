@@ -708,7 +708,7 @@ qaspec/
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  4. PUBLISH    │  /qsx:publish → TCMS (e.g. Qase) when approved          │
+│   │  4. PUBLISH    │  /qsx:publish → Qase (only TCMS today) when approved    │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │

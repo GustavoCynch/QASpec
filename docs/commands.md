@@ -13,7 +13,7 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 | `/qsx:explore` | Investigate a topic before committing to analysis |
 | `/qsx:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
 | `/qsx:matrix` | Create `testmatrix.md` and change delta specs |
-| `/qsx:publish` | Publish approved cases to TCMS (e.g. Qase via MCP) |
+| `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
 | `/qsx:archive` | Finalize and archive the change |
 
 Workflow ids: `explore`, `analyze`, `matrix`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these five).
@@ -96,7 +96,7 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 ## `/qsx:publish`
 
-Prepare and upload **approved** test cases from `testmatrix.md` to the configured test management system (Qase MCP when enabled).
+Prepare and upload **approved** test cases from `testmatrix.md` to **Qase** via MCP. Other TCMS connectors (TestRail, Xray, install-time selection) are not available yet — see [Test management (TCMS)](../README.md#test-management-tcms) to collaborate on the roadmap.
 
 **Syntax:**
 
@@ -112,7 +112,7 @@ Prepare and upload **approved** test cases from `testmatrix.md` to the configure
 **What it does:**
 
 1. Writes or updates `execution-context.md` (Qase project, role, base URL) and `publish-plan.md` (suites and unchecked cases to upload).
-2. Halts once so you can edit those files or confirm publish — **no TCMS upload in that message**.
+2. Halts once so you can edit those files or confirm publish — **no Qase upload in that message**.
 3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testmatrix.md`.
 
 ---

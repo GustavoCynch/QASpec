@@ -4,7 +4,7 @@ This guide explains how QASpec works after you've installed and initialized it. 
 
 ## How It Works
 
-QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to your test management system.
+QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to Qase (the only supported TCMS in v1).
 
 **Default path (core profile)** — installed by `qaspec init`:
 
@@ -43,7 +43,7 @@ qaspec/                          # Planning home
 |----------|-------------|---------|
 | `analisis.md` | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
 | `testmatrix.md` | `/qsx:matrix` | Test cases with approval checkboxes; may create delta specs |
-| Qase (or TCMS) upload | `/qsx:publish` | Publish approved matrix after human approval |
+| Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved matrix to Qase after human approval (only TCMS supported today) |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
 `/qsx:explore` investigates ideas without requiring prior artifacts. `/qsx:matrix` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
@@ -84,8 +84,10 @@ You: /qsx:publish
 AI:  Writes execution-context.md and publish-plan.md, halts for your edit or confirm.
 You: Confirm (or edit the plan files first).
 
-AI:  Uploads approved cases via configured MCP (e.g. Qase), updates publish-log.md and checkboxes.
+AI:  Uploads approved cases via Qase MCP, updates publish-log.md and checkboxes.
 ```
+
+> **TCMS support:** v1 publish is **Qase-only**. TestRail, Xray, and install-time TCMS selection are in active development. To help or request another system, see [Test management (TCMS)](../README.md#test-management-tcms) in the README.
 
 ### 5. Archive
 
