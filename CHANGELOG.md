@@ -1,5 +1,21 @@
 # @qaspec/cli
 
+## 1.4.0
+
+### Minor Changes
+
+- [`1397096`](https://github.com/GustavoCynch/QASpec/commit/1397096e6ae6e1410f74be216a540989ed645b87) Thanks [@GustavoCynch](https://github.com/GustavoCynch)! - ### New Features
+
+  - **Kimi CLI support** — QASpec can now initialize Kimi CLI as a supported skills-only tool using `.kimi/skills/`
+
+  ### Other
+
+  - Added Kimi-specific docs and init coverage aligned with skill-based `/skill:qas-*` usage
+
+- [`1397096`](https://github.com/GustavoCynch/QASpec/commit/1397096e6ae6e1410f74be216a540989ed645b87) Thanks [@GustavoCynch](https://github.com/GustavoCynch)! - ### New Features
+
+  - Include the sync workflow in the default core profile so new installs generate matching skills and commands by default.
+
 ## Unreleased
 
 ### Breaking Changes
