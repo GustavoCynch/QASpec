@@ -6,7 +6,7 @@ QASpec is an open-source, spec-driven workflow for quality assurance. It helps t
 
 Inspired by [OpenSpec](https://openspec.dev/) on the development side, QASpec applies the same idea to QA: persistent, versioned artifacts in the codebase instead of one-off chat output.
 
-**Website:** [qaspec-website.workers.dev](https://qaspec-website.workers.dev) (update after first Cloudflare deploy if the URL differs).
+**Website:** [qaspec-website.dan-ba8.workers.dev](https://qaspec-website.dan-ba8.workers.dev)
 
 ## Scope
 

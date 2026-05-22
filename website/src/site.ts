@@ -24,7 +24,7 @@ export const OPEN_SOURCE = {
 } as const;
 
 /** Placeholder until a custom domain is configured in Cloudflare. */
-export const SITE_URL = 'https://qaspec-website.workers.dev';
+export const SITE_URL = 'https://qaspec-website.dan-ba8.workers.dev';
 
 export const WORKFLOW_COMMANDS = [
   { command: '/qsx:explore', label: 'Explore' },
