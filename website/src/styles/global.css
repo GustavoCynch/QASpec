@@ -52,6 +52,14 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Safety net: keep stray non-wrapping content (terminal, code chips) from
+   widening the document past the viewport. `clip` doesn't break sticky nav. */
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 ::selection {
   background: var(--ink);
   color: var(--paper);
@@ -206,6 +214,8 @@ header.nav {
   color: var(--ink);
   cursor: pointer;
   white-space: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .cmd .dollar {
@@ -266,6 +276,10 @@ header.nav {
   font-size: 13.5px;
   line-height: 1.75;
   box-shadow: 8px 8px 0 0 var(--hairline);
+  /* Allow the grid/flex item to shrink so the pre-formatted body scrolls
+     inside itself instead of widening the page. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .terminal-bar {
@@ -351,6 +365,7 @@ section.block {
   flex-direction: column;
   gap: 12px;
   min-height: 240px;
+  min-width: 0;
   transition:
     background 0.15s ease,
     color 0.15s ease;
@@ -423,6 +438,7 @@ section.block {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
 }
 
 .feature .mark {
@@ -468,6 +484,7 @@ section.block {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
 }
 
 .install-step:first-child {
@@ -519,6 +536,7 @@ section.block {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .tool::before {
@@ -730,7 +748,7 @@ footer.site .logo span.e {
 /* ---------- Responsive ---------- */
 @media (max-width: 1020px) {
   .hero-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 48px;
   }
   .pipeline {
