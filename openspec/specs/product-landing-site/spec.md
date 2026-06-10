@@ -29,7 +29,8 @@ All visible marketing copy on the landing page SHALL use **QASpec** as the produ
 #### Scenario: No legacy command as default CTA
 
 - **WHEN** a visitor reads workflow examples on the landing page
-- **THEN** examples reference `/qas:analyze`, `/qas:matrix`, `/qas:publish`, or `/qas:archive` as appropriate
+- **THEN** examples reference the analyze, cases, publish, or archive commands as appropriate
+- **AND** no example references a `matrix` command
 - **AND** no section titles OpenSpec or OPSX as the product being installed
 
 #### Scenario: Upstream attribution is secondary

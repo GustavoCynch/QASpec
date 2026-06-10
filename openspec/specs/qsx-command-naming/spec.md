@@ -9,14 +9,14 @@ QASpec SHALL use the **`qsx`** prefix for all generated slash commands of the QA
 
 #### Scenario: Cursor command file naming
 
-- **WHEN** init or update generates Cursor commands for workflow `matrix`
-- **THEN** the command file SHALL be `.cursor/commands/qsx-matrix.md`
-- **AND** frontmatter `id` SHALL be `qsx-matrix`
+- **WHEN** init or update generates Cursor commands for workflow `cases`
+- **THEN** the command file SHALL be `.cursor/commands/qsx-cases.md`
+- **AND** frontmatter `id` SHALL be `qsx-cases`
 
 #### Scenario: Colon slash command name
 
 - **WHEN** the target tool uses colon-style slash commands (e.g. Cursor)
-- **THEN** frontmatter `name` SHALL be `/qsx:matrix` for workflow `matrix`
+- **THEN** frontmatter `name` SHALL be `/qsx:cases` for workflow `cases`
 
 #### Scenario: Distinct from skill autocomplete
 

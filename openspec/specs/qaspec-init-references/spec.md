@@ -41,7 +41,7 @@ Init SHALL create `qaspec/references/qase_test_case_rules.md` only if that file 
 
 ### Requirement: Reference paths in workflow instructions
 
-Generated `qas-analyze` and `qas-matrix` / `qas-publish` instructions SHALL reference these paths relative to project root.
+Generated analyze, cases, and publish workflow instructions SHALL reference these paths relative to project root.
 
 #### Scenario: Windows path safety
 

@@ -6,26 +6,26 @@ Define the default `qaspec/config.yaml` seed for schema `qaspec-pr-review` on fi
 
 ## Requirements
 
-### Requirement: Test-matrix seed rules require enriched case bodies
+### Requirement: Test-cases seed rules require enriched case bodies
 
-The init seed for `rules.test-matrix` SHALL instruct agents to write preconditions and steps under each checkbox case, built from sources in hand, with generic steps only when sources lack actionable detail.
+The init seed for `rules.test-cases` SHALL instruct agents to write preconditions and steps under each checkbox case, built from sources in hand, with generic steps only when sources lack actionable detail.
 
-#### Scenario: Seeded test-matrix rules mention enriched format
+#### Scenario: Seeded test-cases rules mention enriched format
 
-- **WHEN** `getQaspecPrReviewConfigSeed()` supplies `rules.test-matrix`
-- **THEN** at least one active rule requires **Preconditions** and **Steps** blocks per case in `testmatrix.md`
+- **WHEN** `getQaspecPrReviewConfigSeed()` supplies `rules.test-cases`
+- **THEN** at least one active rule requires **Preconditions** and **Steps** blocks per case in `testcases.md`
 - **AND** at least one active rule forbids inventing vague flows when concrete UI or requirement detail exists in sources
-- **AND** rules remain keyed as `test-matrix` for instruction injection
+- **AND** rules remain keyed as `test-cases` for instruction injection
 
 ### Requirement: Seed documents multipleSubagents defaults
 
-When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include `workflow.multipleSubagents` with `review: false` and `matrix: false` unless the user already supplied values.
+When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include `workflow.multipleSubagents` with `review: false` and `cases: false` unless the user already supplied values.
 
 #### Scenario: Fresh init includes workflow block
 
 - **WHEN** init creates `qaspec/config.yaml` with `schema: qaspec-pr-review` and no prior config existed
 - **THEN** the file contains `workflow.multipleSubagents.review: false`
-- **AND** the file contains `workflow.multipleSubagents.matrix: false`
+- **AND** the file contains `workflow.multipleSubagents.cases: false`
 - **AND** a short comment or context line explains that `true` enables dual blind Task analysts for that phase
 
 #### Scenario: Existing config is not overwritten
@@ -35,14 +35,14 @@ When init creates a new project config with schema `qaspec-pr-review`, the seed 
 
 ### Requirement: Active QA config seed on first init
 
-When init creates a new project config with schema `qaspec-pr-review`, the CLI SHALL write an active (uncommented) `context` block and `rules` entries for artifact ids `analyze`, `test-matrix`, `specs`, and `apply` that encode the default QA role and phase rules ported from the reference `qa-pr-review` pack.
+When init creates a new project config with schema `qaspec-pr-review`, the CLI SHALL write an active (uncommented) `context` block and `rules` entries for artifact ids `analyze`, `test-cases`, `specs`, and `apply` that encode the default QA role and phase rules ported from the reference `qa-pr-review` pack.
 
 #### Scenario: Fresh init with qaspec-pr-review default schema
 
 - **WHEN** init creates `qaspec/config.yaml` (or `openspec/config.yaml` per planning home) with `schema: qaspec-pr-review`
 - **AND** no prior config file existed
 - **THEN** the file contains a non-empty `context: |` block including QA role (read-only on application source), language declaration, and stack placeholders teams may edit
-- **AND** the file contains `rules.analyze`, `rules.test-matrix`, `rules.specs`, and `rules.apply` each with at least one active rule line
+- **AND** the file contains `rules.analyze`, `rules.test-cases`, `rules.specs`, and `rules.apply` each with at least one active rule line
 - **AND** rules content is maintained in English in the fork seed module
 
 #### Scenario: Existing config is not overwritten
@@ -59,7 +59,7 @@ When init creates a new project config with schema `qaspec-pr-review`, the CLI S
 
 ### Requirement: Seed rules align with artifact graph ids
 
-QA rule keys in the init seed SHALL use the exact artifact ids from the `qaspec-pr-review` schema (`analyze`, `test-matrix`, `specs`, `apply`) so `qaspec instructions <id> --json` injects them without validation warnings.
+QA rule keys in the init seed SHALL use the exact artifact ids from the `qaspec-pr-review` schema (`analyze`, `test-cases`, `specs`, `apply`) so `qaspec instructions <id> --json` injects them without validation warnings.
 
 #### Scenario: Instructions JSON includes seeded rules
 
