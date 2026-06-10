@@ -1,20 +1,43 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Hero from '../components/Hero.astro';
+import Workflow from '../components/Workflow.astro';
 import Features from '../components/Features.astro';
-import OpenSource from '../components/OpenSource.astro';
 import Install from '../components/Install.astro';
 import Tools from '../components/Tools.astro';
+import OpenSource from '../components/OpenSource.astro';
 import Faq from '../components/Faq.astro';
+import Cta from '../components/Cta.astro';
 import Footer from '../components/Footer.astro';
 ---
 
 <Layout>
   <Hero />
+  <Workflow />
   <Features />
-  <OpenSource />
   <Install />
   <Tools />
+  <OpenSource />
   <Faq />
+  <Cta />
   <Footer />
 </Layout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.cmd[data-copy]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const text = btn.getAttribute('data-copy');
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const label = btn.querySelector('.copy');
+        if (label) {
+          const prev = label.textContent;
+          label.textContent = 'Copied';
+          setTimeout(() => {
+            label.textContent = prev;
+          }, 1400);
+        }
+      });
+    });
+  });
+</script>

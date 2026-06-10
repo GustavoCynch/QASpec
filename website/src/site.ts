@@ -1,7 +1,8 @@
 export const PRODUCT_NAME = 'QASpec';
-export const TAGLINE = 'Agree on what to test before you run — specs live in the repo.';
+export const TAGLINE = 'Agree on what to test before you run.';
 export const SUBTITLE =
-  'Spec-driven QA workflow: risk analysis, test cases, and optional publish to your test management system — versioned in the repo, not lost in chat.';
+  'QASpec turns intent into structured QA artifacts — risk analysis, test cases, and optional publish to your test management system — versioned in the repo, not lost in chat.';
+export const HERO_KICKER = 'Open source · MIT · Spec-driven QA';
 
 export const INSTALL_COMMAND = 'npm install -g @qaspec/cli';
 export const INIT_COMMAND = 'qaspec init';
@@ -14,7 +15,7 @@ export const PULLS_URL = `${GITHUB_REPO}/pulls`;
 
 export const OPEN_SOURCE = {
   title: 'Open source',
-  lead: 'QASpec is MIT-licensed and built in the open. Use it, fork it, and help shape what spec-driven QA becomes.',
+  lead: 'QASpec is MIT-licensed. Use it, fork it, and help shape what spec-driven QA becomes.',
   points: [
     'Report bugs, suggest workflows, or improve docs via GitHub Issues.',
     'Submit pull requests for CLI fixes, schemas, agent skills, and the landing site.',
@@ -27,12 +28,50 @@ export const OPEN_SOURCE = {
 export const SITE_URL = 'https://qaspec-website.dan-ba8.workers.dev';
 
 export const WORKFLOW_COMMANDS = [
-  { command: '/qsx:explore', label: 'Explore' },
-  { command: '/qsx:analyze', label: 'Analyze' },
-  { command: '/qsx:matrix', label: 'Matrix' },
-  { command: '/qsx:publish', label: 'Publish' },
-  { command: '/qsx:archive', label: 'Archive' },
+  {
+    num: '01',
+    command: '/qsx:explore',
+    label: 'Explore',
+    description:
+      'Investigate the codebase and clarify scope before committing to analysis. No required artifact.',
+    artifact: '→ notes, diagrams',
+  },
+  {
+    num: '02',
+    command: '/qsx:analyze',
+    label: 'Analyze',
+    description:
+      'Risks, affected capabilities, and validated clarifications — the signed-off source of truth.',
+    artifact: '→ analisis.md',
+  },
+  {
+    num: '03',
+    command: '/qsx:matrix',
+    label: 'Matrix',
+    description:
+      'Test cases with preconditions and steps, built from sources — plus delta specs for the change.',
+    artifact: '→ testmatrix.md',
+  },
+  {
+    num: '04',
+    command: '/qsx:publish',
+    label: 'Publish',
+    description:
+      'Approved cases upload to Qase via MCP — only after you review the plan and confirm.',
+    artifact: '→ publish-plan.md',
+  },
+  {
+    num: '05',
+    command: '/qsx:archive',
+    label: 'Archive',
+    description:
+      'Finalize the change. Specs accumulate into a browsable library for agents and teammates.',
+    artifact: '→ archived change',
+  },
 ] as const;
+
+export const WORKFLOW_FLOW =
+  'explore → analyze → matrix → (approve) → publish → (confirm) → archive';
 
 export const FEATURES = [
   {

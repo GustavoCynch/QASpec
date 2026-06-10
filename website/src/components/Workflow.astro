@@ -1,0 +1,30 @@
+---
+import { WORKFLOW_COMMANDS, WORKFLOW_FLOW } from '../site';
+---
+
+<section class="block" id="workflow">
+  <div class="wrap">
+    <div class="block-head">
+      <div class="label">01 — The pipeline</div>
+      <h2>Five actions, not rigid phases.</h2>
+      <p class="lead">
+        Run what the moment calls for and revisit earlier steps freely. Halts exist where human
+        judgment matters — matrix approval, publish confirmation.
+      </p>
+    </div>
+    <div class="pipeline">
+      {
+        WORKFLOW_COMMANDS.map((step) => (
+          <div class="step">
+            <span class="num">{step.num}</span>
+            <span class="slash">{step.command}</span>
+            <h3>{step.label}</h3>
+            <p>{step.description}</p>
+            <span class="artifact">{step.artifact}</span>
+          </div>
+        ))
+      }
+    </div>
+    <p class="pipeline-note">{WORKFLOW_FLOW}</p>
+  </div>
+</section>

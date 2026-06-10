@@ -1,25 +1,32 @@
 ---
-import { OPEN_SOURCE, GITHUB_REPO, ISSUES_URL, PULLS_URL } from '../site';
+import { OPEN_SOURCE } from '../site';
 ---
 
-<section id="open-source" class="section">
-  <div class="container">
-    <h2 class="section-title">{OPEN_SOURCE.title}</h2>
-    <p class="muted open-source-lead">{OPEN_SOURCE.lead}</p>
-    <ul class="open-source-list">
-      {OPEN_SOURCE.points.map((point) => (
-        <li>{point}</li>
-      ))}
-    </ul>
-    <div class="open-source-actions">
-      <a class="btn btn-primary" href={GITHUB_REPO} target="_blank" rel="noopener noreferrer"
-        >View on GitHub</a
-      >
-      <a class="btn" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">Open an issue</a>
-      <a class="btn" href={PULLS_URL} target="_blank" rel="noopener noreferrer">Contribute a PR</a>
+<section class="block" id="open-source">
+  <div class="wrap os-grid">
+    <div>
+      <div class="label" style="margin-bottom: 16px;">05 — Open source</div>
+      <h2 style="font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -0.015em;">
+        Built in the open.
+      </h2>
+      <p class="lead" style="color: var(--muted); margin-top: 16px; max-width: 44ch;">
+        {OPEN_SOURCE.lead}
+      </p>
+      <div class="mit">
+        <span>LICENSE</span><span style="color: var(--faint);">·</span><span
+          >{OPEN_SOURCE.license}</span
+        >
+      </div>
     </div>
-    <p class="muted open-source-license">
-      Licensed under <strong>{OPEN_SOURCE.license}</strong>.
-    </p>
+    <div class="os-points">
+      {
+        OPEN_SOURCE.points.map((point) => (
+          <div class="os-point">
+            <span class="tick">✓</span>
+            <span>{point}</span>
+          </div>
+        ))
+      }
+    </div>
   </div>
 </section>

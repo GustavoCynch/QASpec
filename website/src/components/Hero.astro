@@ -1,25 +1,59 @@
 ---
-import { TAGLINE, SUBTITLE, DOCS_GETTING_STARTED, WORKFLOW_COMMANDS } from '../site';
-
-const workflowLine = WORKFLOW_COMMANDS.map((step) => step.command).join(' → ');
+import { TAGLINE, SUBTITLE, HERO_KICKER, INSTALL_COMMAND, DOCS_GETTING_STARTED } from '../site';
 ---
 
 <section class="hero">
-  <div class="container">
-    <div class="hero-badges">
-      <span class="badge">Open Source</span>
-      <span class="badge">Spec-driven QA</span>
-      <span class="badge">30+ AI tools</span>
+  <div class="wrap hero-grid">
+    <div>
+      <div class="label">{HERO_KICKER}</div>
+      <h1>{TAGLINE}</h1>
+      <p class="sub">{SUBTITLE}</p>
+      <div class="hero-ctas">
+        <button class="cmd" type="button" data-copy={INSTALL_COMMAND}>
+          <span class="dollar">$</span>
+          <span>{INSTALL_COMMAND}</span>
+          <span class="copy">Copy</span>
+        </button>
+        <a class="btn ghost" href={DOCS_GETTING_STARTED} target="_blank" rel="noopener noreferrer"
+          >Get started</a
+        >
+      </div>
     </div>
-    <h1>{TAGLINE}</h1>
-    <p class="lead">{SUBTITLE}</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="#install">Get started</a>
-      <a class="btn" href={DOCS_GETTING_STARTED} target="_blank" rel="noopener noreferrer"
-        >Read the docs</a
-      >
+
+    <div class="terminal" aria-label="Example QASpec session">
+      <div class="terminal-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span style="margin-left: 8px;">~/checkout-service</span>
+      </div>
+      <div class="terminal-body">
+        <div class="row"><span class="t-dim">$</span><span class="t-cmd">qaspec init</span></div>
+        <div class="row">
+          <span class="t-ok">✓</span><span class="t-dim"
+            >/qsx commands installed · Cursor, Claude Code, Codex…</span
+          >
+        </div>
+        <div class="t-gap"></div>
+        <div class="row">
+          <span class="t-dim">&gt;</span><span class="t-cmd">/qsx:analyze coupon-stacking-fix</span>
+        </div>
+        <div class="row">
+          <span class="t-ok">✓</span><span
+            >analisis.md <span class="t-dim">— 3 risks · 2 capabilities</span></span
+          >
+        </div>
+        <div class="t-gap"></div>
+        <div class="row"><span class="t-dim">&gt;</span><span class="t-cmd">/qsx:matrix</span></div>
+        <div class="row">
+          <span class="t-ok">✓</span><span
+            >testmatrix.md <span class="t-dim">— 12 cases · awaiting approval</span></span
+          >
+        </div>
+        <div class="t-gap"></div>
+        <div class="row"><span class="t-dim">&gt;</span><span class="t-cmd">/qsx:publish</span></div>
+        <div class="row">
+          <span class="t-ok">✓</span><span>12 cases <span class="t-dim">→</span> Qase</span>
+        </div>
+      </div>
     </div>
-    <p class="muted" style="margin-bottom: 0.75rem;">Default workflow</p>
-    <p class="workflow mono" aria-label="QASpec workflow commands">{workflowLine}</p>
   </div>
 </section>

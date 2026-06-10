@@ -2,21 +2,21 @@
 import { SUPPORTED_TOOLS, DOCS_SUPPORTED_TOOLS } from '../site';
 ---
 
-<section id="tools" class="section">
-  <div class="container">
-    <h2 class="section-title">Supported tools</h2>
-    <p class="muted">
-      Run <span class="mono">qaspec init</span> to install skills and <span class="mono">/qsx:*</span> commands
-      for your agents. Native support includes:
-    </p>
-    <div class="tools-grid" style="margin: 1.5rem 0;">
-      {SUPPORTED_TOOLS.map((tool) => (
-        <span class="tool-pill">{tool}</span>
-      ))}
-      <span class="tool-pill">+ more</span>
+<section class="block" id="tools">
+  <div class="wrap">
+    <div class="block-head">
+      <div class="label">04 — Supported tools</div>
+      <h2>Works with your agent.</h2>
     </div>
-    <p class="muted">
-      <a href={DOCS_SUPPORTED_TOOLS} target="_blank" rel="noopener noreferrer">Full tool list and paths</a>
+    <div class="tools-grid">
+      {SUPPORTED_TOOLS.map((tool) => <div class="tool">{tool}</div>)}
+    </div>
+    <p class="tools-note">
+      Subset shown — full list in <a
+        href={DOCS_SUPPORTED_TOOLS}
+        target="_blank"
+        rel="noopener noreferrer">docs/supported-tools.md</a
+      >
     </p>
   </div>
 </section>

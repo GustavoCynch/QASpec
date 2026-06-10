@@ -1,20 +1,38 @@
 ---
-import { INSTALL_COMMAND, INIT_COMMAND, DOCS_GETTING_STARTED } from '../site';
+import { INSTALL_COMMAND, INIT_COMMAND } from '../site';
 ---
 
-<section id="install" class="section">
-  <div class="container">
-    <h2 class="section-title">Get started</h2>
-    <p class="muted">Install the CLI globally, then initialize your project.</p>
-    <div class="code-block" style="margin: 1.5rem 0 1rem;">
-      <code>{INSTALL_COMMAND}</code>
+<section class="block" id="install">
+  <div class="wrap">
+    <div class="block-head">
+      <div class="label">03 — Install</div>
+      <h2>From zero to spec-driven QA in three steps.</h2>
     </div>
-    <div class="code-block">
-      <code>{INIT_COMMAND}</code>
+    <div class="install-steps">
+      <div class="install-step">
+        <span class="num">STEP 01</span>
+        <h3>Install the CLI</h3>
+        <div class="code">{INSTALL_COMMAND}</div>
+        <p>One global install. Node is the only prerequisite.</p>
+      </div>
+      <div class="install-step">
+        <span class="num">STEP 02</span>
+        <h3>Initialize your project</h3>
+        <div class="code">{INIT_COMMAND}</div>
+        <p>
+          Installs <span style="font-family: var(--mono); font-size: 0.9em;">/qsx</span> commands, schemas,
+          and reference scaffolds for your agent. Works on existing codebases — no big-bang spec generation.
+        </p>
+      </div>
+      <div class="install-step">
+        <span class="num">STEP 03</span>
+        <h3>Run it in your agent</h3>
+        <div class="code">/qsx:explore</div>
+        <p>
+          Point it at a PR, a requirement doc, a user story, or plain-text intent. The workflow
+          adapts to what you provide.
+        </p>
+      </div>
     </div>
-    <p class="muted" style="margin-top: 1.5rem;">
-      See <a href={DOCS_GETTING_STARTED} target="_blank" rel="noopener noreferrer">Getting started</a> on
-      GitHub for the full walkthrough.
-    </p>
   </div>
 </section>

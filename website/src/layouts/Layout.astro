@@ -8,31 +8,48 @@ interface Props {
 }
 
 const {
-  title = `${PRODUCT_NAME} — Spec-driven QA`,
-  description = 'Agree on what to test before you run. Spec-driven workflow for quality assurance.',
+  title = `${PRODUCT_NAME} — Agree on what to test before you run`,
+  description = 'Agree on what to test before you run. Spec-driven QA workflow: risk analysis, test cases, and optional publish to your test management system — versioned in the repo, not lost in chat.',
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="paper" data-headingfont="mono">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <title>{title}</title>
   </head>
   <body>
-    <header class="site-header">
-      <div class="container">
-        <a class="logo" href="/">{PRODUCT_NAME}</a>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a
+          href="/"
+          style="text-decoration: none; display: flex; align-items: center; gap: 14px;"
+          aria-label={`${PRODUCT_NAME} home`}
+        >
+          <div class="logo" style="--cell: 30px;">
+            <span class="f">Q</span><span class="f">A</span><span>S</span><span>P</span><span>E</span
+            ><span>C</span>
+          </div>
+        </a>
         <nav class="nav-links">
+          <a href="#workflow">Workflow</a>
           <a href="#features">Features</a>
-          <a href="#open-source">Open source</a>
           <a href="#install">Install</a>
-          <a href="#tools">Tools</a>
           <a href="#faq">FAQ</a>
-          <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="gh" href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub ↗</a>
         </nav>
       </div>
     </header>

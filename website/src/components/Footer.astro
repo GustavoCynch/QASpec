@@ -1,18 +1,20 @@
 ---
-import { PRODUCT_NAME, GITHUB_REPO, ISSUES_URL } from '../site';
-const year = new Date().getFullYear();
+import { GITHUB_REPO, DOCS_GETTING_STARTED, ISSUES_URL, PULLS_URL } from '../site';
 ---
 
-<footer class="site-footer">
-  <div class="container">
-    <p>
-      <strong>{PRODUCT_NAME}</strong> — MIT License
-    </p>
-    <p>
+<footer class="site">
+  <div class="wrap footer-inner">
+    <div class="logo" style="--cell: 26px;">
+      <span class="f">Q</span><span class="f">A</span><span class="e">S</span><span class="e"
+        >P</span
+      ><span class="e">E</span><span class="e">C</span>
+    </div>
+    <nav class="footer-links">
       <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub</a>
-      ·
+      <a href={DOCS_GETTING_STARTED} target="_blank" rel="noopener noreferrer">Getting started</a>
       <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">Issues</a>
-    </p>
-    <p>© {year} QASpec Contributors</p>
+      <a href={PULLS_URL} target="_blank" rel="noopener noreferrer">Pull requests</a>
+    </nav>
+    <div class="footer-meta">MIT License · Inspired by OpenSpec</div>
   </div>
 </footer>

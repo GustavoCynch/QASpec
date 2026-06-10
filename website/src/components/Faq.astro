@@ -1,15 +1,29 @@
 ---
 import { FAQ } from '../site';
+
+/** Split a string on `backtick` spans so they render as <code>. */
+function tokens(text: string) {
+  return text.split('`').map((part, i) => ({ text: part, code: i % 2 === 1 }));
+}
 ---
 
-<section id="faq" class="section">
-  <div class="container">
-    <h2 class="section-title">FAQ</h2>
-    {FAQ.map((item) => (
-      <article class="faq-item">
-        <h3>{item.question}</h3>
-        <p>{item.answer}</p>
-      </article>
-    ))}
+<section class="block" id="faq">
+  <div class="wrap">
+    <div class="block-head">
+      <div class="label">06 — FAQ</div>
+      <h2>Questions, answered.</h2>
+    </div>
+    <div class="faq-list">
+      {
+        FAQ.map((item) => (
+          <details>
+            <summary>{item.question}</summary>
+            <p class="answer">
+              {tokens(item.answer).map((t) => (t.code ? <code>{t.text}</code> : t.text))}
+            </p>
+          </details>
+        ))
+      }
+    </div>
   </div>
 </section>

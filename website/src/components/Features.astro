@@ -1,17 +1,30 @@
 ---
 import { FEATURES } from '../site';
+
+/** Split a string on `backtick` spans so they render as <code>. */
+function tokens(text: string) {
+  return text.split('`').map((part, i) => ({ text: part, code: i % 2 === 1 }));
+}
 ---
 
-<section id="features" class="section">
-  <div class="container">
-    <h2 class="section-title">Features</h2>
-    <div class="grid-features">
-      {FEATURES.map((feature) => (
-        <article class="card">
-          <h3>{feature.title}</h3>
-          <p>{feature.description}</p>
-        </article>
-      ))}
+<section class="block" id="features">
+  <div class="wrap">
+    <div class="block-head">
+      <div class="label">02 — Why specs in the repo</div>
+      <h2>Persistent artifacts beat one-off chat output.</h2>
+    </div>
+    <div class="features">
+      {
+        FEATURES.map((feature) => (
+          <div class="feature">
+            <div class="mark">✓</div>
+            <h3>{feature.title}</h3>
+            <p>
+              {tokens(feature.description).map((t) => (t.code ? <code>{t.text}</code> : t.text))}
+            </p>
+          </div>
+        ))
+      }
     </div>
   </div>
 </section>
