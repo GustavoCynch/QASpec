@@ -84,7 +84,7 @@ describe('profile sync drift detection', () => {
     setupCoreSkills(tempDir);
     setupCoreCommands(tempDir);
 
-    const hasDrift = hasProjectConfigDrift(tempDir, ['analyze', 'matrix'], 'both');
+    const hasDrift = hasProjectConfigDrift(tempDir, ['analyze', 'cases'], 'both');
     expect(hasDrift).toBe(true);
   });
 });

@@ -16,7 +16,14 @@ export { ArtifactGraph } from './graph.js';
 
 // State detection
 export { detectCompleted } from './state.js';
-export { artifactOutputExists, isGlobPattern, resolveArtifactOutputs } from './outputs.js';
+export {
+  artifactOutputExists,
+  isGlobPattern,
+  resolveArtifactOutputs,
+  resolveTracksFilePath,
+  isLegacyTracksFile,
+  LEGACY_TRACKS_FILE_NOTICE,
+} from './outputs.js';
 
 // Schema resolution
 export {

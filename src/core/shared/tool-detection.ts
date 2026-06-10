@@ -16,7 +16,7 @@ import { qaspecSkillDirName } from '../qaspec-commands.js';
 
 export const SKILL_NAMES = CORE_WORKFLOWS.map((id) => qaspecSkillDirName(id)) as [
   'qaspec-analyze',
-  'qaspec-matrix',
+  'qaspec-cases',
   'qaspec-publish',
   'qaspec-archive',
 ];

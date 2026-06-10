@@ -24,7 +24,7 @@ describe('resolveEffectiveDelivery', () => {
     const delivery = await resolveEffectiveDelivery(
       testDir,
       'commands',
-      ['explore', 'analyze', 'matrix', 'publish', 'archive'],
+      ['explore', 'analyze', 'cases', 'publish', 'archive'],
       ['cursor']
     );
 
@@ -35,7 +35,7 @@ describe('resolveEffectiveDelivery', () => {
     const delivery = await resolveEffectiveDelivery(
       testDir,
       'commands',
-      ['explore', 'analyze', 'matrix', 'publish', 'archive'],
+      ['explore', 'analyze', 'cases', 'publish', 'archive'],
       ['cursor']
     );
     expect(delivery).toBe('commands');

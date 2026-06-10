@@ -41,21 +41,21 @@ Agents read this file at the start of every \`/qsx:analyze\` run (re-read each t
 const ENGLISH_QASE_RULES = `# Qase test case rules (MCP)
 
 Rules for creating suites and cases in Qase via MCP (\`create_suite\`, \`create_case\`).
-Read before \`/qsx:matrix\` and again before \`/qsx:publish\`.
+Read before \`/qsx:cases\` and again before \`/qsx:publish\`.
 
 ## Suites
 
-- One suite per logical module or feature (\`## Suite:\` group in \`testmatrix.md\`).
+- One suite per logical module or feature (\`## Suite:\` group in \`testcases.md\`).
 - Suite titles use plain language visible to testers.
 
 ## Cases
 
 - Titles and steps: tester-observable behavior in the **project language** (see \`qaspec/config.yaml\`).
 - No code identifiers (camelCase fields, selectors, file paths) in Qase-bound text unless shown in the UI.
-- One checkbox in \`testmatrix.md\` maps to one Qase case after publish.
-- Under each checkbox line, matrix phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for \`create_case\` — do not re-generate from the title alone.
+- One checkbox in \`testcases.md\` maps to one Qase case after publish.
+- Under each checkbox line, cases phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for \`create_case\` — do not re-generate from the title alone.
 
-## Matrix case structure
+## Test case structure
 
 \`\`\`markdown
 - [ ] 1.1 Observable title

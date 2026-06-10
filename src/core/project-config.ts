@@ -19,7 +19,7 @@ import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js'
  */
 const MultipleSubagentsConfigSchema = z.object({
   review: z.boolean().optional().describe('Dual Task analysts for analyze/review phase'),
-  matrix: z.boolean().optional().describe('Dual Task analysts for matrix phase'),
+  cases: z.boolean().optional().describe('Dual Task analysts for cases phase'),
 });
 
 const WorkflowConfigSchema = z.object({
@@ -176,7 +176,7 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
         if (msRaw !== undefined) {
           if (typeof msRaw === 'object' && msRaw !== null && !Array.isArray(msRaw)) {
             const msObj = msRaw as Record<string, unknown>;
-            const parsedMs: { review?: boolean; matrix?: boolean } = {};
+            const parsedMs: { review?: boolean; cases?: boolean } = {};
             let hasMs = false;
 
             if (msObj.review !== undefined) {
@@ -191,10 +191,31 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
               }
             }
 
+            if (msObj.cases !== undefined) {
+              const casesResult = z.boolean().safeParse(msObj.cases);
+              if (casesResult.success) {
+                parsedMs.cases = casesResult.data;
+                hasMs = true;
+              } else {
+                console.warn(
+                  `Invalid 'workflow.multipleSubagents.cases' in config (must be boolean)`
+                );
+              }
+            }
+
             if (msObj.matrix !== undefined) {
               const matrixResult = z.boolean().safeParse(msObj.matrix);
               if (matrixResult.success) {
-                parsedMs.matrix = matrixResult.data;
+                if (parsedMs.cases === undefined) {
+                  parsedMs.cases = matrixResult.data;
+                  console.warn(
+                    'Renamed config key workflow.multipleSubagents.matrix → workflow.multipleSubagents.cases'
+                  );
+                } else if (matrixResult.data !== parsedMs.cases) {
+                  console.warn(
+                    'Both workflow.multipleSubagents.cases and legacy .matrix are set — using cases (canonical)'
+                  );
+                }
                 hasMs = true;
               } else {
                 console.warn(
@@ -233,6 +254,11 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
  * @param schemaName - Name of the schema for error messages
  * @returns Array of warning messages for unknown artifact IDs
  */
+/** Legacy rules keys mapped to canonical artifact ids (still accepted in user config). */
+export const LEGACY_RULE_ARTIFACT_ALIASES: Record<string, string> = {
+  'test-matrix': 'test-cases',
+};
+
 export function validateConfigRules(
   rules: Record<string, string[]>,
   validArtifactIds: Set<string>,
@@ -241,6 +267,9 @@ export function validateConfigRules(
   const warnings: string[] = [];
 
   for (const artifactId of Object.keys(rules)) {
+    if (LEGACY_RULE_ARTIFACT_ALIASES[artifactId]) {
+      continue;
+    }
     if (!validArtifactIds.has(artifactId)) {
       const validIds = Array.from(validArtifactIds).sort().join(', ');
       warnings.push(
@@ -251,6 +280,33 @@ export function validateConfigRules(
   }
 
   return warnings;
+}
+
+/**
+ * Resolves rules for an artifact id, honoring legacy rule keys with a one-time notice.
+ */
+export function resolveRulesForArtifact(
+  rules: Record<string, string[]> | undefined,
+  artifactId: string,
+  onNotice?: (message: string) => void
+): string[] | undefined {
+  if (!rules) {
+    return undefined;
+  }
+  const canonical = rules[artifactId];
+  if (canonical && canonical.length > 0) {
+    return canonical;
+  }
+  for (const [legacyId, canonicalId] of Object.entries(LEGACY_RULE_ARTIFACT_ALIASES)) {
+    if (canonicalId === artifactId) {
+      const legacy = rules[legacyId];
+      if (legacy && legacy.length > 0) {
+        onNotice?.(`Renamed config rules key "${legacyId}" → "${canonicalId}"`);
+        return legacy;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**

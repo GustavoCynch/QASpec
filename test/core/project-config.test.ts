@@ -417,7 +417,7 @@ context: |
     });
 
     describe('workflow.multipleSubagents', () => {
-      it('should parse valid review and matrix flags', () => {
+      it('should parse valid review and cases flags', () => {
         const configDir = path.join(tempDir, 'openspec');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
@@ -426,14 +426,55 @@ context: |
 workflow:
   multipleSubagents:
     review: true
-    matrix: false
+    cases: false
 `
         );
 
         const config = readProjectConfig(tempDir);
 
         expect(config?.workflow?.multipleSubagents?.review).toBe(true);
-        expect(config?.workflow?.multipleSubagents?.matrix).toBe(false);
+        expect(config?.workflow?.multipleSubagents?.cases).toBe(false);
+      });
+
+      it('should map legacy matrix flag to cases with notice', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+workflow:
+  multipleSubagents:
+    matrix: true
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.workflow?.multipleSubagents?.cases).toBe(true);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('multipleSubagents.matrix')
+        );
+      });
+
+      it('should prefer canonical cases when both cases and legacy matrix are set', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+workflow:
+  multipleSubagents:
+    cases: false
+    matrix: true
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.workflow?.multipleSubagents?.cases).toBe(false);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('using cases (canonical)')
+        );
       });
 
       it('should omit workflow when flags are absent', () => {
@@ -459,7 +500,7 @@ workflow:
 workflow:
   multipleSubagents:
     review: "yes"
-    matrix: true
+    cases: true
 `
         );
 
@@ -469,7 +510,7 @@ workflow:
           expect.stringContaining('workflow.multipleSubagents.review')
         );
         expect(config?.workflow?.multipleSubagents?.review).toBeUndefined();
-        expect(config?.workflow?.multipleSubagents?.matrix).toBe(true);
+        expect(config?.workflow?.multipleSubagents?.cases).toBe(true);
       });
     });
 

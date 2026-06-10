@@ -3,7 +3,7 @@ import type { ProjectConfig } from './project-config.js';
 /** Resolved flags with false defaults when config or keys are absent. */
 export interface MultipleSubagentsFlags {
   review: boolean;
-  matrix: boolean;
+  cases: boolean;
 }
 
 export const SUBAGENT_MODE_ORCHESTRATOR_MARKER =
@@ -18,22 +18,22 @@ export function resolveMultipleSubagents(
   const ms = config?.workflow?.multipleSubagents;
   return {
     review: ms?.review ?? false,
-    matrix: ms?.matrix ?? false,
+    cases: ms?.cases ?? false,
   };
 }
 
 /**
- * Instruction appendix appended by the loader for qaspec-pr-review analyze / test-matrix.
+ * Instruction appendix appended by the loader for qaspec-pr-review analyze / test-cases.
  */
 export function getSubagentModeInstructionAppendix(
-  artifactId: 'analyze' | 'test-matrix',
+  artifactId: 'analyze' | 'test-cases',
   enabled: boolean
 ): string {
-  const phaseLabel = artifactId === 'analyze' ? 'review (analyze)' : 'matrix';
+  const phaseLabel = artifactId === 'analyze' ? 'review (analyze)' : 'cases';
   const configKey =
     artifactId === 'analyze'
       ? 'workflow.multipleSubagents.review'
-      : 'workflow.multipleSubagents.matrix';
+      : 'workflow.multipleSubagents.cases';
 
   if (!enabled) {
     return `## Subagent mode (${phaseLabel})
@@ -53,6 +53,6 @@ export function getSubagentModeInstructionAppendix(
 - \`${configKey}\` is **true**.
 - Launch **two** parallel blind **Task** subagents with the **same** analyst brief; do not tell either that a peer exists.
 - Each analyst MUST fetch the change set (\`gh pr diff\` / \`gh pr view\` for GitHub PRs, or \`git diff\` / patch per brief).
-- After **both** return: synthesize once — **Agreed**, **Single-analyst** (lower confidence), **Contradiction** in **Synthesis notes** (analyze) or merge drafts (matrix).
+- After **both** return: synthesize once — **Agreed**, **Single-analyst** (lower confidence), **Contradiction** in **Synthesis notes** (analyze) or merge drafts (cases).
 - If the Task tool is unavailable, stop and ask the user to set \`${configKey}: false\` or retry when Task is available — do not fall back to a single subagent or solo output without both drafts.`;
 }

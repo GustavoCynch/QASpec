@@ -101,7 +101,7 @@ describe('InitCommand upstream coexistence skills', () => {
 
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-cases', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-publish', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-archive', 'SKILL.md'))).toBe(true);
   });
@@ -133,7 +133,7 @@ describe('InitCommand upstream coexistence skills', () => {
 
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-cases', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-publish', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-archive', 'SKILL.md'))).toBe(true);
   });

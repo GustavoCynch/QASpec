@@ -27,7 +27,7 @@ describe('qa-config-seed', () => {
   it('seed includes workflow.multipleSubagents defaults false', () => {
     const seed = getQaspecPrReviewConfigSeed();
     expect(seed.workflow?.multipleSubagents?.review).toBe(false);
-    expect(seed.workflow?.multipleSubagents?.matrix).toBe(false);
+    expect(seed.workflow?.multipleSubagents?.cases).toBe(false);
   });
 
   it('serializeConfig for qaspec-pr-review emits parseable YAML with active rules', () => {
@@ -35,18 +35,18 @@ describe('qa-config-seed', () => {
     const parsed = parseYaml(yaml.replace(/^#.*\n/gm, '')) as {
       schema: string;
       context: string;
-      workflow?: { multipleSubagents?: { review?: boolean; matrix?: boolean } };
+      workflow?: { multipleSubagents?: { review?: boolean; cases?: boolean } };
       rules: Record<string, string[]>;
     };
 
     expect(parsed.schema).toBe('qaspec-pr-review');
     expect(parsed.workflow?.multipleSubagents?.review).toBe(false);
-    expect(parsed.workflow?.multipleSubagents?.matrix).toBe(false);
+    expect(parsed.workflow?.multipleSubagents?.cases).toBe(false);
     expect(parsed.context).toContain('read-only');
     expect(parsed.context).toContain('Language: (edit');
     expect(parsed.context).not.toContain('<!--');
     expect(parsed.rules.analyze.length).toBeGreaterThan(0);
-    expect(parsed.rules['test-matrix'].length).toBeGreaterThan(0);
+    expect(parsed.rules['test-cases'].length).toBeGreaterThan(0);
     expect(parsed.rules.specs.length).toBeGreaterThan(0);
     expect(parsed.rules.apply.length).toBeGreaterThan(0);
   });
@@ -60,9 +60,9 @@ describe('qa-config-seed', () => {
     expect(applyRules).toMatch(/do not upload in the same message/i);
   });
 
-  it('test-matrix seed rules require enriched case bodies', () => {
+  it('test-cases seed rules require enriched case bodies', () => {
     const seed = getQaspecPrReviewConfigSeed();
-    const matrixRules = seed.rules!['test-matrix'].join('\n');
+    const matrixRules = seed.rules!['test-cases'].join('\n');
 
     expect(matrixRules).toMatch(/Preconditions/i);
     expect(matrixRules).toMatch(/Steps/i);
@@ -76,7 +76,7 @@ describe('qa-config-seed', () => {
       'schemas',
       'qaspec-pr-review',
       'templates',
-      'testmatrix.md'
+      'testcases.md'
     );
     const content = fs.readFileSync(templatePath, 'utf-8');
 
@@ -91,10 +91,10 @@ describe('qa-config-seed', () => {
     const content = fs.readFileSync(schemaPath, 'utf-8');
 
     expect(content).toContain('workflow.multipleSubagents.review');
-    expect(content).toContain('workflow.multipleSubagents.matrix');
+    expect(content).toContain('workflow.multipleSubagents.cases');
   });
 
-  it('qaspec-pr-review schema test-matrix instruction requires enriched case body', () => {
+  it('qaspec-pr-review schema test-cases instruction requires enriched case body', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../..');
     const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
     const content = fs.readFileSync(schemaPath, 'utf-8');

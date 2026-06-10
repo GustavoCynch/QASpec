@@ -10,7 +10,7 @@
 
 ## Suites and cases to publish
 
-<!-- List unchecked `- [ ]` rows from testmatrix.md only -->
+<!-- List unchecked `- [ ]` rows from testcases.md only -->
 
 ### Suite: <!-- name -->
 

@@ -6,7 +6,7 @@ import { detectCompleted } from './state.js';
 import { resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
-import { readProjectConfig, validateConfigRules } from '../project-config.js';
+import { readProjectConfig, validateConfigRules, resolveRulesForArtifact } from '../project-config.js';
 import {
   getSubagentModeInstructionAppendix,
   resolveMultipleSubagents,
@@ -324,8 +324,13 @@ export function generateInstructions(
 
   // Extract context and rules as separate fields (not prepended to template)
   const configContext = projectConfig?.context?.trim() || undefined;
-  const rulesForArtifact = projectConfig?.rules?.[artifactId];
-  const configRules = rulesForArtifact && rulesForArtifact.length > 0 ? rulesForArtifact : undefined;
+  const resolvedRules = resolveRulesForArtifact(projectConfig?.rules, artifactId, (notice) => {
+    if (!shownWarnings.has(notice)) {
+      console.warn(notice);
+      shownWarnings.add(notice);
+    }
+  });
+  const configRules = resolvedRules && resolvedRules.length > 0 ? resolvedRules : undefined;
 
   let enrichedInstruction = artifact.instruction;
   if (context.schemaName === 'qaspec-pr-review') {
@@ -335,8 +340,8 @@ export function generateInstructions(
       enrichedInstruction = enrichedInstruction
         ? `${enrichedInstruction}\n\n${appendix}`
         : appendix;
-    } else if (artifactId === 'test-matrix') {
-      const appendix = getSubagentModeInstructionAppendix('test-matrix', subagentFlags.matrix);
+    } else if (artifactId === 'test-cases') {
+      const appendix = getSubagentModeInstructionAppendix('test-cases', subagentFlags.cases);
       enrichedInstruction = enrichedInstruction
         ? `${enrichedInstruction}\n\n${appendix}`
         : appendix;

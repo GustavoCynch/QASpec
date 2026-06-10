@@ -38,11 +38,11 @@ export const WORKFLOW_COMMANDS = [
   },
   {
     num: '02',
-    command: '/qsx:matrix',
+    command: '/qsx:cases',
     label: 'Matrix',
     description:
       'Test cases with preconditions and steps, built from sources — plus delta specs for the change.',
-    artifact: '→ testmatrix.md',
+    artifact: '→ testcases.md',
   },
   {
     num: '03',
@@ -63,13 +63,13 @@ export const WORKFLOW_COMMANDS = [
 ] as const;
 
 export const WORKFLOW_FLOW =
-  'analyze → matrix → (approve) → publish → (confirm) → archive';
+  'analyze → cases → (approve) → publish → (confirm) → archive';
 
 export const FEATURES = [
   {
     title: 'Review intent, not just code',
     description:
-      'Each change produces structured QA artifacts — analysis, test matrix, and spec deltas — so reviewers understand what will be tested before execution.',
+      'Each change produces structured QA artifacts — analysis, test cases, and spec deltas — so reviewers understand what will be tested before execution.',
   },
   {
     title: 'Context that persists',
@@ -92,7 +92,7 @@ export const FAQ = [
   {
     question: 'How is QASpec different from ad-hoc agent planning?',
     answer:
-      'Plans live in the repo across sessions and teammates. You align on what to test and why before running tests, with human approval gates on matrix and publish.',
+      'Plans live in the repo across sessions and teammates. You align on what to test and why before running tests, with human approval gates on cases and publish.',
   },
   {
     question: 'Do I need a test management system?',

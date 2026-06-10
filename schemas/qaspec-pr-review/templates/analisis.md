@@ -4,7 +4,7 @@
 
 ## Affected capabilities
 
-<!-- Kebab-case capability names for delta specs in matrix phase (e.g. billing-export, user-auth) -->
+<!-- Kebab-case capability names for delta specs in cases phase (e.g. billing-export, user-auth) -->
 <!-- Do not write specs/**/*.md in the analyze step -->
 
 ## Functional intent vs implementation
@@ -14,7 +14,7 @@
 ## Validated clarifications
 
 <!-- User-approved facts after analyze halt: defects vs expected behavior, scope cuts, env assumptions -->
-<!-- Matrix phase treats this section as binding — update here before /qsx:matrix if chat clarifies anything -->
+<!-- Cases phase treats this section as binding — update here before /qsx:cases if chat clarifies anything -->
 
 ## Functional impact by area
 
@@ -48,9 +48,9 @@
 
 <!-- PII, secrets, redaction notes -->
 
-## Risks for matrix phase
+## Risks for cases phase
 
-<!-- What /qsx:matrix must cover (BVA, API blocking, settings pairs, etc.) -->
+<!-- What /qsx:cases must cover (BVA, API blocking, settings pairs, etc.) -->
 
 ## Synthesis notes
 

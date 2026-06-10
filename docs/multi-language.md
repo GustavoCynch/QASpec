@@ -118,7 +118,7 @@ The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, test
 | Layer | Location | What it controls |
 |-------|----------|------------------|
 | **Role & locale** | `context` | QA role, read-only constraint, language, stack, domain |
-| **Phase policy** | `rules.analyze`, `rules.test-matrix`, `rules.specs`, `rules.apply` | Depth per workflow step (BVA, dual-source, MCP gates) |
+| **Phase policy** | `rules.analyze`, `rules.test-cases`, `rules.specs`, `rules.apply` | Depth per workflow step (BVA, dual-source, MCP gates) |
 | **Orchestration** | Generated `qaspec-*` skills | CLI steps, Task×2 protocol, halts — English in the product |
 | **Artifact shape** | Schema templates + `qaspec instructions … --json` | Section headings, file paths, checkbox format |
 | **Team data** | `qaspec/references/*.md` | Historical bugs, Qase field rules |
@@ -140,7 +140,7 @@ rules:
   analyze:
     - Narrativa en español para análisis y halts
     - Dual source of truth: notas del desarrollador vs diff del PR
-  test-matrix:
+  test-cases:
     - Títulos y pasos en español; etiquetas UI en inglés entre comillas cuando la app es en inglés
     - Sin identificadores de código en el texto de casos
   specs:

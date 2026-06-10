@@ -22,7 +22,7 @@ describe('skill-generation', () => {
       expect(dirNames).toEqual(
         expect.arrayContaining([
           'qaspec-analyze',
-          'qaspec-matrix',
+          'qaspec-cases',
           'qaspec-publish',
           'qaspec-archive',
         ])
@@ -68,6 +68,15 @@ describe('skill-generation', () => {
       const dirNames = filtered.map((t) => t.dirName);
       expect(dirNames).toContain('qaspec-archive');
     });
+
+    it('should include cases skill when filter lists resolved cases id', () => {
+      const filtered = getSkillTemplates(['analyze', 'cases', 'publish', 'archive']);
+      expect(filtered.map((t) => t.workflowId).sort()).toEqual(
+        ['analyze', 'archive', 'cases', 'publish'].sort()
+      );
+      expect(filtered.filter((t) => t.workflowId === 'cases')).toHaveLength(1);
+      expect(filtered.filter((t) => t.dirName === 'qaspec-cases')).toHaveLength(1);
+    });
   });
 
   describe('getCoexistenceSkillTemplates', () => {
@@ -75,7 +84,7 @@ describe('skill-generation', () => {
       const merged = getCoexistenceSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       const dirNames = merged.map((t) => t.dirName);
       expect(dirNames).toContain('qaspec-analyze');
-      expect(dirNames).toContain('qaspec-matrix');
+      expect(dirNames).toContain('qaspec-cases');
       expect(dirNames).toContain('qaspec-publish');
       expect(dirNames).toContain('qaspec-archive');
       expect(merged).toHaveLength(4);
@@ -110,7 +119,7 @@ describe('skill-generation', () => {
       const templates = getCommandTemplates(CORE_WORKFLOWS);
       expect(templates).toHaveLength(4);
       expect(templates.map((t) => t.id).sort()).toEqual(
-        ['analyze', 'archive', 'matrix', 'publish'].sort()
+        ['analyze', 'archive', 'cases', 'publish'].sort()
       );
     });
 

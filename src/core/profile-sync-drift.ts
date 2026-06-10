@@ -14,7 +14,7 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
  */
 export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
   analyze: qaspecSkillDirName('analyze'),
-  matrix: qaspecSkillDirName('matrix'),
+  cases: qaspecSkillDirName('cases'),
   publish: qaspecSkillDirName('publish'),
   archive: qaspecSkillDirName('archive'),
 };

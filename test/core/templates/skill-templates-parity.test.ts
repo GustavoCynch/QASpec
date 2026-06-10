@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   type SkillTemplate,
   getQasAnalyzeSkillTemplate,
-  getQasMatrixSkillTemplate,
+  getQasCasesSkillTemplate,
   getQasPublishSkillTemplate,
   getQasArchiveSkillTemplate,
   getQasAnalyzeCommandTemplate,
-  getQasMatrixCommandTemplate,
+  getQasCasesCommandTemplate,
   getQasPublishCommandTemplate,
   getQasArchiveCommandTemplate,
   getFeedbackSkillTemplate,
@@ -39,11 +39,11 @@ describe('skill templates split parity', () => {
   it('preserves QASpec template function payloads exactly', () => {
     const functionFactories: Record<string, () => unknown> = {
       getQasAnalyzeSkillTemplate,
-      getQasMatrixSkillTemplate,
+      getQasCasesSkillTemplate,
       getQasPublishSkillTemplate,
       getQasArchiveSkillTemplate,
       getQasAnalyzeCommandTemplate,
-      getQasMatrixCommandTemplate,
+      getQasCasesCommandTemplate,
       getQasPublishCommandTemplate,
       getQasArchiveCommandTemplate,
       getFeedbackSkillTemplate,
@@ -59,7 +59,7 @@ describe('skill templates split parity', () => {
   it('preserves generated QASpec skill file content exactly', () => {
     const skillFactories: Array<[string, () => SkillTemplate]> = [
       ['qaspec-analyze', getQasAnalyzeSkillTemplate],
-      ['qaspec-matrix', getQasMatrixSkillTemplate],
+      ['qaspec-cases', getQasCasesSkillTemplate],
       ['qaspec-publish', getQasPublishSkillTemplate],
       ['qaspec-archive', getQasArchiveSkillTemplate],
     ];

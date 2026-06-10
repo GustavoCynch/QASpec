@@ -8,7 +8,7 @@ Archive a completed QASpec change.
 
 1. Run \`qaspec list --json\`; let the user pick the change if unclear.
 2. Run \`qaspec status --change "<name>" --json\` — warn on incomplete artifacts.
-3. For \`qaspec-pr-review\`, check \`testmatrix.md\` checkboxes if publish was expected; for \`spec-driven\`, check \`tasks.md\`.
+3. For \`qaspec-pr-review\`, check \`testcases.md\` checkboxes if publish was expected; for \`spec-driven\`, check \`tasks.md\`.
 4. Run \`qaspec archive <name>\` (or follow CLI prompts).`;
 
 export function getQasArchiveSkillTemplate(): SkillTemplate {

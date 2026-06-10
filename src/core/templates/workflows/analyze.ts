@@ -26,10 +26,10 @@ ${getQasAnalystPromptBlock('analyze')}
 2. Read \`qaspec/references/historical_bugs.md\` (mandatory; re-read this run).
 3. **If review flag is false (default):** fetch the change set yourself; write \`analisis.md\` per template (orchestrator-only; no Task subagents).
 4. **If review flag is true:** run **two parallel blind Task** subagents using the analyst prompt; wait for both; synthesize into one \`analisis.md\` (include **Synthesis notes** for Agreed / Single-analyst / Contradiction).
-5. Include **Affected capabilities** (kebab-case) for the matrix phase.
+5. Include **Affected capabilities** (kebab-case) for the cases phase.
 6. Apply \`rules.analyze\` from config for depth (intent vs implementation, risks, regression, responsive, i18n, settings).
-7. End chat with **exactly one** halt question. Do NOT write \`testmatrix.md\`, \`specs/**/*.md\`, or continue to matrix in the same message.
-8. When the user answers the halt or adds clarifications (defect vs expected, scope, env): update \`analisis.md\` — especially **Validated clarifications** and **Functional intent vs implementation** — before suggesting \`/qsx:matrix\`. Chat-only approvals are not visible to matrix.
+7. End chat with **exactly one** halt question. Do NOT write \`testcases.md\`, \`specs/**/*.md\`, or continue to cases in the same message.
+8. When the user answers the halt or adds clarifications (defect vs expected, scope, env): update \`analisis.md\` — especially **Validated clarifications** and **Functional intent vs implementation** — before suggesting \`/qsx:cases\`. Chat-only approvals are not visible to cases.
 
 **Guardrails:** no Qase MCP; no app code edits; one message for this phase unless updating \`analisis.md\` after user halt response.`;
 

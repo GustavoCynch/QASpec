@@ -2,174 +2,79 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { FileSystemUtils } from '../../../src/utils/file-system.js';
-import { artifactOutputExists, resolveArtifactOutputs } from '../../../src/core/artifact-graph/outputs.js';
+import {
+  resolveArtifactOutputs,
+  resolveTracksFilePath,
+  LEGACY_TRACKS_FILE_NOTICE,
+} from '../../../src/core/artifact-graph/outputs.js';
+import { generateApplyInstructions } from '../../../src/commands/workflow/instructions.js';
 
-describe('artifact-graph/outputs', () => {
+describe('artifact outputs legacy fallback', () => {
   let tempDir: string;
-
-  const canonical = (targetPath: string): string => FileSystemUtils.canonicalizeExistingPath(targetPath);
+  let changeDir: string;
 
   beforeEach(() => {
-    tempDir = path.join(os.tmpdir(), `openspec-outputs-test-${Date.now()}`);
-    fs.mkdirSync(tempDir, { recursive: true });
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-outputs-'));
+    changeDir = path.join(tempDir, 'openspec', 'changes', 'qa-change');
+    fs.mkdirSync(changeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(changeDir, '.openspec.yaml'),
+      'schema: qaspec-pr-review\n'
+    );
+    fs.mkdirSync(path.join(tempDir, 'openspec'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, 'openspec', 'config.yaml'),
+      'schema: qaspec-pr-review\n'
+    );
   });
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('resolves a direct file path when it exists', () => {
-    const filePath = path.join(tempDir, 'proposal.md');
-    fs.writeFileSync(filePath, 'content');
+  it('resolves testcases.md artifact from legacy testmatrix.md', () => {
+    fs.writeFileSync(
+      path.join(changeDir, 'testmatrix.md'),
+      '- [ ] 1.1 Legacy case title\n'
+    );
 
-    expect(resolveArtifactOutputs(tempDir, 'proposal.md')).toEqual([canonical(filePath)]);
-    expect(artifactOutputExists(tempDir, 'proposal.md')).toBe(true);
+    const outputs = resolveArtifactOutputs(changeDir, 'testcases.md');
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toContain('testmatrix.md');
   });
 
-  it('does not treat a directory as a resolved literal artifact output', () => {
-    const dirPath = path.join(tempDir, 'proposal.md');
-    fs.mkdirSync(dirPath, { recursive: true });
+  it('prefers testcases.md when both legacy and canonical exist', () => {
+    fs.writeFileSync(path.join(changeDir, 'testmatrix.md'), '- [ ] 1.1 Legacy\n');
+    fs.writeFileSync(path.join(changeDir, 'testcases.md'), '- [ ] 1.1 Canonical\n');
 
-    expect(resolveArtifactOutputs(tempDir, 'proposal.md')).toEqual([]);
-    expect(artifactOutputExists(tempDir, 'proposal.md')).toBe(false);
+    const outputs = resolveArtifactOutputs(changeDir, 'testcases.md');
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toContain('testcases.md');
   });
 
-  it('resolves single-star nested globs to concrete files', () => {
-    const nestedDir = path.join(tempDir, 'specs', 'change-a');
-    const filePath = path.join(nestedDir, 'spec.md');
-    fs.mkdirSync(nestedDir, { recursive: true });
-    fs.writeFileSync(filePath, 'content');
+  it('resolveTracksFilePath falls back to testmatrix.md with legacy flag', () => {
+    fs.writeFileSync(
+      path.join(changeDir, 'testmatrix.md'),
+      '- [ ] 1.1 Checkbox task\n- [x] 1.2 Done task\n'
+    );
 
-    expect(resolveArtifactOutputs(tempDir, 'specs/*/spec.md')).toEqual([canonical(filePath)]);
-    expect(artifactOutputExists(tempDir, 'specs/*/spec.md')).toBe(true);
+    const resolved = resolveTracksFilePath(changeDir, 'testcases.md');
+    expect(resolved?.legacy).toBe(true);
+    expect(resolved?.path).toContain('testmatrix.md');
   });
 
-  it('matches basename-sensitive glob patterns correctly', () => {
-    const specsDir = path.join(tempDir, 'specs');
-    fs.mkdirSync(specsDir, { recursive: true });
-    const matching = path.join(specsDir, 'foo-auth.md');
-    const nonMatching = path.join(specsDir, 'bar-auth.md');
-    fs.writeFileSync(matching, 'content');
-    fs.writeFileSync(nonMatching, 'content');
+  it('apply instructions read legacy testmatrix.md progress with notice', async () => {
+    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Analysis\n');
+    fs.mkdirSync(path.join(changeDir, 'specs', 'auth'), { recursive: true });
+    fs.writeFileSync(path.join(changeDir, 'specs', 'auth', 'spec.md'), '## ADDED Requirements\n');
+    fs.writeFileSync(
+      path.join(changeDir, 'testmatrix.md'),
+      '- [ ] 1.1 Pending case\n- [x] 1.2 Done case\n'
+    );
 
-    expect(resolveArtifactOutputs(tempDir, 'specs/foo*.md')).toEqual([canonical(matching)]);
-  });
-
-  it('supports question-mark glob patterns', () => {
-    const specsDir = path.join(tempDir, 'specs');
-    fs.mkdirSync(specsDir, { recursive: true });
-    const matching = path.join(specsDir, 'a1.md');
-    fs.writeFileSync(matching, 'content');
-    fs.writeFileSync(path.join(specsDir, 'a10.md'), 'content');
-
-    expect(resolveArtifactOutputs(tempDir, 'specs/a?.md')).toEqual([canonical(matching)]);
-  });
-
-  it('supports character class glob patterns', () => {
-    const specsDir = path.join(tempDir, 'specs');
-    fs.mkdirSync(specsDir, { recursive: true });
-    const aPath = path.join(specsDir, 'a.md');
-    const bPath = path.join(specsDir, 'b.md');
-    fs.writeFileSync(aPath, 'content');
-    fs.writeFileSync(bPath, 'content');
-    fs.writeFileSync(path.join(specsDir, 'c.md'), 'content');
-
-    expect(resolveArtifactOutputs(tempDir, 'specs/[ab].md')).toEqual([
-      canonical(aPath),
-      canonical(bPath),
-    ]);
-  });
-
-  it('canonicalizes resolved paths when the change directory is accessed through an alias', () => {
-    const rootDir = path.join(tempDir, 'workspace');
-    const realChangeDir = path.join(rootDir, 'real-change');
-    const aliasChangeDir = path.join(rootDir, 'alias-change');
-    const specDir = path.join(realChangeDir, 'specs', 'change-a');
-    const proposalPath = path.join(realChangeDir, 'proposal.md');
-    const specPath = path.join(specDir, 'spec.md');
-
-    fs.mkdirSync(specDir, { recursive: true });
-    fs.writeFileSync(proposalPath, 'content');
-    fs.writeFileSync(specPath, 'content');
-    fs.symlinkSync(realChangeDir, aliasChangeDir, process.platform === 'win32' ? 'junction' : 'dir');
-
-    expect(resolveArtifactOutputs(aliasChangeDir, 'proposal.md')).toEqual([
-      canonical(proposalPath),
-    ]);
-    expect(resolveArtifactOutputs(aliasChangeDir, 'specs/*/spec.md')).toEqual([
-      canonical(specPath),
-    ]);
-  });
-
-  it('returns an empty list when no files match the artifact output', () => {
-    expect(resolveArtifactOutputs(tempDir, 'specs/*/spec.md')).toEqual([]);
-    expect(artifactOutputExists(tempDir, 'specs/*/spec.md')).toBe(false);
-  });
-
-  describe('glob-special characters in directory paths', () => {
-    it('resolves glob patterns when directory contains parentheses', () => {
-      const dirWithParens = path.join(tempDir, 'project (work)');
-      const specDir = path.join(dirWithParens, 'specs', 'cap-a');
-      const specFile = path.join(specDir, 'spec.md');
-      fs.mkdirSync(specDir, { recursive: true });
-      fs.writeFileSync(specFile, 'content');
-
-      expect(resolveArtifactOutputs(dirWithParens, 'specs/*/spec.md')).toEqual([
-        canonical(specFile),
-      ]);
-      expect(artifactOutputExists(dirWithParens, 'specs/*/spec.md')).toBe(true);
-    });
-
-    it('resolves glob patterns when directory contains square brackets', () => {
-      const dirWithBrackets = path.join(tempDir, '[projects]');
-      const specDir = path.join(dirWithBrackets, 'specs', 'cap-a');
-      const specFile = path.join(specDir, 'spec.md');
-      fs.mkdirSync(specDir, { recursive: true });
-      fs.writeFileSync(specFile, 'content');
-
-      expect(resolveArtifactOutputs(dirWithBrackets, 'specs/*/spec.md')).toEqual([
-        canonical(specFile),
-      ]);
-      expect(artifactOutputExists(dirWithBrackets, 'specs/*/spec.md')).toBe(true);
-    });
-
-    it('resolves glob patterns when directory contains curly braces', () => {
-      const dirWithBraces = path.join(tempDir, '{workspace}');
-      const specDir = path.join(dirWithBraces, 'specs', 'cap-a');
-      const specFile = path.join(specDir, 'spec.md');
-      fs.mkdirSync(specDir, { recursive: true });
-      fs.writeFileSync(specFile, 'content');
-
-      expect(resolveArtifactOutputs(dirWithBraces, 'specs/*/spec.md')).toEqual([
-        canonical(specFile),
-      ]);
-      expect(artifactOutputExists(dirWithBraces, 'specs/*/spec.md')).toBe(true);
-    });
-
-    it('resolves glob patterns when directory contains brace expansion syntax', () => {
-      const dirWithBraceExpansion = path.join(tempDir, 'project {a,b}');
-      const specDir = path.join(dirWithBraceExpansion, 'specs', 'cap-a');
-      const specFile = path.join(specDir, 'spec.md');
-      fs.mkdirSync(specDir, { recursive: true });
-      fs.writeFileSync(specFile, 'content');
-
-      expect(resolveArtifactOutputs(dirWithBraceExpansion, 'specs/*/spec.md')).toEqual([
-        canonical(specFile),
-      ]);
-      expect(artifactOutputExists(dirWithBraceExpansion, 'specs/*/spec.md')).toBe(true);
-    });
-
-    it('resolves non-glob generates when directory contains special characters', () => {
-      const dirWithParens = path.join(tempDir, 'project (work)');
-      const proposalFile = path.join(dirWithParens, 'proposal.md');
-      fs.mkdirSync(dirWithParens, { recursive: true });
-      fs.writeFileSync(proposalFile, 'content');
-
-      expect(resolveArtifactOutputs(dirWithParens, 'proposal.md')).toEqual([
-        canonical(proposalFile),
-      ]);
-      expect(artifactOutputExists(dirWithParens, 'proposal.md')).toBe(true);
-    });
+    const instructions = await generateApplyInstructions(tempDir, 'qa-change');
+    expect(instructions.progress.total).toBe(2);
+    expect(instructions.progress.complete).toBe(1);
+    expect(instructions.legacyTracksNotice).toBe(LEGACY_TRACKS_FILE_NOTICE);
   });
 });

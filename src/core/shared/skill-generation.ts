@@ -7,8 +7,8 @@
 import {
   getQasAnalyzeSkillTemplate,
   getQasAnalyzeCommandTemplate,
-  getQasMatrixSkillTemplate,
-  getQasMatrixCommandTemplate,
+  getQasCasesSkillTemplate,
+  getQasCasesCommandTemplate,
   getQasPublishSkillTemplate,
   getQasPublishCommandTemplate,
   getQasArchiveSkillTemplate,
@@ -39,14 +39,14 @@ export interface CommandTemplateEntry {
 
 const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
   { template: getQasAnalyzeSkillTemplate(), dirName: qaspecSkillDirName('analyze'), workflowId: 'analyze' },
-  { template: getQasMatrixSkillTemplate(), dirName: qaspecSkillDirName('matrix'), workflowId: 'matrix' },
+  { template: getQasCasesSkillTemplate(), dirName: qaspecSkillDirName('cases'), workflowId: 'cases' },
   { template: getQasPublishSkillTemplate(), dirName: qaspecSkillDirName('publish'), workflowId: 'publish' },
   { template: getQasArchiveSkillTemplate(), dirName: qaspecSkillDirName('archive'), workflowId: 'archive' },
 ];
 
 const QAS_COMMAND_ENTRIES: CommandTemplateEntry[] = [
   { template: getQasAnalyzeCommandTemplate(), id: 'analyze' },
-  { template: getQasMatrixCommandTemplate(), id: 'matrix' },
+  { template: getQasCasesCommandTemplate(), id: 'cases' },
   { template: getQasPublishCommandTemplate(), id: 'publish' },
   { template: getQasArchiveCommandTemplate(), id: 'archive' },
 ];

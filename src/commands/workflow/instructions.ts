@@ -13,6 +13,8 @@ import {
   generateInstructions,
   resolveSchema,
   resolveArtifactOutputs,
+  resolveTracksFilePath,
+  LEGACY_TRACKS_FILE_NOTICE,
   type ArtifactInstructions,
 } from '../../core/artifact-graph/index.js';
 import { readProjectConfig } from '../../core/project-config.js';
@@ -294,14 +296,18 @@ export async function generateApplyInstructions(
     }
   }
 
-  // Parse tasks if tracking file exists
+  // Parse tasks if tracking file exists (with legacy filename fallback)
   let tasks: TaskItem[] = [];
   let tracksFileExists = false;
+  let legacyTracksNotice: string | undefined;
   if (tracksFile) {
-    const tracksPath = path.join(changeDir, tracksFile);
-    tracksFileExists = fs.existsSync(tracksPath);
-    if (tracksFileExists) {
-      const tasksContent = await fs.promises.readFile(tracksPath, 'utf-8');
+    const resolvedTracks = resolveTracksFilePath(changeDir, tracksFile);
+    tracksFileExists = resolvedTracks !== null;
+    if (resolvedTracks) {
+      if (resolvedTracks.legacy) {
+        legacyTracksNotice = LEGACY_TRACKS_FILE_NOTICE;
+      }
+      const tasksContent = await fs.promises.readFile(resolvedTracks.path, 'utf-8');
       tasks = parseTasksFile(tasksContent);
     }
   }
@@ -363,6 +369,7 @@ export async function generateApplyInstructions(
     instruction,
     context: configContext,
     rules: configRules,
+    legacyTracksNotice,
   };
 }
 
@@ -417,6 +424,7 @@ export function printApplyInstructionsText(instructions: ApplyInstructions): voi
     instruction,
     context: projectContext,
     rules: applyRules,
+    legacyTracksNotice,
   } = instructions;
 
   console.log(`## Apply: ${changeName}`);
@@ -438,6 +446,11 @@ export function printApplyInstructionsText(instructions: ApplyInstructions): voi
       console.log(`- ${rule}`);
     }
     console.log('</rules>');
+    console.log();
+  }
+
+  if (legacyTracksNotice) {
+    console.log(legacyTracksNotice);
     console.log();
   }
 

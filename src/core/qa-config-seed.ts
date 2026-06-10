@@ -9,11 +9,11 @@ export function getQaspecPrReviewConfigSeed(): Pick<ProjectConfig, 'context' | '
     workflow: {
       multipleSubagents: {
         review: false,
-        matrix: false,
+        cases: false,
       },
     },
     context: `Role: Senior QA Architect and test engineer — read-only on application source under test.
-Outputs: analysis artifacts, test matrix, delta specs, and TCMS publish only. Never create, modify, or delete app code.
+Outputs: analysis artifacts, test cases, delta specs, and TCMS publish only. Never create, modify, or delete app code.
 
 Language: (edit — set your project language for all QA artifacts, reference scaffolds, and halt messages)
 See docs/multi-language.md for examples.
@@ -34,12 +34,12 @@ PRs are test targets, not ground truth.`,
         'When workflow.multipleSubagents.review is true: two parallel blind Task analysts; each MUST fetch the change set (gh pr diff/view or git diff / patch)',
         'When review flag true: synthesize Agreed / Single-analyst / Contradiction in analisis.md Synthesis notes',
         'Cover functional impact, framework/UI risks, API/backend risks, settings/feature flags, regression, responsive/usability, localization when UI touched',
-        'List Affected capabilities in kebab-case for the matrix phase; do not write specs/**/*.md or testmatrix.md in analyze',
-        'End with exactly one halt question in project language; do not continue to matrix in the same message',
+        'List Affected capabilities in kebab-case for the cases phase; do not write specs/**/*.md or testcases.md in analyze',
+        'End with exactly one halt question in project language; do not continue to cases in the same message',
         'After halt response: persist clarifications in Validated clarifications; never leave approvals only in chat',
         'Stop on PII/secrets in diffs; use redacted placeholders in analysis',
       ],
-      'test-matrix': [
+      'test-cases': [
         'Read analisis.md in full before PR diff; analisis.md wins when it conflicts with diff or current code',
         'Re-read qaspec/references/qase_test_case_rules.md before drafting cases',
         'Each case: one - [ ] checkbox line, then **Preconditions** and **Steps** (Action + Expected per step) under that line',
@@ -51,29 +51,29 @@ PRs are test targets, not ground truth.`,
         'Distinct behaviors get separate cases; group visual attributes of the same element in one case',
         'API resilience: when HTTP surface exists, use endpoint blocking (per endpoint alone and all relevant blocked together when multi-endpoint)',
         'Settings toggles: cover enabled and disabled when behavior depends on configuration',
-        'Co-produce specs/<capability>/spec.md deltas aligned with matrix cases; no orphan requirements',
+        'Co-produce specs/<capability>/spec.md deltas aligned with test cases; no orphan requirements',
         'Checkbox format: ## Suite: <name> then - [ ] N.N Observable title per case with enriched body below',
-        'Default: orchestrator-only (workflow.multipleSubagents.matrix: false) — draft matrix and specs without Task subagents',
-        'When workflow.multipleSubagents.matrix is true: dual blind Task analysts for draft lists; merge by intent, dedupe only when behavior and boundaries match',
+        'Default: orchestrator-only (workflow.multipleSubagents.cases: false) — draft cases and specs without Task subagents',
+        'When workflow.multipleSubagents.cases is true: dual blind Task analysts for draft lists; merge by intent, dedupe only when behavior and boundaries match',
         'Self-audit before halt: every step traceable to a source unless marked as documented gap',
-        'End with exactly one approval question covering both testmatrix.md and specs together',
+        'End with exactly one approval question covering both testcases.md and specs together',
       ],
       specs: [
         'Read analisis.md in full first; analisis.md overrides diff when they conflict',
         'Read Affected capabilities and existing qaspec/specs/<capability>/spec.md before MODIFIED blocks',
-        'Keep requirements and scenarios aligned with testmatrix.md cases',
+        'Keep requirements and scenarios aligned with testcases.md cases',
         'Use ADDED/MODIFIED/REMOVED/RENAMED delta sections; every requirement needs at least one #### Scenario',
         'Write in project language from config; SHALL/MUST for normative requirements',
       ],
       apply: [
         'Re-read qaspec/references/qase_test_case_rules.md before the first Qase MCP call',
-        'Read Preconditions and Steps from each case block in testmatrix.md for publish-plan and Qase payloads — do not derive steps from title alone',
-        'Block publish when testmatrix exists but change specs/ is empty — direct user to /qsx:matrix first',
+        'Read Preconditions and Steps from each case block in testcases.md for publish-plan and Qase payloads — do not derive steps from title alone',
+        'Block publish when testcases exists but change specs/ is empty — direct user to /qsx:cases first',
         'Resolve Qase project code, role, and base URL from artifacts or one halt listing only missing fields; persist to execution-context.md',
         'Write or update execution-context.md and publish-plan.md before any Qase MCP call; do not upload in the same message as initial file creation',
         'End with exactly one confirmation halt after prepare files; invoke Qase MCP only after user confirms publish',
         'Do not echo secrets or PII in chat or Qase fields; stop upload path if detected',
-        'Mark each published row - [x] in testmatrix.md; write publish-log.md trace',
+        'Mark each published row - [x] in testcases.md; write publish-log.md trace',
       ],
     },
   };
@@ -82,7 +82,7 @@ PRs are test targets, not ground truth.`,
 /** Artifact ids that must appear in rules for qaspec-pr-review seed validation. */
 export const QASPEC_PR_REVIEW_RULE_ARTIFACT_IDS = [
   'analyze',
-  'test-matrix',
+  'test-cases',
   'specs',
   'apply',
 ] as const;

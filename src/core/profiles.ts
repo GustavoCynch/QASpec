@@ -11,7 +11,10 @@ import type { Profile } from './global-config.js';
  * Core workflows included in the 'core' profile.
  * These provide the streamlined experience for new users.
  */
-export const CORE_WORKFLOWS = ['analyze', 'matrix', 'publish', 'archive'] as const;
+export const CORE_WORKFLOWS = ['analyze', 'cases', 'publish', 'archive'] as const;
+
+/** Legacy QASpec workflow ids mapped to their new name at resolution (not retired). */
+export const RENAMED_QAS_WORKFLOW_IDS: Record<string, string> = { matrix: 'cases' };
 
 /**
  * Legacy OpenSpec core workflow set (pre-QASpec). Global configs still on this
@@ -45,8 +48,22 @@ export const RETIRED_QAS_WORKFLOW_IDS = ['explore'] as const;
 
 const RETIRED_QAS_WORKFLOW_SET = new Set<string>(RETIRED_QAS_WORKFLOW_IDS);
 
+function resolveWorkflowId(workflow: string): string {
+  return RENAMED_QAS_WORKFLOW_IDS[workflow] ?? workflow;
+}
+
 function filterToQasWorkflows(workflows: readonly string[]): readonly string[] {
-  return workflows.filter((workflow) => CORE_WORKFLOW_SET.has(workflow));
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const workflow of workflows) {
+    const resolved = resolveWorkflowId(workflow);
+    if (!CORE_WORKFLOW_SET.has(resolved) || seen.has(resolved)) {
+      continue;
+    }
+    seen.add(resolved);
+    result.push(resolved);
+  }
+  return result;
 }
 
 /**
@@ -64,6 +81,39 @@ export function getRetiredWorkflowIds(customWorkflows: readonly string[] | undef
  */
 export function formatRetiredWorkflowNotice(retiredId: string): string {
   return `Skipped retired workflow id "${retiredId}" — investigation now starts with /qsx:analyze`;
+}
+
+/**
+ * Returns legacy workflow ids in a custom profile that map to a renamed id.
+ */
+export function getRenamedWorkflowIds(
+  customWorkflows: readonly string[] | undefined
+): readonly string[] {
+  if (!customWorkflows) {
+    return [];
+  }
+  return customWorkflows.filter((workflow) => workflow in RENAMED_QAS_WORKFLOW_IDS);
+}
+
+/**
+ * One-line notice for each legacy workflow id mapped during resolution.
+ */
+export function formatRenamedWorkflowNotice(legacyId: string): string {
+  const newId = RENAMED_QAS_WORKFLOW_IDS[legacyId];
+  return `Renamed workflow id "${legacyId}" → "${newId}" (use /qsx:${newId})`;
+}
+
+/**
+ * Notices for renamed workflow ids in a custom profile (empty for core profile callers).
+ */
+export function getRenamedWorkflowNotices(
+  profile: Profile,
+  customWorkflows?: readonly string[]
+): string[] {
+  if (profile !== 'custom') {
+    return [];
+  }
+  return getRenamedWorkflowIds(customWorkflows).map(formatRenamedWorkflowNotice);
 }
 
 /**

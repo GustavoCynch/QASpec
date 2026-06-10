@@ -22,7 +22,7 @@ function printWelcomeContent(): void {
   console.log();
   console.log(chalk.white('Quick start after setup:'));
   console.log(`  ${chalk.yellow('/qsx:analyze')}   ${chalk.dim('Analysis artifact')}`);
-  console.log(`  ${chalk.yellow('/qsx:matrix')}    ${chalk.dim('Test matrix')}`);
+  console.log(`  ${chalk.yellow('/qsx:cases')}     ${chalk.dim('Test cases')}`);
   console.log(`  ${chalk.yellow('/qsx:publish')}   ${chalk.dim('Publish to Qase')}`);
   console.log();
   console.log(chalk.cyan('Press Enter to select tools...'));

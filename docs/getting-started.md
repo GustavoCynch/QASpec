@@ -9,10 +9,10 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 **Default path (core profile)** — installed by `qaspec init`:
 
 ```text
-/qsx:analyze ──► /qsx:matrix ──► /qsx:publish ──► /qsx:archive
+/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:archive
 ```
 
-The global **`core`** profile includes exactly four workflows: `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
+The global **`core`** profile includes exactly four workflows: `analyze`, `cases`, `publish`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
 
 Free-form investigation happens in normal chat or at the start of `/qsx:analyze` — no separate explore command is required.
 
@@ -30,8 +30,8 @@ qaspec/                          # Planning home
 └── changes/
     └── <change-name>/
         ├── analisis.md          # From /qsx:analyze
-        ├── testmatrix.md        # From /qsx:matrix
-        └── specs/               # Delta specs (from matrix phase)
+        ├── testcases.md        # From /qsx:cases
+        └── specs/               # Delta specs (from cases phase)
 ```
 
 **Agent artifacts** (per selected AI tool), for example on Cursor:
@@ -44,11 +44,11 @@ qaspec/                          # Planning home
 | Artifact | Produced by | Purpose |
 |----------|-------------|---------|
 | `analisis.md` | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
-| `testmatrix.md` | `/qsx:matrix` | Test cases with approval checkboxes; may create delta specs |
-| Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved matrix to Qase after human approval (only TCMS supported today) |
+| `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes; may create delta specs |
+| Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to Qase after human approval (only TCMS supported today) |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
-`/qsx:analyze` includes investigation before writing `analisis.md`. `/qsx:matrix` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
+`/qsx:analyze` includes investigation before writing `analisis.md`. `/qsx:cases` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
 
 ## Example: First QA Change
 
@@ -58,15 +58,15 @@ qaspec/                          # Planning home
 You: /qsx:analyze checkout-timeout
 
 AI:  Creates qaspec/changes/checkout-timeout/analisis.md
-     Halts for your confirmation before matrix work.
+     Halts for your confirmation before cases work.
 ```
 
 ### 2. Matrix
 
 ```text
-You: /qsx:matrix
+You: /qsx:cases
 
-AI:  Creates testmatrix.md and delta specs under the change
+AI:  Creates testcases.md and delta specs under the change
      Halts for approval of cases and requirements.
 ```
 

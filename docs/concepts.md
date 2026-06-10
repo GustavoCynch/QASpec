@@ -33,7 +33,7 @@ QASpec organizes your work into two main areas:
 │                                                                    │
 │   ┌─────────────────────┐      ┌───────────────────────────────┐   │
 │   │       specs/        │      │         changes/              │   │
-│   │  Capability specs   │◄─────│  analisis.md, testmatrix.md   │   │
+│   │  Capability specs   │◄─────│  analisis.md, testcases.md   │   │
 │   │  (source of truth)  │ merge│  delta specs per change       │   │
 │   └─────────────────────┘      └───────────────────────────────┘   │
 │   references/  config.yaml                                         │
@@ -700,7 +700,7 @@ qaspec/
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  2. MATRIX     │  /qsx:matrix → testmatrix.md + delta specs (halt)       │
+│   │  2. CASES     │  /qsx:cases → testcases.md + delta specs (halt)       │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │

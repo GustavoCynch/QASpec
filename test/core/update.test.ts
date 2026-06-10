@@ -160,7 +160,7 @@ Old instructions content
       // Verify core profile skill files were created/updated
       const coreSkillNames = [
         'qaspec-analyze',
-        'qaspec-matrix',
+        'qaspec-cases',
         'qaspec-publish',
         'qaspec-archive',
       ];
@@ -309,7 +309,7 @@ Old instructions content
       await updateCommand.execute(testDir);
 
       // Verify core profile commands were created (analyze, matrix, publish, archive)
-      const coreCommandIds = ['analyze', 'matrix', 'publish', 'archive'];
+      const coreCommandIds = ['analyze', 'cases', 'publish', 'archive'];
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       for (const cmdId of coreCommandIds) {
         const cmdFile = path.join(commandsDir, `${cmdId}.md`);
@@ -596,22 +596,22 @@ Old instructions content
     it('should include proper instructions in skill files', async () => {
       // Set up a configured tool with apply-change skill (which is in core profile)
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-matrix'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-cases'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-cases', 'SKILL.md'),
         'old'
       );
 
       await updateCommand.execute(testDir);
 
       const skillContent = await fs.readFile(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-cases', 'SKILL.md'),
         'utf-8'
       );
 
-      expect(skillContent.toLowerCase()).toContain('testmatrix');
+      expect(skillContent.toLowerCase()).toContain('testcases');
     });
   });
 
@@ -1397,7 +1397,7 @@ More user content after markers.
       const skillNames = [
         'qaspec-analyze',
         'qaspec-analyze',
-        'qaspec-matrix',
+        'qaspec-cases',
         'qaspec-publish',
         'qaspec-archive',
       ];
@@ -1454,7 +1454,7 @@ More user content after markers.
         path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-cases', 'SKILL.md')
       )).toBe(false);
 
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
@@ -1473,7 +1473,7 @@ More user content after markers.
         featureFlags: {},
         profile: 'custom',
         delivery: 'both',
-        workflows: ['analyze', 'matrix'],
+        workflows: ['analyze', 'cases'],
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
@@ -1486,7 +1486,7 @@ More user content after markers.
         path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-cases', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'openspec-new-change', 'SKILL.md')
@@ -1501,7 +1501,7 @@ More user content after markers.
         featureFlags: {},
         profile: 'custom',
         delivery: 'both',
-        workflows: ['explore', 'analyze', 'matrix'],
+        workflows: ['explore', 'analyze', 'cases'],
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
@@ -1515,7 +1515,7 @@ More user content after markers.
         path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-cases', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
@@ -1524,6 +1524,37 @@ More user content after markers.
       const allCalls = consoleSpy.mock.calls.map((call) => String(call[0] ?? ''));
       expect(allCalls.some((line) => line.includes('Skipped retired workflow id "explore"'))).toBe(true);
       consoleSpy.mockRestore();
+    });
+
+    it('should remove renamed matrix artifacts and generate qaspec-cases (Claude and Cursor)', async () => {
+      const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
+      const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'configured');
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'configured');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-matrix'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'stale matrix');
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-matrix'), { recursive: true });
+      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'stale matrix');
+
+      const claudeMatrixCmd = path.join(testDir, '.claude', 'commands', 'qsx', 'matrix.md');
+      const cursorMatrixCmd = path.join(testDir, '.cursor', 'commands', 'qsx-matrix.md');
+      await fs.mkdir(path.dirname(claudeMatrixCmd), { recursive: true });
+      await fs.mkdir(path.dirname(cursorMatrixCmd), { recursive: true });
+      await fs.writeFile(claudeMatrixCmd, '# matrix');
+      await fs.writeFile(cursorMatrixCmd, '# matrix');
+
+      await updateCommand.execute(testDir);
+
+      expect(await FileSystemUtils.fileExists(path.join(claudeSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(false);
+      expect(await FileSystemUtils.fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(false);
+      expect(await FileSystemUtils.fileExists(claudeMatrixCmd)).toBe(false);
+      expect(await FileSystemUtils.fileExists(cursorMatrixCmd)).toBe(false);
+      expect(await FileSystemUtils.fileExists(path.join(claudeSkillsDir, 'qaspec-cases', 'SKILL.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(cursorSkillsDir, 'qaspec-cases', 'SKILL.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(testDir, '.claude', 'commands', 'qsx', 'cases.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(testDir, '.cursor', 'commands', 'qsx-cases.md'))).toBe(true);
     });
 
     it('should remove retired explore artifacts from Claude and Cursor layouts', async () => {
@@ -1852,12 +1883,12 @@ content
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'content');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-matrix'), { recursive: true });
-      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'content');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-cases'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-cases', 'SKILL.md'), 'content');
 
       const workflows = scanInstalledWorkflows(testDir, ['claude']);
       expect(workflows).toContain('analyze');
-      expect(workflows).toContain('matrix');
+      expect(workflows).toContain('cases');
       expect(workflows).not.toContain('propose');
     });
 
@@ -1869,12 +1900,12 @@ content
 
       // Cursor has apply
       const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
-      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-matrix'), { recursive: true });
-      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'content');
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-cases'), { recursive: true });
+      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-cases', 'SKILL.md'), 'content');
 
       const workflows = scanInstalledWorkflows(testDir, ['claude', 'cursor']);
       expect(workflows).toContain('analyze');
-      expect(workflows).toContain('matrix');
+      expect(workflows).toContain('cases');
     });
 
     it('should only match workflows in ALL_WORKFLOWS', async () => {

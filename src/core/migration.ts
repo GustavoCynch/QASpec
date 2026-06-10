@@ -118,7 +118,7 @@ export function migrateLegacyCoreProfileIfNeeded(): boolean {
 
   console.log(
     chalk.dim(
-      'Migrated global profile from legacy OpenSpec core to QASpec core (analyze, matrix, publish, archive).'
+      'Migrated global profile from legacy OpenSpec core to QASpec core (analyze, cases, publish, archive).'
     )
   );
   return true;
@@ -171,5 +171,5 @@ export function migrateIfNeeded(projectPath: string, tools: AIToolOption[]): voi
   saveGlobalConfig(config);
 
   console.log(`Migrated: custom profile with ${installedWorkflows.length} workflows`);
-  console.log("Try 'qaspec config profile core' for the QASpec QA workflow (/qsx:analyze, /qsx:matrix, /qsx:publish, /qsx:archive).");
+  console.log("Try 'qaspec config profile core' for the QASpec QA workflow (/qsx:analyze, /qsx:cases, /qsx:publish, /qsx:archive).");
 }

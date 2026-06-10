@@ -10,13 +10,13 @@
 
 ## Suites created
 
-| Suite (Qase) | Source heading in testmatrix.md | Notes |
+| Suite (Qase) | Source heading in testcases.md | Notes |
 |--------------|----------------------------------|-------|
 |              |                                  |       |
 
 ## Cases created
 
-| Case ID | Title | Suite | testmatrix.md line |
+| Case ID | Title | Suite | testcases.md line |
 |---------|-------|-------|--------------------|
 |         |       |       |                    |
 

@@ -458,18 +458,18 @@ rules:
         expect(instructions.instruction).toContain(SUBAGENT_MODE_DUAL_ANALYST_MARKER);
       });
 
-      it('should inject orchestrator-only marker for test-matrix when matrix is false', () => {
+      it('should inject orchestrator-only marker for test-cases when matrix is false', () => {
         setupQaReviewProject(tempDir, { review: false, matrix: false });
         const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
-        const instructions = generateInstructions(context, 'test-matrix', tempDir);
+        const instructions = generateInstructions(context, 'test-cases', tempDir);
 
         expect(instructions.instruction).toContain(SUBAGENT_MODE_ORCHESTRATOR_MARKER);
       });
 
-      it('should inject dual-analyst marker for test-matrix when matrix is true', () => {
+      it('should inject dual-analyst marker for test-cases when matrix is true', () => {
         setupQaReviewProject(tempDir, { review: false, matrix: true });
         const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review');
-        const instructions = generateInstructions(context, 'test-matrix', tempDir);
+        const instructions = generateInstructions(context, 'test-cases', tempDir);
 
         expect(instructions.instruction).toContain(SUBAGENT_MODE_DUAL_ANALYST_MARKER);
       });

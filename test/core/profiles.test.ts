@@ -7,12 +7,15 @@ import {
   getRetiredWorkflowIds,
   formatRetiredWorkflowNotice,
   getRetiredWorkflowNotices,
+  getRenamedWorkflowIds,
+  formatRenamedWorkflowNotice,
+  getRenamedWorkflowNotices,
 } from '../../src/core/profiles.js';
 
 describe('profiles', () => {
   describe('CORE_WORKFLOWS', () => {
     it('should contain the default core workflows', () => {
-      expect(CORE_WORKFLOWS).toEqual(['analyze', 'matrix', 'publish', 'archive']);
+      expect(CORE_WORKFLOWS).toEqual(['analyze', 'cases', 'publish', 'archive']);
     });
 
     it('should be a subset of ALL_WORKFLOWS', () => {
@@ -44,14 +47,14 @@ describe('profiles', () => {
     });
 
     it('should return only QASpec workflow ids for custom profile', () => {
-      const customWorkflows = ['explore', 'new', 'apply', 'ff', 'matrix'];
+      const customWorkflows = ['explore', 'new', 'apply', 'ff', 'cases'];
       const result = getProfileWorkflows('custom', customWorkflows);
-      expect(result).toEqual(['matrix']);
+      expect(result).toEqual(['cases']);
     });
 
     it('should filter retired explore from custom profile', () => {
-      const result = getProfileWorkflows('custom', ['explore', 'analyze', 'matrix']);
-      expect(result).toEqual(['analyze', 'matrix']);
+      const result = getProfileWorkflows('custom', ['explore', 'analyze', 'cases']);
+      expect(result).toEqual(['analyze', 'cases']);
     });
 
     it('should return empty array for custom profile with no customWorkflows', () => {
@@ -62,6 +65,11 @@ describe('profiles', () => {
     it('should return empty array for custom profile with empty customWorkflows', () => {
       const result = getProfileWorkflows('custom', []);
       expect(result).toEqual([]);
+    });
+
+    it('should map legacy matrix id to cases and deduplicate', () => {
+      expect(getProfileWorkflows('custom', ['matrix'])).toEqual(['cases']);
+      expect(getProfileWorkflows('custom', ['matrix', 'cases'])).toEqual(['cases']);
     });
   });
 
@@ -77,6 +85,21 @@ describe('profiles', () => {
     it('returns notices only for custom profile', () => {
       expect(getRetiredWorkflowNotices('core', ['explore'])).toEqual([]);
       expect(getRetiredWorkflowNotices('custom', ['explore'])).toHaveLength(1);
+    });
+  });
+
+  describe('renamed workflow notices', () => {
+    it('detects matrix in custom workflows', () => {
+      expect(getRenamedWorkflowIds(['matrix', 'analyze'])).toEqual(['matrix']);
+    });
+
+    it('formats renamed workflow notice', () => {
+      expect(formatRenamedWorkflowNotice('matrix')).toContain('/qsx:cases');
+    });
+
+    it('returns notices only for custom profile', () => {
+      expect(getRenamedWorkflowNotices('core', ['matrix'])).toEqual([]);
+      expect(getRenamedWorkflowNotices('custom', ['matrix'])).toHaveLength(1);
     });
   });
 });

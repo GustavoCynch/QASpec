@@ -40,6 +40,8 @@ export interface ApplyInstructions {
   context?: string;
   /** Publish/apply-phase rules from config.rules.apply when present. */
   rules?: string[];
+  /** Set when apply.tracks fell back to a legacy filename (e.g. testmatrix.md). */
+  legacyTracksNotice?: string;
 }
 
 // -----------------------------------------------------------------------------

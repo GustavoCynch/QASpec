@@ -14,7 +14,7 @@ export function getQasWorkflowConfigPreamble(instructionArtifacts: string[]): st
 ${instructionRuns}
 3. Apply JSON \`context\` and \`rules\` as binding constraints — **do NOT** copy them into artifact files.
 4. Use JSON \`instruction\`, \`template\`, and \`resolvedOutputPath\` when writing outputs.
-5. Read \`workflow.multipleSubagents\` in \`qaspec/config.yaml\` before choosing subagent mode (defaults: review **false**, matrix **false**).
+5. Read \`workflow.multipleSubagents\` in \`qaspec/config.yaml\` before choosing subagent mode (defaults: review **false**, cases **false**).
 6. Project phase policy lives in \`qaspec/config.yaml\` \`rules.<artifact-id>\`; skills orchestrate only.
 
 **Read-only** on application source under test.`;
@@ -25,22 +25,22 @@ export const QAS_EXPLORE_CONFIG_PREAMBLE = `## Config (explore)
 Read \`qaspec/config.yaml\` \`context\` (and \`rules\` when relevant) for project language and QA role constraints.
 **Read-only** on application source under test.`;
 
-export const QAS_MATRIX_ANALISIS_AUTHORITY = `## analisis.md is source of truth (matrix phase)
+export const QAS_CASES_ANALISIS_AUTHORITY = `## analisis.md is source of truth (cases phase)
 
 - \`analisis.md\` is user-validated output from \`/qsx:analyze\`; read it **in full** before \`gh pr diff\` / \`git diff\`.
-- **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for matrix phase, Synthesis notes.
+- **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for cases phase, Synthesis notes.
 - When analysis conflicts with the diff or current code, **analisis.md wins**. Use the diff only to decide *how* to test agreed behavior.
-- Items marked defect/bug in analysis → matrix cases and delta specs verify the **correct** behavior (fail today / pass after fix); never encode the defect as accepted SHALL/MUST.`;
+- Items marked defect/bug in analysis → test cases and delta specs verify the **correct** behavior (fail today / pass after fix); never encode the defect as accepted SHALL/MUST.`;
 
 /** @deprecated Use getQasDualAnalystProtocol() — kept for imports during transition */
 export const QAS_DUAL_ANALYST_PROTOCOL = getQasDualAnalystProtocol();
 
-export function getQasOrchestratorOnlyProtocol(phase: 'analyze' | 'matrix'): string {
+export function getQasOrchestratorOnlyProtocol(phase: 'analyze' | 'cases'): string {
   const configKey =
     phase === 'analyze'
       ? 'workflow.multipleSubagents.review'
-      : 'workflow.multipleSubagents.matrix';
-  const phaseName = phase === 'analyze' ? 'analyze (review)' : 'matrix';
+      : 'workflow.multipleSubagents.cases';
+  const phaseName = phase === 'analyze' ? 'analyze (review)' : 'cases';
 
   return `## Orchestrator-only (${phaseName})
 
@@ -60,11 +60,11 @@ export function getQasDualAnalystProtocol(): string {
 - If Task is unavailable while the flag is **true**, stop and ask the user to set the flag **false** or retry when Task exists — do not fall back to a single subagent.`;
 }
 
-export function getQasSubagentModeWorkflowSection(phase: 'analyze' | 'matrix'): string {
+export function getQasSubagentModeWorkflowSection(phase: 'analyze' | 'cases'): string {
   const configKey =
     phase === 'analyze'
       ? 'workflow.multipleSubagents.review'
-      : 'workflow.multipleSubagents.matrix';
+      : 'workflow.multipleSubagents.cases';
 
   return `## Subagent mode (read \`qaspec/config.yaml\`)
 
@@ -77,30 +77,30 @@ When \`${configKey}\` is **true**:
 ${getQasDualAnalystProtocol()}`;
 }
 
-export function getQasAnalystPromptBlock(phase: 'analyze' | 'matrix'): string {
+export function getQasAnalystPromptBlock(phase: 'analyze' | 'cases'): string {
   const phaseTask =
     phase === 'analyze'
       ? 'Produce structured PR/change analysis per schema template sections. Do NOT add the final user halt question.'
       : 'Produce draft test cases in Markdown (suites, checkbox lines, types). Do NOT add approval halt. Do NOT publish to Qase.';
 
   const extraRef =
-    phase === 'matrix'
+    phase === 'cases'
       ? '\n- Also read `qaspec/references/qase_test_case_rules.md`'
       : '';
 
-  const matrixAuthority =
-    phase === 'matrix'
+  const casesAuthority =
+    phase === 'cases'
       ? `
 ## Validated analysis (binding — orchestrator pastes full analisis.md)
 {FULL analisis.md BODY — mandatory; overrides PR/diff when they conflict}
 
-## Conflict rule (matrix only)
+## Conflict rule (cases only)
 - analisis.md wins over gh/git diff and over current implementation
 - Defects in analysis → draft cases for corrected behavior, not for accepting the bug
 `
       : '';
 
-  return `## Analyst Task prompt (use only when ${phase === 'analyze' ? 'workflow.multipleSubagents.review' : 'workflow.multipleSubagents.matrix'} is true — copy identically to both parallel Task runs)
+  return `## Analyst Task prompt (use only when ${phase === 'analyze' ? 'workflow.multipleSubagents.review' : 'workflow.multipleSubagents.cases'} is true — copy identically to both parallel Task runs)
 
 \`\`\`
 You are a QA analyst executing one pass of the QASpec workflow.
@@ -110,12 +110,12 @@ You are a QA analyst executing one pass of the QASpec workflow.
 ## Mandatory references
 - qaspec/references/historical_bugs.md${extraRef}
 - Apply rules from the orchestrator brief (project config)
-${matrixAuthority}
+${casesAuthority}
 ## Obtain the change set yourself
 - GitHub PR: run gh pr diff and gh pr view (--repo if specified in brief)
 - Otherwise: run git diff or read the patch path from the brief
 - Read changed source files with read/search after you have the patch
-${phase === 'matrix' ? '- Use the diff only where analisis.md does not already decide expected vs defective behavior' : ''}
+${phase === 'cases' ? '- Use the diff only where analisis.md does not already decide expected vs defective behavior' : ''}
 
 ## PR / change identity (orchestrator fills — identical for both analysts)
 {PR number, URL, gh flags, developer notes, or non-GH fallback}

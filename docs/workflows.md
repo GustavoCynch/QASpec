@@ -8,7 +8,7 @@ QASpec treats testing work as **actions**, not rigid phases:
 
 - Run `/qsx:analyze` when you need investigation and a signed-off analysis artifact
 - Use normal chat for informal exploration before starting analyze
-- Run `/qsx:matrix` when you need cases and delta specs
+- Run `/qsx:cases` when you need cases and delta specs
 - Run `/qsx:publish` only after human approval
 - Run `/qsx:archive` when the change is done
 
@@ -21,39 +21,39 @@ You can revisit earlier steps; halts exist where human judgment matters.
 | Id | Slash command | Output |
 |----|---------------|--------|
 | `analyze` | `/qsx:analyze` | `analisis.md` |
-| `matrix` | `/qsx:matrix` | `testmatrix.md` (preconditions + steps per case) + delta specs |
+| `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) + delta specs |
 | `publish` | `/qsx:publish` | `execution-context.md`, `publish-plan.md`, then **Qase** upload after confirm |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
 
 ```text
-/qsx:analyze ──► /qsx:matrix ──► /qsx:publish ──► /qsx:archive
+/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:archive
 ```
 
 ### Halts and prerequisites
 
-- **Analyze → matrix:** `analisis.md` is the validated source of truth for matrix (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; matrix reads it before the PR diff and overrides the diff when they conflict.
-- **Matrix → publish:** Publish requires approved matrix and deltas; matrix halts for case and requirement approval. Each case in `testmatrix.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
+- **Analyze → cases:** `analisis.md` is the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; cases reads it before the PR diff and overrides the diff when they conflict.
+- **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case and requirement approval. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
 - **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs **Qase MCP** only after confirmation. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
-- **Matrix without analyze:** Not supported — matrix requires `analisis.md` from analyze.
+- **Cases without analyze:** Not supported — cases requires `analisis.md` from analyze.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
 
 ### Optional dual subagents per phase
 
-By default both flags are **false** — the **orchestrator** (main agent) runs analyze and matrix without Task subagents:
+By default both flags are **false** — the **orchestrator** (main agent) runs analyze and cases without Task subagents:
 
 ```yaml
 workflow:
   multipleSubagents:
     review: false   # /qsx:analyze — PR analysis (analisis.md)
-    matrix: false   # /qsx:matrix — testmatrix.md + delta specs
+    cases: false   # /qsx:cases — testcases.md + delta specs
 ```
 
-Set `review: true` and/or `matrix: true` to restore **two parallel blind Task** analysts for that phase (synthesis merge as today). When a flag is false, do not delegate to even one subagent as a shortcut.
+Set `review: true` and/or `cases: true` to restore **two parallel blind Task** analysts for that phase (synthesis merge as today). When a flag is false, do not delegate to even one subagent as a shortcut.
 
-`qaspec instructions analyze --json` and `qaspec instructions test-matrix --json` append a **Subagent mode** block reflecting the resolved flags.
+`qaspec instructions analyze --json` and `qaspec instructions test-cases --json` append a **Subagent mode** block reflecting the resolved flags.
 
 ```bash
 qaspec instructions <artifact> --json
@@ -66,7 +66,7 @@ Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_t
 ### Exploratory PR review
 
 ```text
-/qsx:analyze ──► /qsx:matrix ──► (approve) ──► /qsx:publish ──► (confirm plan) ──► Qase upload
+/qsx:analyze ──► /qsx:cases ──► (approve) ──► /qsx:publish ──► (confirm plan) ──► Qase upload
 ```
 
 Use when a PR or requirement doc needs structured risk analysis before cases are written.
@@ -74,12 +74,12 @@ Use when a PR or requirement doc needs structured risk analysis before cases are
 ### Analysis only
 
 ```text
-/qsx:analyze ──► stop (no matrix yet)
+/qsx:analyze ──► stop (no cases yet)
 ```
 
-Use when stakeholders need `analisis.md` before committing to a full matrix.
+Use when stakeholders need `analisis.md` before committing to a full case list.
 
-### Enriched test matrix format
+### Enriched test cases format
 
 Each case keeps one progress checkbox, with detail nested below:
 
@@ -109,7 +109,7 @@ qaspec config profile   # Select a subset of the four workflows
 qaspec update           # Regenerate skills/commands; remove deselected ones
 ```
 
-Custom profiles only include QASpec workflow ids (`analyze`, `matrix`, `publish`, `archive`). QASpec does not install legacy `propose`, `apply`, `sync`, or `/opsx:*` commands.
+Custom profiles only include QASpec workflow ids (`analyze`, `cases`, `publish`, `archive`). QASpec does not install legacy `propose`, `apply`, `sync`, or `/opsx:*` commands.
 
 ## Custom schemas
 

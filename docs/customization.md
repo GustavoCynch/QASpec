@@ -82,7 +82,9 @@ Tech stack: TypeScript, React, Node.js, PostgreSQL
 
 ### QASpec QA config seed (`qaspec-pr-review`)
 
-On first init with the QASpec default schema, `config.yaml` includes active `context` (QA role, read-only, universal `(edit — …)` lines for language/stack/domain) and `rules` for `analyze`, `test-matrix`, `specs`, and `apply`. Replace the placeholders with your stack and locale before running workflows. Generated `qaspec-*` skills stay thin and load this config via `qaspec instructions … --json`.
+On first init with the QASpec default schema, `config.yaml` includes active `context` (QA role, read-only, universal `(edit — …)` lines for language/stack/domain) and `rules` for `analyze`, `test-cases`, `specs`, and `apply`. Replace the placeholders with your stack and locale before running workflows. Generated `qaspec-*` skills stay thin and load this config via `qaspec instructions … --json`.
+
+**Legacy aliases (read-time):** configs that still use `rules.test-matrix` or `workflow.multipleSubagents.matrix` keep working — QASpec maps them to `test-cases` / `cases` with a one-line notice. In-flight changes with `testmatrix.md` are tracked until you `git mv testmatrix.md testcases.md`.
 
 `qaspec update` refreshes skills and commands but **does not** overwrite an existing `config.yaml`.
 

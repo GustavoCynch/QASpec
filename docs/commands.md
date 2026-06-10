@@ -11,11 +11,11 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 | Command | Purpose |
 |---------|---------|
 | `/qsx:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
-| `/qsx:matrix` | Create `testmatrix.md` and change delta specs |
+| `/qsx:cases` | Create `testcases.md` and change delta specs |
 | `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
 | `/qsx:archive` | Finalize and archive the change |
 
-Workflow ids: `analyze`, `matrix`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these four).
+Workflow ids: `analyze`, `cases`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these four).
 
 Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
@@ -36,7 +36,7 @@ Produce **`analisis.md`** for the active change: risks, affected capabilities (k
 - Creates or updates a folder under `qaspec/changes/<change>/`
 - Writes `analisis.md`; reads `qaspec/references/historical_bugs.md` when present
 - Does **not** write `specs/**/*.md` in this step
-- Ends with a **halt** for human confirmation; persist answers in `analisis.md` (**Validated clarifications**) before `/qsx:matrix`
+- Ends with a **halt** for human confirmation; persist answers in `analisis.md` (**Validated clarifications**) before `/qsx:cases`
 
 **CLI support:**
 
@@ -46,14 +46,14 @@ qaspec instructions analyze --json
 
 ---
 
-## `/qsx:matrix`
+## `/qsx:cases`
 
-Produce **`testmatrix.md`** with mandatory checkboxes and create or update **delta specs** under the change.
+Produce **`testcases.md`** with mandatory checkboxes and create or update **delta specs** under the change.
 
 **Syntax:**
 
 ```text
-/qsx:matrix [change-name]
+/qsx:cases [change-name]
 ```
 
 **Prerequisites:**
@@ -71,7 +71,7 @@ Produce **`testmatrix.md`** with mandatory checkboxes and create or update **del
 
 ## `/qsx:publish`
 
-Prepare and upload **approved** test cases from `testmatrix.md` to **Qase** via MCP. Other TCMS connectors (TestRail, Xray, install-time selection) are not available yet — see [Test management (TCMS)](../README.md#test-management-tcms) to collaborate on the roadmap.
+Prepare and upload **approved** test cases from `testcases.md` to **Qase** via MCP. Other TCMS connectors (TestRail, Xray, install-time selection) are not available yet — see [Test management (TCMS)](../README.md#test-management-tcms) to collaborate on the roadmap.
 
 **Syntax:**
 
@@ -81,14 +81,14 @@ Prepare and upload **approved** test cases from `testmatrix.md` to **Qase** via 
 
 **Prerequisites:**
 
-- Approved `testmatrix.md` and delta specs from `/qsx:matrix`
-- Agent directs you back to `/qsx:matrix` if artifacts are missing
+- Approved `testcases.md` and delta specs from `/qsx:cases`
+- Agent directs you back to `/qsx:cases` if artifacts are missing
 
 **What it does:**
 
 1. Writes or updates `execution-context.md` (Qase project, role, base URL) and `publish-plan.md` (suites and unchecked cases to upload).
 2. Halts once so you can edit those files or confirm publish — **no Qase upload in that message**.
-3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testmatrix.md`.
+3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testcases.md`.
 
 ---
 

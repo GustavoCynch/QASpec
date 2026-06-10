@@ -45,6 +45,8 @@ import {
   removeLegacyQaspecCommandFiles,
   removeRetiredQaspecSkillDirs,
   removeRetiredQaspecCommandFiles,
+  removeRenamedQaspecSkillDirs,
+  removeRenamedQaspecCommandFiles,
   removeDeselectedQasSubdirCommands,
 } from './upstream-coexistence.js';
 import {
@@ -64,6 +66,7 @@ import {
   CORE_WORKFLOWS,
   ALL_WORKFLOWS,
   getRetiredWorkflowNotices,
+  getRenamedWorkflowNotices,
   type CoreWorkflowId,
 } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
@@ -531,6 +534,9 @@ export class InitCommand {
     for (const notice of getRetiredWorkflowNotices(profile, globalConfig.workflows)) {
       console.log(chalk.dim(notice));
     }
+    for (const notice of getRenamedWorkflowNotices(profile, globalConfig.workflows)) {
+      console.log(chalk.dim(notice));
+    }
     const workflows = getProfileWorkflows(profile, globalConfig.workflows);
     const desiredWorkflows = workflows.filter((workflow): workflow is CoreWorkflowId =>
       (ALL_WORKFLOWS as readonly string[]).includes(workflow)
@@ -626,6 +632,7 @@ export class InitCommand {
             upstreamOpenSpecActive
           );
           removedSkillCount += await removeRetiredQaspecSkillDirs(skillsDir);
+          removedSkillCount += await removeRenamedQaspecSkillDirs(skillsDir);
           removedSkillCount += await removeLegacyQaspecSkillDirs(skillsDir, upstreamOpenSpecActive);
         }
 
@@ -637,6 +644,7 @@ export class InitCommand {
             upstreamOpenSpecActive
           );
           removedCommandCount += await removeRetiredQaspecCommandFiles(projectPath, tool.value);
+          removedCommandCount += await removeRenamedQaspecCommandFiles(projectPath, tool.value);
           removedCommandCount += await removeLegacyQaspecCommandFiles(
             projectPath,
             upstreamOpenSpecActive
@@ -790,7 +798,7 @@ export class InitCommand {
       console.log(chalk.bold('Getting started:'));
       console.log('  qaspec new change <name>   Create a QA change');
       console.log('  /qsx:analyze                 Analysis (analisis.md)');
-      console.log('  /qsx:matrix                  Test matrix (testmatrix.md)');
+      console.log('  /qsx:cases                   Test cases (testcases.md)');
       console.log('  /qsx:publish                 Publish to Qase');
     } else {
       console.log("Done. Run 'qaspec config profile core' to enable QASpec workflows.");

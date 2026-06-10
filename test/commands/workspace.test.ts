@@ -362,7 +362,7 @@ describe('workspace command', () => {
     expect(readLocalState(setup.workspace.root).workspace_skills).toEqual(
       expect.objectContaining({
         selected_agents: [],
-        last_applied_workflow_ids: ['analyze', 'matrix', 'publish', 'archive'],
+        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
       })
     );
   });
@@ -373,7 +373,7 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'commands',
-      workflows: ['analyze', 'matrix'],
+      workflows: ['analyze', 'cases'],
     });
     const setup = await setupWorkspace('profile-sync', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
@@ -382,7 +382,7 @@ describe('workspace command', () => {
     fs.writeFileSync(path.join(customSkillDir, 'README.md'), 'user-owned\n');
 
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-cases', 'SKILL.md'))).toBe(true);
 
     writeGlobalConfig({
       profile: 'core',
@@ -413,14 +413,14 @@ describe('workspace command', () => {
       expect.objectContaining({
         profile: 'core',
         delivery: 'commands',
-        workflow_ids: ['analyze', 'matrix', 'publish', 'archive'],
+        workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
         selected_agents: ['codex'],
         skills_only: true,
         delivery_notice: expect.stringContaining('skills only'),
         refreshed: [
           expect.objectContaining({
             tool_id: 'codex',
-            workflow_ids: ['analyze', 'matrix', 'publish', 'archive'],
+            workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
           }),
         ],
         removed: [],
@@ -429,10 +429,10 @@ describe('workspace command', () => {
     );
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-cases', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-publish', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-archive', 'SKILL.md'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'skills', 'qaspec-cases', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(customSkillDir, 'README.md'))).toBe(true);
     expect(fs.existsSync(path.join(workspaceRoot, '.codex', 'prompts'))).toBe(false);
     expect(fs.readdirSync(api).sort()).toEqual(linkedEntriesBefore);
@@ -442,7 +442,7 @@ describe('workspace command', () => {
         selected_agents: ['codex'],
         last_applied_profile: 'core',
         last_applied_delivery: 'commands',
-        last_applied_workflow_ids: ['analyze', 'matrix', 'publish', 'archive'],
+        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
       })
     );
 
@@ -573,11 +573,11 @@ describe('workspace command', () => {
     writeGlobalConfig({
       profile: 'custom',
       delivery: 'skills',
-      workflows: ['matrix'],
+      workflows: ['cases'],
     });
     const setup = await setupWorkspace('unmanaged-collision', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix');
+    const collidingSkillDir = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-cases');
     fs.writeFileSync(path.join(collidingSkillDir, 'SKILL.md'), 'name: user-owned-matrix\n');
 
     const update = await runCLI(
@@ -600,7 +600,7 @@ describe('workspace command', () => {
     });
     const setup = await setupWorkspace('failed-update-state', [`api=${api}`], ['--tools', 'codex']);
     const workspaceRoot = setup.workspace.root;
-    const blockingSkillPath = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-matrix');
+    const blockingSkillPath = path.join(workspaceRoot, '.codex', 'skills', 'qaspec-cases');
     fs.writeFileSync(blockingSkillPath, 'blocks generated skill directory\n');
 
     writeGlobalConfig({
