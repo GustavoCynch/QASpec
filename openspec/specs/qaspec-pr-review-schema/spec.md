@@ -111,7 +111,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 
 ### Requirement: Publish artifact and tracking
 
-The schema SHALL define a publish phase that requires both `test-cases` and `specs`, tracks `testcases.md`, and SHALL instruct publish to use preconditions and steps recorded under each approved case in `testcases.md` when preparing Qase payloads.
+The schema SHALL define a publish phase that requires both `test-cases` and `specs`, tracks `testcases.md`, and SHALL instruct publish to resolve the TCMS target from the `tcms` block in project config, present an in-chat summary of unchecked cases before one confirmation halt, and use preconditions and steps recorded under each approved case in `testcases.md` when preparing Qase payloads. The instruction SHALL NOT direct agents to write `publish-plan.md` or `execution-context.md`.
 
 #### Scenario: Publish readiness
 
@@ -122,44 +122,37 @@ The schema SHALL define a publish phase that requires both `test-cases` and `spe
 #### Scenario: Publish outputs
 
 - **WHEN** publish completes per schema instructions
-- **THEN** the change MAY contain `publish-log.md`
-- **AND** the change MAY contain `execution-context.md` when Qase prerequisites were collected
-- **AND** the change SHALL contain `publish-plan.md` after the prepare step and before MCP upload
+- **THEN** the change contains `publish-log.md` with the suite/case trace
+- **AND** the instructions do not require any other publish-side file in the change directory
 
-#### Scenario: Prepare step before MCP
+#### Scenario: Summary and confirm before MCP
 
 - **WHEN** apply-phase instructions run for publish
-- **THEN** instructions require writing `execution-context.md` and `publish-plan.md` before any Qase MCP call
-- **AND** instructions require exactly one user confirmation halt after those files exist
-- **AND** instructions forbid MCP upload in the same message as initial creation of those files
+- **THEN** instructions require an in-chat summary (target, suites, unchecked-case counts, warnings) derived from `testcases.md`
+- **AND** instructions require exactly one user confirmation halt after the summary
+- **AND** instructions forbid MCP upload in the same message as TCMS target selection or persistence
 
 #### Scenario: Publish reads case blocks from the case list
 
 - **WHEN** apply-phase instructions run for publish
-- **THEN** instructions require reading **Preconditions** and **Steps** under each unchecked case in `testcases.md` when building `publish-plan.md` and Qase `create_case` payloads
+- **THEN** instructions require reading **Preconditions** and **Steps** under each unchecked case in `testcases.md` when building Qase `create_case` payloads
 - **AND** instructions forbid deriving steps solely from the case title when a **Steps** block exists for that case
 
 ### Requirement: Publish-side artifact templates
 
-The schema package SHALL include optional templates `publish-log.md`, `execution-context.md`, and `publish-plan.md` under `schemas/qaspec-pr-review/templates/` for agents to use when the publish (`apply`) phase creates tracking files.
+The schema package SHALL include the template `publish-log.md` under `schemas/qaspec-pr-review/templates/` for agents to use when the publish (`apply`) phase records upload results. The package SHALL NOT include `execution-context.md` or `publish-plan.md` templates.
 
 #### Scenario: Publish log template exists
 
 - **WHEN** a maintainer lists templates for `qaspec-pr-review`
 - **THEN** `templates/publish-log.md` exists with section placeholders for suite/case trace
-- **AND** `apply.instruction` in `schema.yaml` remains consistent with those file names
+- **AND** `apply.instruction` in `schema.yaml` remains consistent with that file name
 
-#### Scenario: Execution context template exists
-
-- **WHEN** a maintainer lists templates for `qaspec-pr-review`
-- **THEN** `templates/execution-context.md` exists with placeholders for Qase project code, role, and base URL
-- **AND** instructions state the file is created or updated during publish prepare, before user confirmation
-
-#### Scenario: Publish plan template exists
+#### Scenario: Prepare-file templates removed
 
 - **WHEN** a maintainer lists templates for `qaspec-pr-review`
-- **THEN** `templates/publish-plan.md` exists with placeholders for suites and cases to upload
-- **AND** `apply.instruction` references `publish-plan.md` as the pre-upload review artifact
+- **THEN** `templates/execution-context.md` and `templates/publish-plan.md` do not exist
+- **AND** `apply.instruction` does not reference them
 
 ### Requirement: No mandatory intake artifact
 
