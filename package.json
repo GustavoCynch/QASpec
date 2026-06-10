@@ -1,6 +1,6 @@
 {
   "name": "@qaspec/cli",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "QASpec CLI — AI-native QA planning and spec-driven workflows",
   "keywords": [
     "qaspec",

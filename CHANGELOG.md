@@ -1,5 +1,11 @@
 # @qaspec/cli
 
+## 1.4.1
+
+### Patch Changes
+
+- [`26650bc`](https://github.com/GustavoCynch/QASpec/commit/26650bcc45a971281788022421740411436bfe2c) Thanks [@GustavoCynch](https://github.com/GustavoCynch)! - Remove accidental `"@qaspec/cli": "link:"` self-dependency and its pnpm override. The published 1.4.0 package shipped this pnpm-only protocol in its dependencies, which made `npm install -g @qaspec/cli` fail with `EUNSUPPORTEDPROTOCOL`.
+
 ## 1.4.0
 
 ### Minor Changes
@@ -20,7 +26,7 @@
 
 ### Breaking Changes
 
-- **Spec-first analyze phase** — `/qsx:analyze` now co-produces change delta specs (`specs/**/*.md`) together with `analysis.md`; its single halt covers both artifacts and post-halt clarifications update both. Analyze reads existing `qaspec/specs/<capability>/spec.md` baselines for each affected capability before writing deltas. `/qsx:cases` no longer writes specs: it reads the approved delta specs as binding input, covers every requirement scenario with at least one case, and halts for the case list only. The `test-cases` artifact now requires `specs` in the schema graph. Run `qaspec update` to regenerate skills/commands. Existing `qaspec/config.yaml` files seeded before this release contain stale rules (e.g. "do not write specs/**/*.md … in analyze" under `rules.analyze`, "Co-produce specs … " under `rules.test-cases`); update them to match the new seed or remove them — regenerated skills and schema instructions describe the new flow authoritatively. In-flight changes that already produced specs during cases are unaffected.
+- **Spec-first analyze phase** — `/qsx:analyze` now co-produces change delta specs (`specs/**/*.md`) together with `analysis.md`; its single halt covers both artifacts and post-halt clarifications update both. Analyze reads existing `qaspec/specs/<capability>/spec.md` baselines for each affected capability before writing deltas. `/qsx:cases` no longer writes specs: it reads the approved delta specs as binding input, covers every requirement scenario with at least one case, and halts for the case list only. The `test-cases` artifact now requires `specs` in the schema graph. Run `qaspec update` to regenerate skills/commands. Existing `qaspec/config.yaml` files seeded before this release contain stale rules (e.g. "do not write specs/\*_/_.md … in analyze" under `rules.analyze`, "Co-produce specs … " under `rules.test-cases`); update them to match the new seed or remove them — regenerated skills and schema instructions describe the new flow authoritatively. In-flight changes that already produced specs during cases are unaffected.
 - **Removed `openspec` npm binary** — The package exposes only `qaspec`. Replace `openspec` with `qaspec` in scripts and CI.
 - **Fork planning home** — This repository dogfoods under `qaspec/` (`qaspec/changes/`, `qaspec/specs/`, `qaspec/config.yaml`). Consumer repos with only `openspec/` are still supported by the CLI resolver.
 - **Slim publish flow** — `/qsx:publish` no longer writes `publish-plan.md` or `execution-context.md`. The pre-upload review is an in-chat summary derived from `testcases.md`; only `publish-log.md` is written after upload. The TCMS target (provider, project code, base URL) lives in a `tcms` block in `qaspec/config.yaml`, discovered and persisted on first publish when absent. Legacy `execution-context.md` in a change is read once and offered for migration to config; legacy `publish-plan.md` files are ignored. If you edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.

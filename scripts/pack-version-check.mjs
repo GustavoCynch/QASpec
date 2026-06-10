@@ -48,17 +48,18 @@ function npmPack() {
 function main() {
   const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'));
   const expected = pkg.version;
+  const binRelInPkg = typeof pkg.bin === 'string' ? pkg.bin : Object.values(pkg.bin)[0];
 
   let work;
   let tgzPath;
 
   try {
-    log(`Packing @fission-ai/openspec@${expected}...`);
+    log(`Packing ${pkg.name}@${expected}...`);
     const filename = npmPack();
     tgzPath = path.resolve(filename);
     log(`Created: ${tgzPath}`);
 
-    work = mkdtempSync(path.join(tmpdir(), 'openspec-pack-check-'));
+    work = mkdtempSync(path.join(tmpdir(), 'qaspec-pack-check-'));
     log(`Temp dir: ${work}`);
 
     // Make a tiny project
@@ -80,7 +81,7 @@ function main() {
     run('npm', ['install', tgzPath, '--silent', '--no-audit', '--no-fund'], { cwd: work, env });
 
     // Run the installed CLI via Node to avoid bin resolution/platform issues
-    const binRel = path.join('node_modules', '@fission-ai', 'openspec', 'bin', 'openspec.js');
+    const binRel = path.join('node_modules', ...pkg.name.split('/'), binRelInPkg);
     const actual = run(process.execPath, [binRel, '--version'], { cwd: work }).trim();
 
     if (actual !== expected) {
