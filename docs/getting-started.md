@@ -29,7 +29,7 @@ qaspec/                          # Planning home
 ├── specs/                       # Source-of-truth capability specs (when used)
 └── changes/
     └── <change-name>/
-        ├── analisis.md          # From /qsx:analyze
+        ├── analysis.md          # From /qsx:analyze
         ├── testcases.md        # From /qsx:cases
         └── specs/               # Delta specs (from cases phase)
 ```
@@ -43,12 +43,12 @@ qaspec/                          # Planning home
 
 | Artifact | Produced by | Purpose |
 |----------|-------------|---------|
-| `analisis.md` | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
+| `analysis.md` | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
 | `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes; may create delta specs |
 | Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to Qase after human approval (only TCMS supported today) |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
-`/qsx:analyze` includes investigation before writing `analisis.md`. `/qsx:cases` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
+`/qsx:analyze` includes investigation before writing `analysis.md`. `/qsx:cases` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
 
 ## Example: First QA Change
 
@@ -57,7 +57,7 @@ qaspec/                          # Planning home
 ```text
 You: /qsx:analyze checkout-timeout
 
-AI:  Creates qaspec/changes/checkout-timeout/analisis.md
+AI:  Creates qaspec/changes/checkout-timeout/analysis.md
      Halts for your confirmation before cases work.
 ```
 

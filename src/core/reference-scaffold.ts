@@ -71,7 +71,7 @@ Read before \`/qsx:cases\` and again before \`/qsx:publish\`.
   | 2 | ... | ... |
 \`\`\`
 
-Build steps from \`analisis.md\`, diff, requirements, and specs — not invented vague flows.
+Build steps from \`analysis.md\`, diff, requirements, and specs — not invented vague flows.
 
 ## Preconditions template
 

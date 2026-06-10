@@ -8,7 +8,7 @@ import {
 
 const QAS_ANALYZE_BODY = `${getQasWorkflowConfigPreamble(['analyze'])}
 
-Run QASpec **analyze** (Phase 1). Produce \`analisis.md\` at \`resolvedOutputPath\`.
+Run QASpec **analyze** (Phase 1). Produce \`analysis.md\` at \`resolvedOutputPath\`.
 
 ${getQasSubagentModeWorkflowSection('analyze')}
 
@@ -24,30 +24,30 @@ ${getQasAnalystPromptBlock('analyze')}
 
 1. Complete **Config and CLI** above; confirm \`workflow.multipleSubagents.review\` from config (or JSON \`instruction\` subagent mode block).
 2. Read \`qaspec/references/historical_bugs.md\` (mandatory; re-read this run).
-3. **If review flag is false (default):** fetch the change set yourself; write \`analisis.md\` per template (orchestrator-only; no Task subagents).
-4. **If review flag is true:** run **two parallel blind Task** subagents using the analyst prompt; wait for both; synthesize into one \`analisis.md\` (include **Synthesis notes** for Agreed / Single-analyst / Contradiction).
+3. **If review flag is false (default):** fetch the change set yourself; write \`analysis.md\` per template (orchestrator-only; no Task subagents).
+4. **If review flag is true:** run **two parallel blind Task** subagents using the analyst prompt; wait for both; synthesize into one \`analysis.md\` (include **Synthesis notes** for Agreed / Single-analyst / Contradiction).
 5. Include **Affected capabilities** (kebab-case) for the cases phase.
 6. Apply \`rules.analyze\` from config for depth (intent vs implementation, risks, regression, responsive, i18n, settings).
 7. End chat with **exactly one** halt question. Do NOT write \`testcases.md\`, \`specs/**/*.md\`, or continue to cases in the same message.
-8. When the user answers the halt or adds clarifications (defect vs expected, scope, env): update \`analisis.md\` — especially **Validated clarifications** and **Functional intent vs implementation** — before suggesting \`/qsx:cases\`. Chat-only approvals are not visible to cases.
+8. When the user answers the halt or adds clarifications (defect vs expected, scope, env): update \`analysis.md\` — especially **Validated clarifications** and **Functional intent vs implementation** — before suggesting \`/qsx:cases\`. Chat-only approvals are not visible to cases.
 
-**Guardrails:** no Qase MCP; no app code edits; one message for this phase unless updating \`analisis.md\` after user halt response.`;
+**Guardrails:** no Qase MCP; no app code edits; one message for this phase unless updating \`analysis.md\` after user halt response.`;
 
 export function getQasAnalyzeSkillTemplate(): SkillTemplate {
   return {
     name: 'qaspec-analyze',
-    description: 'QASpec analyze — PR/requirements analysis and risks into analisis.md',
+    description: 'QASpec analyze — PR/requirements analysis and risks into analysis.md',
     instructions: QAS_ANALYZE_BODY,
     compatibility:
       'Requires qaspec CLI; gh or git for diffs; optional Cursor Task when workflow.multipleSubagents.review is true.',
-    metadata: { author: 'qaspec', version: '1.2' },
+    metadata: { author: 'qaspec', version: '1.3' },
   };
 }
 
 export function getQasAnalyzeCommandTemplate(): CommandTemplate {
   return {
     name: 'QAS: Analyze',
-    description: 'Analyze change and write analisis.md (orchestrator or dual-analyst per config)',
+    description: 'Analyze change and write analysis.md (orchestrator or dual-analyst per config)',
     category: QASPEC_COMMAND_CATEGORY,
     tags: ['workflow', 'analyze', 'qa'],
     content: QAS_ANALYZE_BODY,

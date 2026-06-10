@@ -83,3 +83,40 @@ export const OPENSPEC_PRODUCT_STRING_ALLOWLIST: RegExp[] = [
   /without repo-local `openspec\/`/,
   /In-repo specification tree.*`openspec\//,
 ];
+
+/**
+ * Agent instructions to run an `openspec <subcommand>` CLI (the feedback-skill bug class).
+ */
+export const OPENSPEC_CLI_INSTRUCTION_PATTERN = /\bopenspec\s+[a-z][-a-z]*/i;
+
+/**
+ * Legitimate upstream-coexistence prose in generated skill/command bodies.
+ */
+export const OPENSPEC_CLI_INSTRUCTION_ALLOWLIST: RegExp[] = [
+  /leave `openspec-\*` skills untouched/i,
+  /`openspec-\*` skills/i,
+  /openspec-\* skill/i,
+];
+
+export function isAllowedOpenspecCliInstructionLine(line: string): boolean {
+  return OPENSPEC_CLI_INSTRUCTION_ALLOWLIST.some((pattern) => pattern.test(line));
+}
+
+export function findOpenspecCliInstructionViolations(
+  body: string,
+  source: string
+): string[] {
+  const violations: string[] = [];
+  const lines = body.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!OPENSPEC_CLI_INSTRUCTION_PATTERN.test(line)) {
+      continue;
+    }
+    if (isAllowedOpenspecCliInstructionLine(line)) {
+      continue;
+    }
+    violations.push(`${source}:${i + 1}: ${line.trim()}`);
+  }
+  return violations;
+}

@@ -311,7 +311,7 @@ describe('config profile interactive flow', () => {
       expect.objectContaining({
         value: 'analyze',
         name: 'Analyze',
-        description: 'Create analysis artifact (analisis.md)',
+        description: 'Create analysis artifact (analysis.md)',
       }),
       expect.objectContaining({
         value: 'cases',

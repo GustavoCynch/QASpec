@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { OPENSPEC_PRODUCT_STRING_ALLOWLIST } from '../../src/core/branding.js';
+import {
+  OPENSPEC_PRODUCT_STRING_ALLOWLIST,
+  findOpenspecCliInstructionViolations,
+  isAllowedOpenspecCliInstructionLine,
+} from '../../src/core/branding.js';
+import { getGeneratedTemplateBodiesForBrandingScan } from '../../src/core/shared/skill-generation.js';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../..');
 
@@ -74,5 +79,29 @@ describe('no mis-branded OpenSpec product strings', () => {
         ? `Unqualified OpenSpec product strings (tighten copy or extend allowlist in branding.ts):\n${violations.join('\n')}`
         : undefined
     ).toEqual([]);
+  });
+
+  it('generated skill and command template bodies have no openspec CLI instructions', () => {
+    const violations = getGeneratedTemplateBodiesForBrandingScan().flatMap(({ source, body }) =>
+      findOpenspecCliInstructionViolations(body, source)
+    );
+
+    expect(
+      violations,
+      violations.length
+        ? `openspec <subcommand> instructions in generated templates (use qaspec CLI):\n${violations.join('\n')}`
+        : undefined
+    ).toEqual([]);
+  });
+
+  it('flags openspec feedback in a fixture body', () => {
+    const fixture = 'Submit via `openspec feedback "title"` on confirmation.';
+    expect(findOpenspecCliInstructionViolations(fixture, 'fixture')).toHaveLength(1);
+  });
+
+  it('allows upstream-coexistence prose in fixture bodies', () => {
+    const fixture = 'Leave `openspec-*` skills untouched when upstream is active.';
+    expect(isAllowedOpenspecCliInstructionLine(fixture)).toBe(true);
+    expect(findOpenspecCliInstructionViolations(fixture, 'fixture')).toEqual([]);
   });
 });

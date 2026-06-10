@@ -6,10 +6,38 @@ import { FileSystemUtils } from '../../utils/file-system.js';
 /** Canonical artifact filenames that may fall back to a legacy name in in-flight changes. */
 export const LEGACY_GENERATES_ALIASES: Record<string, string> = {
   'testcases.md': 'testmatrix.md',
+  'analysis.md': 'analisis.md',
 };
 
 export const LEGACY_TRACKS_FILE_NOTICE =
   'Using legacy testmatrix.md for progress — run `git mv testmatrix.md testcases.md` in the change dir to adopt the new name.';
+
+export const LEGACY_ANALYSIS_FILE_NOTICE =
+  'Using legacy analisis.md — run `git mv analisis.md analysis.md` in the change dir to adopt the new name.';
+
+/**
+ * Returns a one-line rename notice when resolved outputs use a legacy filename.
+ */
+export function getLegacyGeneratesNotice(
+  generates: string,
+  resolvedPaths: string[]
+): string | undefined {
+  const legacyName = LEGACY_GENERATES_ALIASES[generates];
+  if (!legacyName) {
+    return undefined;
+  }
+  const usesLegacy = resolvedPaths.some((p) => p.endsWith(`/${legacyName}`));
+  if (!usesLegacy) {
+    return undefined;
+  }
+  if (generates === 'analysis.md') {
+    return LEGACY_ANALYSIS_FILE_NOTICE;
+  }
+  if (generates === 'testcases.md') {
+    return LEGACY_TRACKS_FILE_NOTICE;
+  }
+  return undefined;
+}
 
 /**
  * Checks if a path contains glob pattern characters.

@@ -406,7 +406,7 @@ describe('InitCommand', () => {
       const content = await fs.readFile(skillFile, 'utf-8');
 
       expect(content).toContain('name: qaspec-analyze');
-      expect(content).toContain('analisis.md');
+      expect(content).toContain('analysis.md');
       expect(content).toContain('instructions analyze');
       expect(content).toContain('historical_bugs.md');
       expect(content).toContain('parallel blind Task');

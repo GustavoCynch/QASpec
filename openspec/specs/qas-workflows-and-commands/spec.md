@@ -76,12 +76,12 @@ QASpec workflow skills SHALL instruct agents to use the language from `openspec/
 #### Scenario: Spanish QA project
 
 - **WHEN** project config declares Spanish in `context`
-- **THEN** `/qsx:analyze` produces `analisis.md` in Spanish
+- **THEN** `/qsx:analyze` produces `analysis.md` in Spanish
 - **AND** the skill source file under `src/core/templates/workflows/` is still maintained in English
 
 ### Requirement: Analyze workflow behavior
 
-The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md`, require reading `qaspec/references/historical_bugs.md`, honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis only when that flag is **true**, otherwise perform the analyze phase entirely in the orchestrator without Task subagents, include an **Affected capabilities** section in `analisis.md` using kebab-case names, SHALL NOT write `specs/**/*.md` in the analyze step, and end with exactly one halt question before cases work in the same turn.
+The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analysis.md`, require reading `qaspec/references/historical_bugs.md`, honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis only when that flag is **true**, otherwise perform the analyze phase entirely in the orchestrator without Task subagents, include an **Affected capabilities** section in `analysis.md` using kebab-case names, SHALL NOT write `specs/**/*.md` in the analyze step, and end with exactly one halt question before cases work in the same turn.
 
 #### Scenario: Analyze references path
 
@@ -91,30 +91,30 @@ The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analisis.md
 #### Scenario: Analyze does not write specs
 
 - **WHEN** analyze completes with a halt
-- **THEN** `analisis.md` exists
+- **THEN** `analysis.md` exists
 - **AND** no new `specs/<capability>/spec.md` files are required from the analyze step alone
 
 #### Scenario: Analyze persists clarifications for cases phase
 
 - **WHEN** the user answers the analyze halt or supplies clarifications after it
-- **THEN** the agent updates `analisis.md` **Validated clarifications** (and intent vs implementation when needed)
+- **THEN** the agent updates `analysis.md` **Validated clarifications** (and intent vs implementation when needed)
 - **AND** does not rely on chat-only text as the input for `/qsx:cases`
 
 #### Scenario: Dual analysts when review flag true
 
 - **WHEN** `workflow.multipleSubagents.review` is **true** and the Task tool is available
-- **THEN** the agent runs two parallel blind Task subagents with identical analyst briefs before writing user-visible `analisis.md`
+- **THEN** the agent runs two parallel blind Task subagents with identical analyst briefs before writing user-visible `analysis.md`
 - **AND** **Synthesis notes** document Agreed / Single-analyst / Contradiction merge
 
 #### Scenario: Orchestrator-only when review flag false
 
 - **WHEN** `workflow.multipleSubagents.review` is **false** or omitted (default)
-- **THEN** the orchestrator fetches the change set and writes `analisis.md` without invoking Task subagents
+- **THEN** the orchestrator fetches the change set and writes `analysis.md` without invoking Task subagents
 - **AND** the workflow does not delegate to a single subagent as a substitute
 
 ### Requirement: Cases workflow behavior
 
-The `qaspec-cases` skill and `/qsx:cases` command SHALL produce `testcases.md` with mandatory checkboxes and, for each case, preconditions plus steps with action and expected result built from sources in hand, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when present, treat user-validated `analisis.md` as the source of truth over PR diff or current implementation when they conflict, honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis for draft lists only when that flag is **true**, otherwise draft cases and specs in the orchestrator without Task subagents, and halt once for human approval of **both** the case list and the requirements.
+The `qaspec-cases` skill and `/qsx:cases` command SHALL produce `testcases.md` with mandatory checkboxes and, for each case, preconditions plus steps with action and expected result built from sources in hand, create or update change delta specs under `specs/**/*.md` in the same phase, read `qaspec/references/qase_test_case_rules.md`, read `openspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md` when present, treat user-validated `analysis.md` as the source of truth over PR diff or current implementation when they conflict, honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis for draft lists only when that flag is **true**, otherwise draft cases and specs in the orchestrator without Task subagents, and halt once for human approval of **both** the case list and the requirements.
 
 #### Scenario: Case list format
 
@@ -134,11 +134,11 @@ The `qaspec-cases` skill and `/qsx:cases` command SHALL produce `testcases.md` w
 - **THEN** the agent asks exactly one question covering approval of the case list and the specs together
 - **AND** the agent does not start publish or Qase MCP in the same message
 
-#### Scenario: analisis.md overrides diff in cases phase
+#### Scenario: analysis.md overrides diff in cases phase
 
-- **WHEN** the agent runs the cases phase and `analisis.md` documents expected behavior or a known defect that differs from the PR diff or current code
-- **THEN** the agent reads `analisis.md` in full before fetching the change set
-- **AND** test cases and delta specs reflect `analisis.md`, not accidental implementation
+- **WHEN** the agent runs the cases phase and `analysis.md` documents expected behavior or a known defect that differs from the PR diff or current code
+- **THEN** the agent reads `analysis.md` in full before fetching the change set
+- **AND** test cases and delta specs reflect `analysis.md`, not accidental implementation
 - **AND** known defects are tested as corrected behavior, not encoded as accepted SHALL/MUST requirements
 
 #### Scenario: Chat iteration updates both artifacts
@@ -149,7 +149,7 @@ The `qaspec-cases` skill and `/qsx:cases` command SHALL produce `testcases.md` w
 #### Scenario: Cases iteration updates analysis when behavior agreement changes
 
 - **WHEN** the user clarifies defect vs expected behavior or other agreed facts after the cases draft
-- **THEN** the agent updates `analisis.md` (especially **Validated clarifications**) before updating `testcases.md` and affected `specs/**/*.md`
+- **THEN** the agent updates `analysis.md` (especially **Validated clarifications**) before updating `testcases.md` and affected `specs/**/*.md`
 
 #### Scenario: No invented vague steps
 

@@ -23,6 +23,8 @@ export {
   resolveTracksFilePath,
   isLegacyTracksFile,
   LEGACY_TRACKS_FILE_NOTICE,
+  LEGACY_ANALYSIS_FILE_NOTICE,
+  getLegacyGeneratesNotice,
 } from './outputs.js';
 
 // Schema resolution

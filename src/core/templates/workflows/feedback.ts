@@ -45,8 +45,8 @@ export function getFeedbackSkillTemplate(): SkillTemplate {
    - Allow the user to request modifications
 
 5. **Submit on confirmation**
-   - Use the \`openspec feedback\` command to submit
-   - Format: \`openspec feedback "title" --body "body content"\`
+   - Use the \`qaspec feedback\` command to submit
+   - Format: \`qaspec feedback "title" --body "body content"\`
    - The command will automatically add metadata (version, platform, timestamp)
 
 **Example Draft**
@@ -109,7 +109,7 @@ Does this look good? I can modify it if you'd like, or submit it as-is.
 
 Only proceed with submission after user confirms.`,
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires qaspec CLI.',
+    metadata: { author: 'qaspec', version: '1.1' },
   };
 }

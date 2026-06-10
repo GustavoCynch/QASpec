@@ -1,8 +1,8 @@
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { QASPEC_COMMAND_CATEGORY } from '../../qaspec-commands.js';
-import { QAS_EXPLORE_CONFIG_PREAMBLE } from './qas-workflow-preamble.js';
+import { QAS_BASE_CONFIG_PREAMBLE } from './qas-workflow-preamble.js';
 
-const QAS_ARCHIVE_BODY = `${QAS_EXPLORE_CONFIG_PREAMBLE}
+const QAS_ARCHIVE_BODY = `${QAS_BASE_CONFIG_PREAMBLE}
 
 Archive a completed QASpec change.
 

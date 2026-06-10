@@ -3,11 +3,11 @@ version: 1
 description: QASpec QA workflow — analysis → test cases + specs → Qase publish
 artifacts:
   - id: analyze
-    generates: analisis.md
+    generates: analysis.md
     description: PR/requirements analysis, risks, and regression signals
-    template: analisis.md
+    template: analysis.md
     instruction: |
-      Create `analisis.md` as the testable-change analysis artifact.
+      Create `analysis.md` as the testable-change analysis artifact.
 
       **Language:** Write all artifact body text and halt messages in the project language from
       `qaspec/config.yaml` `context` and `rules.analyze` (see docs/multi-language.md).
@@ -15,10 +15,10 @@ artifacts:
       **Config:** Apply global `context` (QA role, stack, domain) and `rules.analyze` from config — do not copy them into the file.
 
       Before writing:
-      - Run `/qas:analyze` skill steps: `qaspec instructions analyze --json` for template and resolvedOutputPath.
+      - Run `/qsx:analyze` skill steps: `qaspec instructions analyze --json` for template and resolvedOutputPath.
       - Read `qaspec/references/historical_bugs.md` from the project root (mandatory; re-read every pass).
       - Gather the change set via `gh pr diff` / `gh pr view` when reviewing a GitHub PR, or `git diff` / user-supplied patch otherwise.
-      - Honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations in parallel (each analyst fetches the diff) and synthesize Agreed / Single-analyst / Contradiction in **Synthesis notes**; when false, orchestrator fetches the diff and writes `analisis.md` with no Task subagents.
+      - Honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations in parallel (each analyst fetches the diff) and synthesize Agreed / Single-analyst / Contradiction in **Synthesis notes**; when false, orchestrator fetches the diff and writes `analysis.md` with no Task subagents.
 
       Fill every section in the template, using N/A when not applicable:
       - Summary, **Affected capabilities** (kebab-case; no delta spec files in this step)
@@ -29,7 +29,7 @@ artifacts:
 
       After the user answers the halt (or requests edits), persist every clarification in **Validated clarifications**
       and adjust **Functional intent vs implementation** when intent differs from the diff. Do not leave
-      approvals only in chat — `/qsx:cases` reads `analisis.md` as the sole approved source of truth.
+      approvals only in chat — `/qsx:cases` reads `analysis.md` as the sole approved source of truth.
 
       Do NOT write `testcases.md` or `specs/**/*.md` in this step. End with one halt question; do not continue to cases in the same message.
     requires: []
@@ -46,19 +46,19 @@ artifacts:
 
       **Config:** Apply `rules.test-cases` and `rules.specs` — readable narrative, explicit BVA, API blocking when HTTP surface exists, settings on/off pairs when applicable.
 
-      **Source of truth:** `analisis.md` is user-validated from `/qsx:analyze`. Read it in full before the PR diff.
-      When `analisis.md` (especially **Validated clarifications**, **Functional intent vs implementation**, and
-      **Synthesis notes**) conflicts with current code or the diff, **analisis.md wins** — encode tests and specs
+      **Source of truth:** `analysis.md` is user-validated from `/qsx:analyze`. Read it in full before the PR diff.
+      When `analysis.md` (especially **Validated clarifications**, **Functional intent vs implementation**, and
+      **Synthesis notes**) conflicts with current code or the diff, **analysis.md wins** — encode tests and specs
       for agreed intent, not accidental implementation. Known defects get cases that fail today and pass after fix;
       never document a defect as accepted SHALL/MUST behavior.
 
       Before writing:
       - Load instructions for both `test-cases` and `specs` artifacts (`qaspec instructions` JSON).
       - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
-      - Read `analisis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
+      - Read `analysis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
         **Functional intent vs implementation**, **Risks for cases phase**, **Synthesis notes**.
-      - For each capability listed in `analisis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
-      - Honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations for draft lists and pass the full `analisis.md` body in each analyst brief as binding constraints; when false, orchestrator drafts cases and specs with no Task subagents.
+      - For each capability listed in `analysis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
+      - Honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations for draft lists and pass the full `analysis.md` body in each analyst brief as binding constraints; when false, orchestrator drafts cases and specs with no Task subagents.
       - Use the PR diff only to derive how to observe/test agreed behavior — not to override validated analysis.
       - Merge analyst drafts by intent; dedupe only when behavior and boundaries match.
 
@@ -70,14 +70,14 @@ artifacts:
       - **Preconditions:** standard environment and role prefix (per `qase_test_case_rules.md`) plus case-specific setup from sources
       - **Steps:** table or numbered list with **Action** and **Expected** per step; step 1 is navigation when a URL is known; empty Expected only for transition steps
 
-      **Build from sources — do not invent:** Derive preconditions and steps from `analisis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from code or docs read for this change. Do not use vague invented flows (e.g. "add an item via any available flow") unless sources lack actionable detail — then use one explicit generic step and document the gap (`<!-- gap: ... -->` or self-audit before halt).
+      **Build from sources — do not invent:** Derive preconditions and steps from `analysis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from code or docs read for this change. Do not use vague invented flows (e.g. "add an item via any available flow") unless sources lack actionable detail — then use one explicit generic step and document the gap (`<!-- gap: ... -->` or self-audit before halt).
 
       Guidelines:
       - Group under `## Suite: <name>` headings
       - One case = one checkbox: `- [ ] 1.1 Observable case title`, then Preconditions and Steps blocks
       - Optional traceability: `<!-- req: capability/requirement-slug -->` on a case line
       - Use plain-language titles (tester-observable); no code identifiers in preconditions, steps, or expected results
-      - Include explicit BVA, negative, regression, and resilience cases per `analisis.md` and config rules
+      - Include explicit BVA, negative, regression, and resilience cases per `analysis.md` and config rules
       - Self-audit before halt: every step traceable to a source unless marked as a documented gap
 
       End with exactly **one** approval question covering **both** the case list and the delta specs (halt). Do not publish to Qase in this step.
@@ -93,10 +93,10 @@ artifacts:
 
       **Language:** Write requirement and scenario text in the project language from config.
 
-      **Source of truth:** Same as test-cases — `analisis.md` overrides PR/diff when they conflict.
+      **Source of truth:** Same as test-cases — `analysis.md` overrides PR/diff when they conflict.
 
       Before writing:
-      - Read `analisis.md` in full (**Validated clarifications**, **Affected capabilities**, intent vs implementation).
+      - Read `analysis.md` in full (**Validated clarifications**, **Affected capabilities**, intent vs implementation).
       - Read `testcases.md` when it exists; keep requirements aligned with listed cases.
       - For each affected capability, read `qaspec/specs/<capability>/spec.md` when present before writing MODIFIED blocks.
 

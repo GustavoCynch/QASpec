@@ -24,13 +24,13 @@ The repository SHALL include a `website/` Astro application that renders a singl
 
 ### Requirement: QASpec-branded public copy
 
-All visible marketing copy on the landing page SHALL use **QASpec** as the product name, **`qaspec`** as the CLI name, and **`/qas:*`** as the default agent command prefix. The page SHALL NOT present **`/opsx:*`** or **`openspec`** as the primary user interface.
+All visible marketing copy on the landing page SHALL use **QASpec** as the product name, **`qaspec`** as the CLI name, and **`/qsx:*`** as the default agent command prefix. The page SHALL NOT present **`/opsx:*`** or **`openspec`** as the primary user interface.
 
 #### Scenario: No legacy command as default CTA
 
 - **WHEN** a visitor reads workflow examples on the landing page
-- **THEN** examples reference the analyze, cases, publish, or archive commands as appropriate
-- **AND** no example references a `matrix` command
+- **THEN** examples reference `/qsx:analyze`, `/qsx:cases`, `/qsx:publish`, or `/qsx:archive` as appropriate
+- **AND** no example references a `/qas:*` or `matrix` command
 - **AND** no section titles OpenSpec or OPSX as the product being installed
 
 #### Scenario: Upstream attribution is secondary

@@ -22,7 +22,7 @@ The published package SHALL expose only **`qaspec`** as an npm executable. The p
 
 ### Requirement: Product documentation uses QASpec vocabulary only
 
-Files under `docs/` SHALL describe the CLI as **`qaspec`**, the default planning home as **`qaspec/`**, and agent commands as **`/qas:*`**. They SHALL NOT include `docs/opsx.md` or `docs/migration-guide.md` as published product pages.
+Files under `docs/` SHALL describe the CLI as **`qaspec`**, the default planning home as **`qaspec/`**, and agent commands as **`/qsx:*`**. They SHALL NOT include `docs/opsx.md` or `docs/migration-guide.md` as published product pages.
 
 #### Scenario: CLI reference examples
 
@@ -63,12 +63,18 @@ Root maintainer and environment files SHALL identify the product as QASpec, not 
 
 ### Requirement: Automated regression guards
 
-The repository SHALL fail CI when new unallowlisted OpenSpec product strings or `openspec <subcommand>` examples appear in guarded paths.
+The repository SHALL fail CI when new unallowlisted OpenSpec product strings or `openspec <subcommand>` examples appear in guarded paths, including the bodies of generated skill and command templates.
 
 #### Scenario: Docs branding scan
 
 - **WHEN** CI runs branding tests after a contributor adds "OpenSpec" to `docs/cli.md` without allowlist
 - **THEN** the build fails
+
+#### Scenario: Generated skill bodies scan
+
+- **WHEN** CI runs branding tests and a skill or command template body instructs running an `openspec <subcommand>` (e.g. `openspec feedback`)
+- **THEN** the build fails
+- **AND** allowlisted upstream-coexistence prose (e.g. "leave `openspec-*` skills untouched") does not trigger the failure
 
 #### Scenario: Allowlisted repo spec path
 
@@ -78,7 +84,7 @@ The repository SHALL fail CI when new unallowlisted OpenSpec product strings or 
 
 ### Requirement: Public landing uses QASpec vocabulary
 
-The deployed product landing site (when present) SHALL follow the same vocabulary rules as `docs/`: **`qaspec`** CLI, **`qaspec/`** planning home, **`/qas:*`** agent commands, and no primary CTA for **`openspec`** or **`/opsx:*`**.
+The deployed product landing site (when present) SHALL follow the same vocabulary rules as `docs/`: **`qaspec`** CLI, **`qaspec/`** planning home, **`/qsx:*`** agent commands, and no primary CTA for **`openspec`** or **`/opsx:*`**.
 
 #### Scenario: Landing install CTA
 

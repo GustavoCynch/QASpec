@@ -34,7 +34,7 @@ export const WORKFLOW_COMMANDS = [
     label: 'Analyze',
     description:
       'Risks, affected capabilities, and validated clarifications — the signed-off source of truth.',
-    artifact: '→ analisis.md',
+    artifact: '→ analysis.md',
   },
   {
     num: '02',

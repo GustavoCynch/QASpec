@@ -20,16 +20,16 @@ ${instructionRuns}
 **Read-only** on application source under test.`;
 }
 
-export const QAS_EXPLORE_CONFIG_PREAMBLE = `## Config (explore)
+export const QAS_BASE_CONFIG_PREAMBLE = `## Config
 
 Read \`qaspec/config.yaml\` \`context\` (and \`rules\` when relevant) for project language and QA role constraints.
 **Read-only** on application source under test.`;
 
-export const QAS_CASES_ANALISIS_AUTHORITY = `## analisis.md is source of truth (cases phase)
+export const QAS_CASES_ANALYSIS_AUTHORITY = `## analysis.md is source of truth (cases phase)
 
-- \`analisis.md\` is user-validated output from \`/qsx:analyze\`; read it **in full** before \`gh pr diff\` / \`git diff\`.
+- \`analysis.md\` is user-validated output from \`/qsx:analyze\`; read it **in full** before \`gh pr diff\` / \`git diff\`.
 - **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for cases phase, Synthesis notes.
-- When analysis conflicts with the diff or current code, **analisis.md wins**. Use the diff only to decide *how* to test agreed behavior.
+- When analysis conflicts with the diff or current code, **analysis.md wins**. Use the diff only to decide *how* to test agreed behavior.
 - Items marked defect/bug in analysis → test cases and delta specs verify the **correct** behavior (fail today / pass after fix); never encode the defect as accepted SHALL/MUST.`;
 
 /** @deprecated Use getQasDualAnalystProtocol() — kept for imports during transition */
@@ -91,11 +91,11 @@ export function getQasAnalystPromptBlock(phase: 'analyze' | 'cases'): string {
   const casesAuthority =
     phase === 'cases'
       ? `
-## Validated analysis (binding — orchestrator pastes full analisis.md)
-{FULL analisis.md BODY — mandatory; overrides PR/diff when they conflict}
+## Validated analysis (binding — orchestrator pastes full analysis.md)
+{FULL analysis.md BODY — mandatory; overrides PR/diff when they conflict}
 
 ## Conflict rule (cases only)
-- analisis.md wins over gh/git diff and over current implementation
+- analysis.md wins over gh/git diff and over current implementation
 - Defects in analysis → draft cases for corrected behavior, not for accepting the bug
 `
       : '';
@@ -115,7 +115,7 @@ ${casesAuthority}
 - GitHub PR: run gh pr diff and gh pr view (--repo if specified in brief)
 - Otherwise: run git diff or read the patch path from the brief
 - Read changed source files with read/search after you have the patch
-${phase === 'cases' ? '- Use the diff only where analisis.md does not already decide expected vs defective behavior' : ''}
+${phase === 'cases' ? '- Use the diff only where analysis.md does not already decide expected vs defective behavior' : ''}
 
 ## PR / change identity (orchestrator fills — identical for both analysts)
 {PR number, URL, gh flags, developer notes, or non-GH fallback}

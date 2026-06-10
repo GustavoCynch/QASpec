@@ -13,6 +13,7 @@ import {
   getQasPublishCommandTemplate,
   getQasArchiveSkillTemplate,
   getQasArchiveCommandTemplate,
+  getFeedbackSkillTemplate,
   type SkillTemplate,
   type CommandTemplate,
 } from '../templates/skill-templates.js';
@@ -104,6 +105,37 @@ export function getCommandContents(workflowFilter?: readonly string[]): CommandC
     tags: template.tags,
     body: template.content,
   }));
+}
+
+export interface GeneratedTemplateBody {
+  source: string;
+  body: string;
+}
+
+/**
+ * All skill and command template bodies from the generation registry (for branding guards).
+ */
+export function getGeneratedTemplateBodiesForBrandingScan(): GeneratedTemplateBody[] {
+  const bodies: GeneratedTemplateBody[] = [];
+
+  for (const { template, workflowId } of getSkillTemplates()) {
+    bodies.push({ source: `skill:${workflowId}:instructions`, body: template.instructions });
+    if (template.compatibility) {
+      bodies.push({ source: `skill:${workflowId}:compatibility`, body: template.compatibility });
+    }
+  }
+
+  const feedback = getFeedbackSkillTemplate();
+  bodies.push({ source: 'skill:feedback:instructions', body: feedback.instructions });
+  if (feedback.compatibility) {
+    bodies.push({ source: 'skill:feedback:compatibility', body: feedback.compatibility });
+  }
+
+  for (const { template, id } of getCommandTemplates()) {
+    bodies.push({ source: `command:${id}:content`, body: template.content });
+  }
+
+  return bodies;
 }
 
 /**

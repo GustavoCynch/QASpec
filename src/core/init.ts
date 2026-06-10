@@ -797,7 +797,7 @@ export class InitCommand {
     if (activeWorkflows.length > 0) {
       console.log(chalk.bold('Getting started:'));
       console.log('  qaspec new change <name>   Create a QA change');
-      console.log('  /qsx:analyze                 Analysis (analisis.md)');
+      console.log('  /qsx:analyze                 Analysis (analysis.md)');
       console.log('  /qsx:cases                   Test cases (testcases.md)');
       console.log('  /qsx:publish                 Publish to Qase');
     } else {

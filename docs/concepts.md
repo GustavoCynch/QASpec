@@ -33,7 +33,7 @@ QASpec organizes your work into two main areas:
 │                                                                    │
 │   ┌─────────────────────┐      ┌───────────────────────────────┐   │
 │   │       specs/        │      │         changes/              │   │
-│   │  Capability specs   │◄─────│  analisis.md, testcases.md   │   │
+│   │  Capability specs   │◄─────│  analysis.md, testcases.md   │   │
 │   │  (source of truth)  │ merge│  delta specs per change       │   │
 │   └─────────────────────┘      └───────────────────────────────┘   │
 │   references/  config.yaml                                         │
@@ -696,7 +696,7 @@ qaspec/
 │                         QASPEC QA FLOW (core profile)                        │
 │                                                                              │
 │   ┌────────────────┐                                                         │
-│   │  1. ANALYZE    │  /qsx:analyze → analisis.md (halt)                      │
+│   │  1. ANALYZE    │  /qsx:analyze → analysis.md (halt)                      │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │

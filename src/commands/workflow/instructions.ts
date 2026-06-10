@@ -121,11 +121,17 @@ export function printInstructionsText(instructions: ArtifactInstructions, isBloc
     template,
     dependencies,
     unlocks,
+    legacyNotice,
   } = instructions;
 
   // Opening tag
   console.log(`<artifact id="${artifactId}" change="${changeName}" schema="${schemaName}">`);
   console.log();
+
+  if (legacyNotice) {
+    console.log(legacyNotice);
+    console.log();
+  }
 
   // Warning for blocked artifacts
   if (isBlocked) {

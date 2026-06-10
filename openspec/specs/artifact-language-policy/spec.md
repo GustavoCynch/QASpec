@@ -24,7 +24,7 @@ Change artifacts and user-facing workflow output for a QA project SHALL use the 
 
 - **WHEN** an agent runs `openspec instructions <artifact-id> --json` for a `qaspec-pr-review` change
 - **THEN** the response includes `context` and artifact-specific `rules` from config
-- **AND** QASpec workflow templates instruct the agent to write `analisis.md`, `testcases.md`, and related files in that language
+- **AND** QASpec workflow templates instruct the agent to write `analysis.md`, `testcases.md`, and related files in that language
 
 #### Scenario: Halt and case-list text
 
@@ -62,8 +62,8 @@ When init creates `qaspec/references/*.md` for the first time, the seed content 
 
 Bundled schema template files under `schemas/qaspec-pr-review/templates/` MAY use English section headings; filled artifact body text SHALL still follow project language via instructions and config.
 
-#### Scenario: Agent fills analisis template
+#### Scenario: Agent fills analysis template
 
-- **WHEN** an agent creates `analisis.md` from the schema template
+- **WHEN** an agent creates `analysis.md` from the schema template
 - **THEN** narrative content inside sections is in the project language
 - **AND** structural placeholders in the template file do not override config language rules

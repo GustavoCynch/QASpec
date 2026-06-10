@@ -6,8 +6,13 @@ import {
   resolveArtifactOutputs,
   resolveTracksFilePath,
   LEGACY_TRACKS_FILE_NOTICE,
+  LEGACY_ANALYSIS_FILE_NOTICE,
 } from '../../../src/core/artifact-graph/outputs.js';
 import { generateApplyInstructions } from '../../../src/commands/workflow/instructions.js';
+import {
+  generateInstructions,
+  loadChangeContext,
+} from '../../../src/core/artifact-graph/instruction-loader.js';
 
 describe('artifact outputs legacy fallback', () => {
   let tempDir: string;
@@ -63,8 +68,60 @@ describe('artifact outputs legacy fallback', () => {
     expect(resolved?.path).toContain('testmatrix.md');
   });
 
+  it('resolves analysis.md artifact from legacy analisis.md', () => {
+    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Legacy analysis\n');
+
+    const outputs = resolveArtifactOutputs(changeDir, 'analysis.md');
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toContain('analisis.md');
+  });
+
+  it('prefers analysis.md when both legacy and canonical exist', () => {
+    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Legacy\n');
+    fs.writeFileSync(path.join(changeDir, 'analysis.md'), '# Canonical\n');
+
+    const outputs = resolveArtifactOutputs(changeDir, 'analysis.md');
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toContain('analysis.md');
+  });
+
+  it('test-cases instructions resolve analyze from legacy analisis.md with notice', () => {
+    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Legacy analysis\n');
+
+    const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review', {
+      changeDir,
+    });
+    const instructions = generateInstructions(context, 'test-cases', tempDir);
+
+    expect(instructions.dependencies.find((d) => d.id === 'analyze')?.done).toBe(true);
+    expect(instructions.dependencies.find((d) => d.id === 'analyze')?.path).toBe('analisis.md');
+    expect(instructions.legacyNotice).toBe(LEGACY_ANALYSIS_FILE_NOTICE);
+  });
+
+  it('specs instructions resolve analyze from legacy analisis.md with notice', () => {
+    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Legacy analysis\n');
+
+    const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review', {
+      changeDir,
+    });
+    const instructions = generateInstructions(context, 'specs', tempDir);
+
+    expect(instructions.dependencies.find((d) => d.id === 'analyze')?.done).toBe(true);
+    expect(instructions.legacyNotice).toBe(LEGACY_ANALYSIS_FILE_NOTICE);
+  });
+
+  it('analyze instructions target analysis.md as canonical output', () => {
+    const context = loadChangeContext(tempDir, 'qa-change', 'qaspec-pr-review', {
+      changeDir,
+    });
+    const instructions = generateInstructions(context, 'analyze', tempDir);
+
+    expect(instructions.outputPath).toBe('analysis.md');
+    expect(instructions.resolvedOutputPath).toContain('analysis.md');
+  });
+
   it('apply instructions read legacy testmatrix.md progress with notice', async () => {
-    fs.writeFileSync(path.join(changeDir, 'analisis.md'), '# Analysis\n');
+    fs.writeFileSync(path.join(changeDir, 'analysis.md'), '# Analysis\n');
     fs.mkdirSync(path.join(changeDir, 'specs', 'auth'), { recursive: true });
     fs.writeFileSync(path.join(changeDir, 'specs', 'auth', 'spec.md'), '## ADDED Requirements\n');
     fs.writeFileSync(

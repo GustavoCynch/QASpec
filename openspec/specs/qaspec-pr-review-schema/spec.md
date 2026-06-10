@@ -22,7 +22,7 @@ The schema SHALL define artifact `specs` that generates `specs/**/*.md`, require
 
 #### Scenario: Specs ready after analysis
 
-- **WHEN** `analisis.md` exists for a change using `qaspec-pr-review`
+- **WHEN** `analysis.md` exists for a change using `qaspec-pr-review`
 - **THEN** artifact `specs` is ready alongside `test-cases`
 - **AND** `openspec instructions specs` resolves output patterns under `specs/<capability>/spec.md` in the change directory
 
@@ -40,17 +40,17 @@ The schema SHALL define artifact `specs` that generates `specs/**/*.md`, require
 
 ### Requirement: Analyze artifact
 
-The schema SHALL define artifact `analyze` that generates `analisis.md` with no upstream dependencies, and artifact instructions SHALL defer dual blind Task delegations to `workflow.multipleSubagents.review` in project config (orchestrator-only when false, dual analysts when true).
+The schema SHALL define artifact `analyze` that generates `analysis.md` with no upstream dependencies, and artifact instructions SHALL defer dual blind Task delegations to `workflow.multipleSubagents.review` in project config (orchestrator-only when false, dual analysts when true).
 
 #### Scenario: First artifact in a new change
 
 - **WHEN** a user creates a change with schema `qaspec-pr-review`
 - **THEN** `analyze` is available as the first ready artifact
-- **AND** `openspec instructions analyze` resolves output to `analisis.md` under the change directory
+- **AND** `openspec instructions analyze` resolves output to `analysis.md` under the change directory
 
 #### Scenario: Affected capabilities seed specs
 
-- **WHEN** `analisis.md` is created
+- **WHEN** `analysis.md` is created
 - **THEN** the artifact includes an **Affected capabilities** section with kebab-case capability names
 - **AND** instructions state that delta specs are not written in the analyze step
 
@@ -67,7 +67,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 
 #### Scenario: Cases depend on analysis
 
-- **WHEN** `analisis.md` exists for the change
+- **WHEN** `analysis.md` exists for the change
 - **THEN** `test-cases` becomes ready
 - **AND** the template instructs authors to use `- [ ]` checkboxes grouped under `##` suite headings
 
@@ -80,7 +80,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 #### Scenario: Cases reference main specs
 
 - **WHEN** cases instructions are generated for a change
-- **THEN** instructions require reading `openspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md` when those files exist
+- **THEN** instructions require reading `openspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md` when those files exist
 
 #### Scenario: Enriched case body under checkbox line
 
@@ -92,7 +92,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 #### Scenario: Steps traceable to sources
 
 - **WHEN** cases instructions are loaded for `test-cases`
-- **THEN** instructions require building preconditions and steps from `analisis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from read sources
+- **THEN** instructions require building preconditions and steps from `analysis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from read sources
 - **AND** instructions forbid vague invented flows (e.g. generic "use any available flow") unless sources lack actionable detail
 - **AND** when a generic step is used due to missing detail, instructions require documenting the gap (e.g. HTML comment `<!-- gap: ... -->` or equivalent self-audit before halt)
 
@@ -181,3 +181,20 @@ For changes created before the rename, progress tracking and publish SHALL fall 
 - **WHEN** a change is created after the rename and the cases phase runs
 - **THEN** the artifact is written to `testcases.md`
 - **AND** no `testmatrix.md` is created
+
+### Requirement: Legacy analisis filename fallback
+
+For changes created before the rename, dependency resolution and instruction loading SHALL fall back to `analisis.md` when `analysis.md` does not exist in the change directory, emitting a one-line notice that suggests renaming the file. New writes SHALL always target `analysis.md`, and when both files exist the new name wins.
+
+#### Scenario: Cases phase on a legacy change
+
+- **GIVEN** a change directory contains `analisis.md` and no `analysis.md`
+- **WHEN** instructions for `test-cases` or `specs` are loaded
+- **THEN** the analyze dependency is considered satisfied and the legacy file is the read source
+- **AND** a notice suggests `git mv analisis.md analysis.md`
+
+#### Scenario: New change uses the new file only
+
+- **WHEN** a change is created after the rename and the analyze phase runs
+- **THEN** the artifact is written to `analysis.md`
+- **AND** no `analisis.md` is created

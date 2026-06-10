@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { getSchemaDir, resolveSchema } from './resolver.js';
 import { ArtifactGraph } from './graph.js';
 import { detectCompleted } from './state.js';
-import { resolveArtifactOutputs } from './outputs.js';
+import { getLegacyGeneratesNotice, resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
 import { readProjectConfig, validateConfigRules, resolveRulesForArtifact } from '../project-config.js';
@@ -90,6 +90,8 @@ export interface ArtifactInstructions {
   dependencies: DependencyInfo[];
   /** Artifacts that become available after completing this one */
   unlocks: string[];
+  /** One-line notice when a dependency or output uses a legacy filename */
+  legacyNotice?: string;
 }
 
 /**
@@ -288,8 +290,15 @@ export function generateInstructions(
   }
 
   const templateContent = loadTemplate(context.schemaName, artifact.template, context.projectRoot);
-  const dependencies = getDependencyInfo(artifact, context.graph, context.completed);
+  const dependencies = getDependencyInfo(artifact, context.graph, context.completed, context.changeDir);
   const unlocks = getUnlockedArtifacts(context.graph, artifactId);
+  const existingOutputPaths = resolveArtifactOutputs(context.changeDir, artifact.generates);
+  const legacyNotice = collectLegacyNotice(
+    context.changeDir,
+    context.graph,
+    artifact,
+    existingOutputPaths
+  );
 
   // Use projectRoot from context if not explicitly provided
   const effectiveProjectRoot = projectRoot ?? context.projectRoot;
@@ -356,7 +365,8 @@ export function generateInstructions(
     planningHome: summarizePlanningHome(context.planningHome),
     outputPath: artifact.generates,
     resolvedOutputPath: path.join(context.changeDir, artifact.generates),
-    existingOutputPaths: resolveArtifactOutputs(context.changeDir, artifact.generates),
+    existingOutputPaths,
+    ...(legacyNotice ? { legacyNotice } : {}),
     description: artifact.description,
     instruction: enrichedInstruction,
     context: configContext,
@@ -373,17 +383,46 @@ export function generateInstructions(
 function getDependencyInfo(
   artifact: Artifact,
   graph: ArtifactGraph,
-  completed: CompletedSet
+  completed: CompletedSet,
+  changeDir: string
 ): DependencyInfo[] {
   return artifact.requires.map(id => {
     const depArtifact = graph.getArtifact(id);
+    const generates = depArtifact?.generates ?? id;
+    const resolvedOutputs = resolveArtifactOutputs(changeDir, generates);
+    const legacyPath = resolvedOutputs[0];
     return {
       id,
       done: completed.has(id),
-      path: depArtifact?.generates ?? id,
+      path: legacyPath ? path.relative(changeDir, legacyPath) : generates,
       description: depArtifact?.description ?? '',
     };
   });
+}
+
+function collectLegacyNotice(
+  changeDir: string,
+  graph: ArtifactGraph,
+  artifact: Artifact,
+  existingOutputPaths: string[]
+): string | undefined {
+  const notices = new Set<string>();
+  const ownNotice = getLegacyGeneratesNotice(artifact.generates, existingOutputPaths);
+  if (ownNotice) {
+    notices.add(ownNotice);
+  }
+  for (const depId of artifact.requires) {
+    const dep = graph.getArtifact(depId);
+    if (!dep) {
+      continue;
+    }
+    const depOutputs = resolveArtifactOutputs(changeDir, dep.generates);
+    const depNotice = getLegacyGeneratesNotice(dep.generates, depOutputs);
+    if (depNotice) {
+      notices.add(depNotice);
+    }
+  }
+  return notices.size > 0 ? Array.from(notices).join('\n') : undefined;
 }
 
 /**

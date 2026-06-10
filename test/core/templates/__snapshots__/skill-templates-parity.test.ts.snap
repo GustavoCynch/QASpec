@@ -2,13 +2,13 @@
 
 exports[`skill templates split parity > preserves QASpec template function payloads exactly 1`] = `
 {
-  "getFeedbackSkillTemplate": "8f3b0dc3b4f06a168604416690873a62c7f85f35f9832db70a667c6e1f8823de",
-  "getQasAnalyzeCommandTemplate": "a0aa849c28bd200e22526d8cae8f5adb19db82f18f265339b6781b2a6a8614ed",
-  "getQasAnalyzeSkillTemplate": "8134d5e3f37fee5cb1118d1469df0825e4e01ade1dcb979dccf9cbe6b7e87e58",
-  "getQasArchiveCommandTemplate": "309c94c3f71e03fbc37b1595474aaeaf94bd7202a4e1160a573c59d9d072048d",
-  "getQasArchiveSkillTemplate": "cb3dbcb7ee647e8a475188b90b572aa3d11ba0c6384e481f06994337f7e64067",
-  "getQasCasesCommandTemplate": "81a08332b547c46af2ee2b7c092dc04325205a110b13182ae24499c5572ef53c",
-  "getQasCasesSkillTemplate": "132bd1acbf9b65d839faced8d7e27a7c021c3843e0d37fd44b7870e2351ee9b8",
+  "getFeedbackSkillTemplate": "dce6603ee7962b58386ff614104435015d84230934f4c49e28a724170c52b348",
+  "getQasAnalyzeCommandTemplate": "758e059bcc7a4b4639a05fdf97e51c732c5ba28e979393918656bc8c2e6ed58d",
+  "getQasAnalyzeSkillTemplate": "f92b29065c1f7e7b0323b5fcb65fc30b3964260f46007a407f2e2bc218597508",
+  "getQasArchiveCommandTemplate": "ad8abcfaffc665b59721a6d1d889881cdea221a35b315754fae7f40dbeeda555",
+  "getQasArchiveSkillTemplate": "7ce5be39f7d27e00f154651f8d94cd621b72b28840a4e25ac6e11e5d86ead19d",
+  "getQasCasesCommandTemplate": "60939c2c1756d749f9185eb1f6feac16d0e3f367ebc2da292f0af14730e6e85b",
+  "getQasCasesSkillTemplate": "e7cbb0fa68c342d5915ca99952c737f8a9582721ad2506b102fbdc9d88347b7d",
   "getQasPublishCommandTemplate": "ffab6df13c8de6fc09c11c60b1c3ee4334e93e27c661a2e87558eabe80ba2680",
   "getQasPublishSkillTemplate": "81dcb2234fcc595d8587237a130f56b9259093d6522113d42a4982fcd43bd780",
 }
@@ -16,9 +16,9 @@ exports[`skill templates split parity > preserves QASpec template function paylo
 
 exports[`skill templates split parity > preserves generated QASpec skill file content exactly 1`] = `
 {
-  "qaspec-analyze": "00d621069ebb15faf0103fdbc9121d59e60d2ff06b026dd4519c8e1d63bd1f18",
-  "qaspec-archive": "3aa5b5ef516567b2401d5dd3044c706f068bd5e098d501147f476a264ab806aa",
-  "qaspec-cases": "7e5ba432184a737803466455661615345af22078ab8d74bb31f307df65a71182",
+  "qaspec-analyze": "6e1e69e74ffb019189e9056cdf0d39e7647289d22e86c21ee6720e142c7410c1",
+  "qaspec-archive": "bf0dd675e21cd9305bc8984d1060510a66d564297dbe31a00c67a60b86c5c070",
+  "qaspec-cases": "2d11da9cbc2e41cf782fbce8391d4fec5ab7ea9454b79846f204ac465f6d0267",
   "qaspec-publish": "bed9fd4baae238adc3fd67ae192f528486f7ecdd74d2ada723026083cd6c0922",
 }
 `;

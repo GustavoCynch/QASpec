@@ -57,7 +57,7 @@ const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
   },
   analyze: {
     name: 'Analyze',
-    description: 'Create analysis artifact (analisis.md)',
+    description: 'Create analysis artifact (analysis.md)',
   },
   cases: {
     name: 'Test cases',
@@ -556,7 +556,7 @@ export function registerConfigCommand(program: Command): void {
         console.log(`  Delivery: ${currentState.delivery}`);
         console.log(`  Workflows: ${formatWorkflowSummary(currentState.workflows, currentState.profile)}`);
         console.log(chalk.dim('  Delivery = where workflows are installed (skills, commands, or both)'));
-        console.log(chalk.dim('  Workflows = which actions are available (propose, explore, apply, etc.)'));
+        console.log(chalk.dim('  Workflows = which actions are available (analyze, cases, publish, etc.)'));
         console.log();
 
         const action = await select<ProfileAction>({

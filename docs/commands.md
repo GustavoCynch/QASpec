@@ -10,7 +10,7 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 
 | Command | Purpose |
 |---------|---------|
-| `/qsx:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
+| `/qsx:analyze` | Create `analysis.md` (risk, capabilities, dual review) |
 | `/qsx:cases` | Create `testcases.md` and change delta specs |
 | `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
 | `/qsx:archive` | Finalize and archive the change |
@@ -23,7 +23,7 @@ Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
 ## `/qsx:analyze`
 
-Produce **`analisis.md`** for the active change: risks, affected capabilities (kebab-case), and synthesis from dual blind analysts by default.
+Produce **`analysis.md`** for the active change: risks, affected capabilities (kebab-case), and synthesis from dual blind analysts by default.
 
 **Syntax:**
 
@@ -34,9 +34,9 @@ Produce **`analisis.md`** for the active change: risks, affected capabilities (k
 **What it does:**
 
 - Creates or updates a folder under `qaspec/changes/<change>/`
-- Writes `analisis.md`; reads `qaspec/references/historical_bugs.md` when present
+- Writes `analysis.md`; reads `qaspec/references/historical_bugs.md` when present
 - Does **not** write `specs/**/*.md` in this step
-- Ends with a **halt** for human confirmation; persist answers in `analisis.md` (**Validated clarifications**) before `/qsx:cases`
+- Ends with a **halt** for human confirmation; persist answers in `analysis.md` (**Validated clarifications**) before `/qsx:cases`
 
 **CLI support:**
 
@@ -58,13 +58,13 @@ Produce **`testcases.md`** with mandatory checkboxes and create or update **delt
 
 **Prerequisites:**
 
-- Prior `/qsx:analyze` (or manually authored `analisis.md`) unless you explicitly accept gaps
+- Prior `/qsx:analyze` (or manually authored `analysis.md`) unless you explicitly accept gaps
 - Reads `qaspec/references/qase_test_case_rules.md` when publishing to Qase later
-- Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analisis.md`
+- Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md`
 
 **What it does:**
 
-- Treats approved `analisis.md` as source of truth (over PR diff when they conflict)
+- Treats approved `analysis.md` as source of truth (over PR diff when they conflict)
 - Halts once for approval of **both** the case list and requirements
 
 ---

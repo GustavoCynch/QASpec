@@ -20,7 +20,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 
 | Id | Slash command | Output |
 |----|---------------|--------|
-| `analyze` | `/qsx:analyze` | `analisis.md` |
+| `analyze` | `/qsx:analyze` | `analysis.md` |
 | `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) + delta specs |
 | `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; `publish-log.md` trace |
 | `archive` | `/qsx:archive` | Archived change |
@@ -33,11 +33,11 @@ Typical happy path:
 
 ### Halts and prerequisites
 
-- **Analyze → cases:** `analisis.md` is the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; cases reads it before the PR diff and overrides the diff when they conflict.
+- **Analyze → cases:** `analysis.md` is the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; cases reads it before the PR diff and overrides the diff when they conflict.
 - **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case and requirement approval. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
 - **Publish summary → upload:** Publish resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice), presents an in-chat summary of unchecked cases, halts once for confirm, then runs **Qase MCP** only after confirmation and writes `publish-log.md`. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
 - **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` (source of truth) or state exclusions in chat instead. Legacy `execution-context.md` in a change is read once and offered for migration to config.
-- **Cases without analyze:** Not supported — cases requires `analisis.md` from analyze.
+- **Cases without analyze:** Not supported — cases requires `analysis.md` from analyze.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
 
@@ -48,7 +48,7 @@ By default both flags are **false** — the **orchestrator** (main agent) runs a
 ```yaml
 workflow:
   multipleSubagents:
-    review: false   # /qsx:analyze — PR analysis (analisis.md)
+    review: false   # /qsx:analyze — PR analysis (analysis.md)
     cases: false   # /qsx:cases — testcases.md + delta specs
 ```
 
@@ -78,7 +78,7 @@ Use when a PR or requirement doc needs structured risk analysis before cases are
 /qsx:analyze ──► stop (no cases yet)
 ```
 
-Use when stakeholders need `analisis.md` before committing to a full case list.
+Use when stakeholders need `analysis.md` before committing to a full case list.
 
 ### Enriched test cases format
 
@@ -101,7 +101,7 @@ Each case keeps one progress checkbox, with detail nested below:
   | 3 | Open the downloaded file | Row count matches the filtered list only |
 ```
 
-Agents build preconditions and steps from `analisis.md`, the diff, requirements, and specs. Generic steps are allowed only when sources lack actionable detail (document with `<!-- gap: ... -->` or self-audit). Publish maps these blocks to Qase — it does not re-generate steps from titles alone.
+Agents build preconditions and steps from `analysis.md`, the diff, requirements, and specs. Generic steps are allowed only when sources lack actionable detail (document with `<!-- gap: ... -->` or self-audit). Publish maps these blocks to Qase — it does not re-generate steps from titles alone.
 
 ### Custom profile (subset)
 
