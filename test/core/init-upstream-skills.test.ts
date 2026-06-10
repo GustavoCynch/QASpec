@@ -99,7 +99,7 @@ describe('InitCommand upstream coexistence skills', () => {
       expect(content).not.toContain('generatedBy:');
     }
 
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-publish', 'SKILL.md'))).toBe(true);
@@ -131,7 +131,7 @@ describe('InitCommand upstream coexistence skills', () => {
     const initCommand = new InitCommand({ tools: 'cursor', force: true });
     await initCommand.execute(testDir);
 
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-publish', 'SKILL.md'))).toBe(true);

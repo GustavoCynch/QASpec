@@ -11,15 +11,15 @@ For each selected tool, QASpec can install:
 
 By default, QASpec uses the **`core`** profile:
 
-- `explore`, `analyze`, `matrix`, `publish`, `archive`
+- `analyze`, `matrix`, `publish`, `archive`
 
-Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
+Use `qaspec config profile` to select a **custom** subset of those four ids, then `qaspec update` to sync the project.
 
 QASpec installs `qaspec-*` skills and `/qsx:*` commands via `qaspec init` (not third-party upstream skill packs).
 
 ## Tool Directory Reference
 
-Patterns below use `<id>` as one of: `explore`, `analyze`, `matrix`, `publish`, `archive`.
+Patterns below use `<id>` as one of: `analyze`, `matrix`, `publish`, `archive`.
 
 | Tool (ID) | Skills path pattern | Command path pattern |
 |-----------|---------------------|----------------------|
@@ -72,8 +72,8 @@ qaspec init --profile core
 
 ## Workflow-Dependent Installation
 
-- **Core profile (default):** all five QASpec workflows
-- **Custom profile:** any subset of `explore`, `analyze`, `matrix`, `publish`, `archive`
+- **Core profile (default):** all four QASpec workflows
+- **Custom profile:** any subset of `analyze`, `matrix`, `publish`, `archive`
 
 Skill and command counts depend on profile and delivery (`skills`, `commands`, or `both`).
 
@@ -81,7 +81,6 @@ Skill and command counts depend on profile and delivery (`skills`, `commands`, o
 
 When selected by profile, QASpec generates:
 
-- `qaspec-explore`
 - `qaspec-analyze`
 - `qaspec-matrix`
 - `qaspec-publish`

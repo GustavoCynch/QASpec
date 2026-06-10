@@ -47,10 +47,12 @@ import {
   removeLegacyQaspecSkillDirs,
   removeLegacyQaspecCommandFiles,
   removeDeselectedQasSubdirCommands,
+  removeRetiredQaspecSkillDirs,
+  removeRetiredQaspecCommandFiles,
 } from './upstream-coexistence.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getGlobalConfig, type Delivery } from './global-config.js';
-import { getProfileWorkflows, ALL_WORKFLOWS } from './profiles.js';
+import { getProfileWorkflows, ALL_WORKFLOWS, getRetiredWorkflowNotices } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import {
@@ -115,6 +117,9 @@ export class UpdateCommand {
     const globalConfig = getGlobalConfig();
     const profile = globalConfig.profile ?? 'core';
     const delivery: Delivery = globalConfig.delivery ?? 'both';
+    for (const notice of getRetiredWorkflowNotices(profile, globalConfig.workflows)) {
+      console.log(chalk.dim(notice));
+    }
     const profileWorkflows = getProfileWorkflows(profile, globalConfig.workflows);
     const desiredWorkflows = profileWorkflows.filter((workflow): workflow is (typeof ALL_WORKFLOWS)[number] =>
       (ALL_WORKFLOWS as readonly string[]).includes(workflow)
@@ -243,6 +248,7 @@ export class UpdateCommand {
             desiredWorkflows,
             upstreamOpenSpecActive
           );
+          removedDeselectedSkillCount += await removeRetiredQaspecSkillDirs(skillsDir);
           removedDeselectedSkillCount += await removeLegacyQaspecSkillDirs(
             skillsDir,
             upstreamOpenSpecActive
@@ -276,6 +282,10 @@ export class UpdateCommand {
               toolId,
               desiredWorkflows,
               upstreamOpenSpecActive
+            );
+            removedDeselectedCommandCount += await removeRetiredQaspecCommandFiles(
+              resolvedProjectPath,
+              toolId
             );
             removedDeselectedCommandCount += await removeLegacyQaspecCommandFiles(
               resolvedProjectPath,
@@ -344,7 +354,6 @@ export class UpdateCommand {
       if (activeWorkflows.length > 0) {
         console.log(chalk.bold('Getting started:'));
         console.log('  qaspec new change <name>   Create a QA change');
-        console.log('  /qsx:explore                 Think before the formal cycle');
         console.log('  /qsx:analyze                 Analysis (analisis.md)');
         console.log('  /qsx:matrix                  Test matrix (testmatrix.md)');
         console.log('  /qsx:publish                 Publish to Qase');

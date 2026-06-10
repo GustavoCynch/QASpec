@@ -6,7 +6,6 @@
 
 export type { SkillTemplate, CommandTemplate } from './types.js';
 
-export { getQasExploreSkillTemplate, getQasExploreCommandTemplate } from './workflows/qas-explore.js';
 export { getQasAnalyzeSkillTemplate, getQasAnalyzeCommandTemplate } from './workflows/analyze.js';
 export { getQasMatrixSkillTemplate, getQasMatrixCommandTemplate } from './workflows/matrix.js';
 export { getQasPublishSkillTemplate, getQasPublishCommandTemplate } from './workflows/publish.js';

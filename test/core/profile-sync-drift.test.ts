@@ -66,7 +66,7 @@ describe('profile sync drift detection', () => {
   });
 
   it('detects drift when required profile workflow files are missing', () => {
-    writeSkill(tempDir, 'explore');
+    writeSkill(tempDir, 'analyze');
 
     const hasDrift = hasProjectConfigDrift(tempDir, CORE_WORKFLOWS, 'both');
     expect(hasDrift).toBe(true);
@@ -84,7 +84,7 @@ describe('profile sync drift detection', () => {
     setupCoreSkills(tempDir);
     setupCoreCommands(tempDir);
 
-    const hasDrift = hasProjectConfigDrift(tempDir, ['explore', 'analyze'], 'both');
+    const hasDrift = hasProjectConfigDrift(tempDir, ['analyze', 'matrix'], 'both');
     expect(hasDrift).toBe(true);
   });
 });

@@ -10,18 +10,17 @@ import {
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return five QASpec skills when unfiltered', () => {
+    it('should return four QASpec skills when unfiltered', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(4);
     });
 
     it('should return QASpec core skills for CORE_WORKFLOWS', () => {
       const templates = getSkillTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(4);
       const dirNames = templates.map((t) => t.dirName);
       expect(dirNames).toEqual(
         expect.arrayContaining([
-          'qaspec-explore',
           'qaspec-analyze',
           'qaspec-matrix',
           'qaspec-publish',
@@ -63,11 +62,10 @@ describe('skill-generation', () => {
       expect(uniqueIds.size).toBe(templates.length);
     });
 
-    it('should ignore legacy workflow ids in filter', () => {
+    it('should ignore legacy and retired workflow ids in filter', () => {
       const filtered = getSkillTemplates(['propose', 'explore', 'apply', 'archive']);
-      expect(filtered).toHaveLength(2);
+      expect(filtered).toHaveLength(1);
       const dirNames = filtered.map((t) => t.dirName);
-      expect(dirNames).toContain('qaspec-explore');
       expect(dirNames).toContain('qaspec-archive');
     });
   });
@@ -76,12 +74,11 @@ describe('skill-generation', () => {
     it('returns full QASpec core skill set regardless of legacy profile ids', () => {
       const merged = getCoexistenceSkillTemplates(['propose', 'explore', 'apply', 'archive']);
       const dirNames = merged.map((t) => t.dirName);
-      expect(dirNames).toContain('qaspec-explore');
       expect(dirNames).toContain('qaspec-analyze');
       expect(dirNames).toContain('qaspec-matrix');
       expect(dirNames).toContain('qaspec-publish');
       expect(dirNames).toContain('qaspec-archive');
-      expect(merged).toHaveLength(5);
+      expect(merged).toHaveLength(4);
     });
   });
 
@@ -104,16 +101,16 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandTemplates', () => {
-    it('should return five QASpec commands when unfiltered', () => {
+    it('should return four QASpec commands when unfiltered', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(4);
     });
 
-    it('should return five QASpec commands for CORE_WORKFLOWS', () => {
+    it('should return four QASpec commands for CORE_WORKFLOWS', () => {
       const templates = getCommandTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(4);
       expect(templates.map((t) => t.id).sort()).toEqual(
-        ['analyze', 'archive', 'explore', 'matrix', 'publish'].sort()
+        ['analyze', 'archive', 'matrix', 'publish'].sort()
       );
     });
 
@@ -133,8 +130,8 @@ describe('skill-generation', () => {
 
     it('should filter to QASpec commands only for mixed legacy filter', () => {
       const filtered = getCommandTemplates(['propose', 'explore', 'apply', 'archive']);
-      expect(filtered).toHaveLength(2);
-      expect(filtered.map((t) => t.id).sort()).toEqual(['archive', 'explore']);
+      expect(filtered).toHaveLength(1);
+      expect(filtered.map((t) => t.id).sort()).toEqual(['archive']);
     });
 
     it('should return all templates when filter is undefined', () => {
@@ -150,9 +147,9 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandContents', () => {
-    it('should return five command contents when unfiltered', () => {
+    it('should return four command contents when unfiltered', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(5);
+      expect(contents).toHaveLength(4);
     });
 
     it('should have valid content structure', () => {
@@ -176,10 +173,10 @@ describe('skill-generation', () => {
       expect(contentIds).toEqual(templateIds);
     });
 
-    it('should filter to explore only when requested', () => {
-      const filtered = getCommandContents(['explore']);
+    it('should filter to analyze only when requested', () => {
+      const filtered = getCommandContents(['analyze']);
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].id).toBe('explore');
+      expect(filtered[0].id).toBe('analyze');
     });
 
     it('should return all contents when filter is undefined', () => {

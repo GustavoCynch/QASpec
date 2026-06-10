@@ -34,6 +34,7 @@ export const OPENSPEC_PRODUCT_STRING_ALLOWLIST: RegExp[] = [
   /legacy\s+OpenSpec/i,
   /legacy OpenSpec workflow/i,
   /Inspired by\s+\[OpenSpec\]/i,
+  /Inspired by OpenSpec/i,
   /openspec\.dev/i,
   /inspired by OpenSpec on the development side/i,
   /QASpec is inspired by OpenSpec/i,

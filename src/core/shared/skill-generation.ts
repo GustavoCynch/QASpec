@@ -5,8 +5,6 @@
  */
 
 import {
-  getQasExploreSkillTemplate,
-  getQasExploreCommandTemplate,
   getQasAnalyzeSkillTemplate,
   getQasAnalyzeCommandTemplate,
   getQasMatrixSkillTemplate,
@@ -16,6 +14,7 @@ import {
   getQasArchiveSkillTemplate,
   getQasArchiveCommandTemplate,
   type SkillTemplate,
+  type CommandTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
 import { CORE_WORKFLOWS } from '../profiles.js';
@@ -34,12 +33,11 @@ export interface SkillTemplateEntry {
  * Command template with ID mapping.
  */
 export interface CommandTemplateEntry {
-  template: ReturnType<typeof getQasExploreCommandTemplate>;
+  template: CommandTemplate;
   id: string;
 }
 
 const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
-  { template: getQasExploreSkillTemplate(), dirName: qaspecSkillDirName('explore'), workflowId: 'explore' },
   { template: getQasAnalyzeSkillTemplate(), dirName: qaspecSkillDirName('analyze'), workflowId: 'analyze' },
   { template: getQasMatrixSkillTemplate(), dirName: qaspecSkillDirName('matrix'), workflowId: 'matrix' },
   { template: getQasPublishSkillTemplate(), dirName: qaspecSkillDirName('publish'), workflowId: 'publish' },
@@ -47,7 +45,6 @@ const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
 ];
 
 const QAS_COMMAND_ENTRIES: CommandTemplateEntry[] = [
-  { template: getQasExploreCommandTemplate(), id: 'explore' },
   { template: getQasAnalyzeCommandTemplate(), id: 'analyze' },
   { template: getQasMatrixCommandTemplate(), id: 'matrix' },
   { template: getQasPublishCommandTemplate(), id: 'publish' },

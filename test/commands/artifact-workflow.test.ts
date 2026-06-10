@@ -823,7 +823,7 @@ artifacts:
       expect(output).toContain('.claude/');
 
       // Verify skill files were created
-      const skillFile = path.join(tempDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(tempDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const stat = await fs.stat(skillFile);
       expect(stat.isFile()).toBe(true);
     });
@@ -838,14 +838,14 @@ artifacts:
       expect(output).toContain('.cursor/');
 
       // Verify skill files were created
-      const skillFile = path.join(tempDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(tempDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
       const stat = await fs.stat(skillFile);
       expect(stat.isFile()).toBe(true);
 
       // Verify commands were created with Cursor format
-      const commandFile = path.join(tempDir, '.cursor', 'commands', 'qsx-explore.md');
+      const commandFile = path.join(tempDir, '.cursor', 'commands', 'qsx-analyze.md');
       const content = await fs.readFile(commandFile, 'utf-8');
-      expect(content).toContain('name: /qsx:explore');
+      expect(content).toContain('name: /qsx:analyze');
     });
 
     it('creates skills for Windsurf tool', async () => {
@@ -858,7 +858,7 @@ artifacts:
       expect(output).toContain('.windsurf/');
 
       // Verify skill files were created
-      const skillFile = path.join(tempDir, '.windsurf', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(tempDir, '.windsurf', 'skills', 'qaspec-analyze', 'SKILL.md');
       const stat = await fs.stat(skillFile);
       expect(stat.isFile()).toBe(true);
     });

@@ -55,10 +55,6 @@ const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
     name: 'Propose change',
     description: 'Create proposal, design, and tasks from a request',
   },
-  explore: {
-    name: 'Explore ideas',
-    description: 'Investigate a problem before implementation',
-  },
   analyze: {
     name: 'Analyze',
     description: 'Create analysis artifact (analisis.md)',

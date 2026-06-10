@@ -777,5 +777,7 @@ export function formatProjectMdMigrationHint(): string {
   lines.push('');
   lines.push(chalk.dim('    Review project.md, move any useful content to config.yaml\'s context'));
   lines.push(chalk.dim('    section, then delete the file when ready.'));
+  lines.push('');
+  lines.push(chalk.dim('    You can also use /qsx:analyze to get AI assistance migrating context.'));
   return lines.join('\n');
 }

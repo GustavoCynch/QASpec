@@ -21,7 +21,6 @@ function printWelcomeContent(): void {
   console.log(chalk.dim('  • qaspec/references/ project seeds'));
   console.log();
   console.log(chalk.white('Quick start after setup:'));
-  console.log(`  ${chalk.yellow('/qsx:explore')}   ${chalk.dim('Think before the formal cycle')}`);
   console.log(`  ${chalk.yellow('/qsx:analyze')}   ${chalk.dim('Analysis artifact')}`);
   console.log(`  ${chalk.yellow('/qsx:matrix')}    ${chalk.dim('Test matrix')}`);
   console.log(`  ${chalk.yellow('/qsx:publish')}   ${chalk.dim('Publish to Qase')}`);

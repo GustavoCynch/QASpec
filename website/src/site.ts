@@ -30,14 +30,6 @@ export const SITE_URL = 'https://qaspec-website.dan-ba8.workers.dev';
 export const WORKFLOW_COMMANDS = [
   {
     num: '01',
-    command: '/qsx:explore',
-    label: 'Explore',
-    description:
-      'Investigate the codebase and clarify scope before committing to analysis. No required artifact.',
-    artifact: '→ notes, diagrams',
-  },
-  {
-    num: '02',
     command: '/qsx:analyze',
     label: 'Analyze',
     description:
@@ -45,7 +37,7 @@ export const WORKFLOW_COMMANDS = [
     artifact: '→ analisis.md',
   },
   {
-    num: '03',
+    num: '02',
     command: '/qsx:matrix',
     label: 'Matrix',
     description:
@@ -53,7 +45,7 @@ export const WORKFLOW_COMMANDS = [
     artifact: '→ testmatrix.md',
   },
   {
-    num: '04',
+    num: '03',
     command: '/qsx:publish',
     label: 'Publish',
     description:
@@ -61,7 +53,7 @@ export const WORKFLOW_COMMANDS = [
     artifact: '→ publish-plan.md',
   },
   {
-    num: '05',
+    num: '04',
     command: '/qsx:archive',
     label: 'Archive',
     description:
@@ -71,7 +63,7 @@ export const WORKFLOW_COMMANDS = [
 ] as const;
 
 export const WORKFLOW_FLOW =
-  'explore → analyze → matrix → (approve) → publish → (confirm) → archive';
+  'analyze → matrix → (approve) → publish → (confirm) → archive';
 
 export const FEATURES = [
   {

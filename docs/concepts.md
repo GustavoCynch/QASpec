@@ -696,23 +696,19 @@ qaspec/
 │                         QASPEC QA FLOW (core profile)                        │
 │                                                                              │
 │   ┌────────────────┐                                                         │
-│   │  1. EXPLORE    │  /qsx:explore (optional)                                 │
+│   │  1. ANALYZE    │  /qsx:analyze → analisis.md (halt)                      │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  2. ANALYZE    │  /qsx:analyze → analisis.md (halt)                      │
+│   │  2. MATRIX     │  /qsx:matrix → testmatrix.md + delta specs (halt)       │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  3. MATRIX     │  /qsx:matrix → testmatrix.md + delta specs (halt)       │
-│   └───────┬────────┘                                                         │
-│           ▼                                                                  │
-│   ┌────────────────┐                                                         │
-│   │  4. PUBLISH    │  /qsx:publish → Qase (only TCMS today) when approved    │
+│   │  3. PUBLISH    │  /qsx:publish → Qase (only TCMS today) when approved    │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │
-│   │  5. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
+│   │  4. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
 │   └────────────────┘     └──────────────────────────────────────────────┘    │
 │                                                                              │
 │  Default workflow: `/qsx:*` commands installed by `qaspec init`.                 │

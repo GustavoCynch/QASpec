@@ -74,7 +74,7 @@ These options work with all commands:
 
 Initialize QASpec in your project. Creates the folder structure and configures AI tool integrations.
 
-Default behavior uses global config defaults: profile `core`, delivery `both`, workflows `propose, explore, apply, sync, archive`.
+Default behavior uses global config defaults: profile `core`, delivery `both`, workflows `analyze`, `matrix`, `publish`, `archive`.
 
 ```
 qaspec init [path] [options]
@@ -1106,7 +1106,7 @@ qaspec completion uninstall
 
 ## Related Documentation
 
-- [Commands](commands.md) - AI slash commands (`/qsx:explore`, `/qsx:analyze`, etc.)
+- [Commands](commands.md) - AI slash commands (`/qsx:analyze`, `/qsx:matrix`, etc.)
 - [Workflows](workflows.md) - Common patterns and when to use each command
 - [Customization](customization.md) - Create custom schemas and templates
 - [Getting Started](getting-started.md) - First-time setup guide

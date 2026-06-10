@@ -42,6 +42,10 @@ import {
   isUpstreamOpenspecSkillDir,
   isUpstreamLegacyWorkflow,
   removeLegacyQaspecSkillDirs,
+  removeLegacyQaspecCommandFiles,
+  removeRetiredQaspecSkillDirs,
+  removeRetiredQaspecCommandFiles,
+  removeDeselectedQasSubdirCommands,
 } from './upstream-coexistence.js';
 import {
   SKILL_NAMES,
@@ -55,7 +59,13 @@ import {
   type ToolSkillStatus,
 } from './shared/index.js';
 import { getGlobalConfig, type Delivery, type Profile } from './global-config.js';
-import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
+import {
+  getProfileWorkflows,
+  CORE_WORKFLOWS,
+  ALL_WORKFLOWS,
+  getRetiredWorkflowNotices,
+  type CoreWorkflowId,
+} from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded, migrateLegacyCoreProfileIfNeeded } from './migration.js';
 import { scaffoldQaspecReferences } from './reference-scaffold.js';
@@ -518,7 +528,13 @@ export class InitCommand {
     // Read global config for profile and delivery settings (use --profile override if set)
     const globalConfig = getGlobalConfig();
     const profile: Profile = this.resolveProfileOverride() ?? globalConfig.profile ?? 'core';
+    for (const notice of getRetiredWorkflowNotices(profile, globalConfig.workflows)) {
+      console.log(chalk.dim(notice));
+    }
     const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+    const desiredWorkflows = workflows.filter((workflow): workflow is CoreWorkflowId =>
+      (ALL_WORKFLOWS as readonly string[]).includes(workflow)
+    );
     const toolIds = tools.map((t) => t.value);
     const delivery = await resolveEffectiveDelivery(
       projectPath,
@@ -604,7 +620,28 @@ export class InitCommand {
 
         if (shouldGenerateSkills) {
           const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
+          removedSkillCount += await this.removeUnselectedSkillDirs(
+            skillsDir,
+            upstreamOpenSpecActive ? CORE_WORKFLOWS : desiredWorkflows,
+            upstreamOpenSpecActive
+          );
+          removedSkillCount += await removeRetiredQaspecSkillDirs(skillsDir);
           removedSkillCount += await removeLegacyQaspecSkillDirs(skillsDir, upstreamOpenSpecActive);
+        }
+
+        if (shouldGenerateCommands) {
+          removedCommandCount += await this.removeUnselectedCommandFiles(
+            projectPath,
+            tool.value,
+            desiredWorkflows,
+            upstreamOpenSpecActive
+          );
+          removedCommandCount += await removeRetiredQaspecCommandFiles(projectPath, tool.value);
+          removedCommandCount += await removeLegacyQaspecCommandFiles(
+            projectPath,
+            upstreamOpenSpecActive
+          );
+          removedCommandCount += await removeDeselectedQasSubdirCommands(projectPath, desiredWorkflows);
         }
 
         spinner.succeed(`Setup complete for ${tool.name}`);
@@ -752,7 +789,6 @@ export class InitCommand {
     if (activeWorkflows.length > 0) {
       console.log(chalk.bold('Getting started:'));
       console.log('  qaspec new change <name>   Create a QA change');
-      console.log('  /qsx:explore                 Think before the formal cycle');
       console.log('  /qsx:analyze                 Analysis (analisis.md)');
       console.log('  /qsx:matrix                  Test matrix (testmatrix.md)');
       console.log('  /qsx:publish                 Publish to Qase');
@@ -781,6 +817,65 @@ export class InitCommand {
       color: 'gray',
       spinner: PROGRESS_SPINNER,
     }).start();
+  }
+
+  private async removeUnselectedSkillDirs(
+    skillsDir: string,
+    desiredWorkflows: readonly CoreWorkflowId[],
+    upstreamOpenSpecActive = false
+  ): Promise<number> {
+    const desiredSet = new Set(desiredWorkflows);
+    let removed = 0;
+
+    for (const workflow of ALL_WORKFLOWS) {
+      if (desiredSet.has(workflow)) continue;
+      const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+      if (!dirName) continue;
+      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
+
+      const skillDir = path.join(skillsDir, dirName);
+      try {
+        if (fs.existsSync(skillDir)) {
+          await fs.promises.rm(skillDir, { recursive: true, force: true });
+          removed++;
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    return removed;
+  }
+
+  private async removeUnselectedCommandFiles(
+    projectPath: string,
+    toolId: string,
+    desiredWorkflows: readonly CoreWorkflowId[],
+    upstreamOpenSpecActive = false
+  ): Promise<number> {
+    let removed = 0;
+    const adapter = CommandAdapterRegistry.get(toolId);
+    if (!adapter) return 0;
+
+    const desiredSet = new Set(desiredWorkflows);
+
+    for (const workflow of ALL_WORKFLOWS) {
+      if (desiredSet.has(workflow)) continue;
+      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
+      const cmdPath = adapter.getFilePath(workflow);
+      const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
+
+      try {
+        if (fs.existsSync(fullPath)) {
+          await fs.promises.unlink(fullPath);
+          removed++;
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    return removed;
   }
 
   private async removeSkillDirs(skillsDir: string, upstreamOpenSpecActive = false): Promise<number> {

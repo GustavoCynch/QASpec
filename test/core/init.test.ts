@@ -88,9 +88,8 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      // Core profile: explore, analyze, matrix, publish, archive
+      // Core profile: analyze, matrix, publish, archive
       const coreSkillNames = [
-        'qaspec-explore',
         'qaspec-analyze',
         'qaspec-matrix',
         'qaspec-publish',
@@ -127,9 +126,8 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      // Core profile: explore, analyze, matrix, publish, archive
+      // Core profile: analyze, matrix, publish, archive
       const coreCommandNames = [
-        'qsx/explore.md',
         'qsx/analyze.md',
         'qsx/matrix.md',
         'qsx/publish.md',
@@ -180,6 +178,31 @@ describe('InitCommand', () => {
       expect(logCalls.some((entry) => entry.includes('/qsx:publish'))).toBe(true);
     });
 
+    it('migrates legacy four-workflow config to core and generates exactly four skills/commands', async () => {
+      saveGlobalConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['propose', 'explore', 'apply', 'archive'],
+      });
+
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+      await initCommand.execute(testDir);
+
+      expect(getGlobalConfig().profile).toBe('core');
+
+      const skillsDir = path.join(testDir, '.claude', 'skills');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
+
+      for (const name of ['analyze', 'matrix', 'publish', 'archive']) {
+        expect(await fileExists(path.join(skillsDir, `qaspec-${name}`, 'SKILL.md'))).toBe(true);
+        expect(await fileExists(path.join(commandsDir, `${name}.md`))).toBe(true);
+      }
+
+      expect(await fileExists(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(false);
+      expect(await fileExists(path.join(commandsDir, 'explore.md'))).toBe(false);
+    });
+
     it('should not generate opsx-propose command for Cursor on fresh init', async () => {
       const initCommand = new InitCommand({ tools: 'cursor', force: true });
       await initCommand.execute(testDir);
@@ -193,7 +216,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const skillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
       expect(await fileExists(skillFile)).toBe(true);
     });
 
@@ -202,7 +225,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const skillFile = path.join(testDir, '.windsurf', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.windsurf', 'skills', 'qaspec-analyze', 'SKILL.md');
       expect(await fileExists(skillFile)).toBe(true);
     });
 
@@ -216,7 +239,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'kimi', force: true });
       await initCommand.execute(testDir);
 
-      const skillFile = path.join(testDir, '.kimi', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.kimi', 'skills', 'qaspec-analyze', 'SKILL.md');
       expect(await fileExists(skillFile)).toBe(true);
 
       const commandsDir = path.join(testDir, '.kimi', 'commands');
@@ -235,8 +258,8 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
 
       expect(await fileExists(claudeSkill)).toBe(true);
       expect(await fileExists(cursorSkill)).toBe(true);
@@ -248,9 +271,9 @@ describe('InitCommand', () => {
       await initCommand.execute(testDir);
 
       // Check a few representative tools
-      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
-      const windsurfSkill = path.join(testDir, '.windsurf', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const windsurfSkill = path.join(testDir, '.windsurf', 'skills', 'qaspec-analyze', 'SKILL.md');
 
       expect(await fileExists(claudeSkill)).toBe(true);
       expect(await fileExists(cursorSkill)).toBe(true);
@@ -282,8 +305,8 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
 
       expect(await fileExists(claudeSkill)).toBe(true);
       expect(await fileExists(cursorSkill)).toBe(true);
@@ -331,8 +354,8 @@ describe('InitCommand', () => {
       await initCommand2.execute(testDir);
 
       // Both tools should have skills
-      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const cursorSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
 
       expect(await fileExists(claudeSkill)).toBe(true);
       expect(await fileExists(cursorSkill)).toBe(true);
@@ -342,7 +365,7 @@ describe('InitCommand', () => {
       const initCommand1 = new InitCommand({ tools: 'claude', force: true });
       await initCommand1.execute(testDir);
 
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const originalContent = await fs.readFile(skillFile, 'utf-8');
 
       // Modify the file
@@ -362,27 +385,17 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
       await initCommand.execute(testDir);
 
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const content = await fs.readFile(skillFile, 'utf-8');
 
       // Should have YAML frontmatter
       expect(content).toMatch(/^---\n/);
-      expect(content).toContain('name: qaspec-explore');
+      expect(content).toContain('name: qaspec-analyze');
       expect(content).toContain('description:');
       expect(content).toContain('license:');
       expect(content).toContain('compatibility:');
       expect(content).toContain('metadata:');
       expect(content).toMatch(/---\n\n/); // End of frontmatter
-    });
-
-    it('should include explore mode instructions', async () => {
-      const initCommand = new InitCommand({ tools: 'claude', force: true });
-      await initCommand.execute(testDir);
-
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const content = await fs.readFile(skillFile, 'utf-8');
-
-      expect(content).toContain('QASpec explore mode');
     });
 
     it('should include analyze skill instructions', async () => {
@@ -415,7 +428,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
       await initCommand.execute(testDir);
 
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const content = await fs.readFile(skillFile, 'utf-8');
 
       // Should contain generatedBy field with a version string
@@ -428,7 +441,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md');
+      const cmdFile = path.join(testDir, '.claude', 'commands', 'qsx', 'analyze.md');
       const content = await fs.readFile(cmdFile, 'utf-8');
 
       // Claude commands use YAML frontmatter
@@ -441,7 +454,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'cursor', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.cursor', 'commands', 'qsx-explore.md');
+      const cmdFile = path.join(testDir, '.cursor', 'commands', 'qsx-analyze.md');
       expect(await fileExists(cmdFile)).toBe(true);
 
       const content = await fs.readFile(cmdFile, 'utf-8');
@@ -484,7 +497,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'gemini', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.gemini', 'commands', 'qsx', 'explore.toml');
+      const cmdFile = path.join(testDir, '.gemini', 'commands', 'qsx', 'analyze.toml');
       expect(await fileExists(cmdFile)).toBe(true);
 
       const content = await fs.readFile(cmdFile, 'utf-8');
@@ -496,7 +509,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'windsurf', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.windsurf', 'workflows', 'qsx-explore.md');
+      const cmdFile = path.join(testDir, '.windsurf', 'workflows', 'qsx-analyze.md');
       expect(await fileExists(cmdFile)).toBe(true);
     });
 
@@ -504,11 +517,11 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'continue', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.continue', 'prompts', 'qsx-explore.prompt');
+      const cmdFile = path.join(testDir, '.continue', 'prompts', 'qsx-analyze.prompt');
       expect(await fileExists(cmdFile)).toBe(true);
 
       const content = await fs.readFile(cmdFile, 'utf-8');
-      expect(content).toContain('name: qsx-explore');
+      expect(content).toContain('name: qsx-analyze');
       expect(content).toContain('invokable: true');
     });
 
@@ -516,7 +529,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'cline', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.clinerules', 'workflows', 'qsx-explore.md');
+      const cmdFile = path.join(testDir, '.clinerules', 'workflows', 'qsx-analyze.md');
       expect(await fileExists(cmdFile)).toBe(true);
     });
 
@@ -524,7 +537,7 @@ describe('InitCommand', () => {
       const initCommand = new InitCommand({ tools: 'github-copilot', force: true });
       await initCommand.execute(testDir);
 
-      const cmdFile = path.join(testDir, '.github', 'prompts', 'qsx-explore.prompt.md');
+      const cmdFile = path.join(testDir, '.github', 'prompts', 'qsx-analyze.prompt.md');
       expect(await fileExists(cmdFile)).toBe(true);
     });
   });
@@ -599,7 +612,7 @@ describe('InitCommand - profile and detection features', () => {
     await initCommand.execute(testDir);
 
     // Should have used claude (detected)
-    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(true);
   });
 
@@ -670,7 +683,7 @@ describe('InitCommand - profile and detection features', () => {
       featureFlags: {},
       profile: 'custom',
       delivery: 'both',
-      workflows: ['explore', 'propose', 'apply'],
+      workflows: ['analyze', 'propose', 'apply'],
     });
 
     const initCommand = new InitCommand({ tools: 'cursor', force: true });
@@ -685,8 +698,8 @@ describe('InitCommand - profile and detection features', () => {
       expect(content).not.toContain('generatedBy:');
     }
 
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(true);
     expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'))).toBe(true);
   });
 
   it('should create missing upstream openspec skills without overwriting existing ones', async () => {
@@ -708,7 +721,7 @@ describe('InitCommand - profile and detection features', () => {
       featureFlags: {},
       profile: 'custom',
       delivery: 'both',
-      workflows: ['explore', 'propose', 'apply'],
+      workflows: ['analyze', 'propose', 'apply'],
     });
 
     const initCommand = new InitCommand({ tools: 'cursor', force: true });
@@ -721,7 +734,7 @@ describe('InitCommand - profile and detection features', () => {
     const applyFile = path.join(cursorSkillsDir, 'openspec-apply-change', 'SKILL.md');
     expect(await fileExists(applyFile)).toBe(false);
 
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(true);
+    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
   });
 
   it('should preselect configured tools but not directory-detected tools in extend mode', async () => {
@@ -729,7 +742,7 @@ describe('InitCommand - profile and detection features', () => {
     await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
 
     // Configured with OpenSpec
-    const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
+    const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-analyze');
     await fs.mkdir(claudeSkillDir, { recursive: true });
     await fs.writeFile(path.join(claudeSkillDir, 'SKILL.md'), 'configured');
 
@@ -779,17 +792,43 @@ describe('InitCommand - profile and detection features', () => {
       featureFlags: {},
       profile: 'custom',
       delivery: 'both',
-      workflows: ['explore', 'new'],
+      workflows: ['analyze', 'matrix'],
     });
 
     const initCommand = new InitCommand({ tools: 'claude', force: true });
     await initCommand.execute(testDir);
 
-    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-    expect(await fileExists(exploreSkill)).toBe(true);
+    const analyzeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+    const matrixSkill = path.join(testDir, '.claude', 'skills', 'qaspec-matrix', 'SKILL.md');
+    expect(await fileExists(analyzeSkill)).toBe(true);
+    expect(await fileExists(matrixSkill)).toBe(true);
 
     const newChangeSkill = path.join(testDir, '.claude', 'skills', 'openspec-new-change', 'SKILL.md');
     expect(await fileExists(newChangeSkill)).toBe(false);
+  });
+
+  it('should skip retired explore in custom profile with notice', async () => {
+    saveGlobalConfig({
+      featureFlags: {},
+      profile: 'custom',
+      delivery: 'both',
+      workflows: ['explore', 'analyze', 'matrix'],
+    });
+
+    const initCommand = new InitCommand({ tools: 'claude', force: true });
+    await initCommand.execute(testDir);
+
+    const analyzeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+    const matrixSkill = path.join(testDir, '.claude', 'skills', 'qaspec-matrix', 'SKILL.md');
+    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+    expect(await fileExists(analyzeSkill)).toBe(true);
+    expect(await fileExists(matrixSkill)).toBe(true);
+    expect(await fileExists(exploreSkill)).toBe(false);
+
+    const logCalls = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .flat()
+      .map(String);
+    expect(logCalls.some((entry) => entry.includes('Skipped retired workflow id "explore"'))).toBe(true);
   });
 
   it('should migrate commands-only extend mode without injecting extra workflows', async () => {
@@ -806,7 +845,7 @@ describe('InitCommand - profile and detection features', () => {
 
     const exploreCommand = path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md');
     const proposeCommand = path.join(testDir, '.claude', 'commands', 'qsx', 'propose.md');
-    expect(await fileExists(exploreCommand)).toBe(true);
+    expect(await fileExists(exploreCommand)).toBe(false);
     expect(await fileExists(proposeCommand)).toBe(false);
 
     const exploreSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
@@ -820,7 +859,7 @@ describe('InitCommand - profile and detection features', () => {
       featureFlags: {},
       profile: 'custom',
       delivery: 'both',
-      workflows: ['explore', 'new'],
+      workflows: ['analyze', 'matrix'],
     });
 
     const initCommand = new InitCommand({ force: true });
@@ -832,8 +871,8 @@ describe('InitCommand - profile and detection features', () => {
     expect(showWelcomeScreenMock).toHaveBeenCalled();
     expect(confirmMock).not.toHaveBeenCalled();
 
-    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-    expect(await fileExists(exploreSkill)).toBe(true);
+    const analyzeSkill = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+    expect(await fileExists(analyzeSkill)).toBe(true);
 
     const logCalls = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls.flat().map(String);
     expect(logCalls.some((entry) => entry.includes('Applying custom profile'))).toBe(false);
@@ -850,7 +889,7 @@ describe('InitCommand - profile and detection features', () => {
     await initCommand.execute(testDir);
 
     // Skills should exist
-    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(true);
 
     // Commands should NOT exist
@@ -869,7 +908,7 @@ describe('InitCommand - profile and detection features', () => {
     const initCommand = new InitCommand({ tools: 'claude', force: true });
     await initCommand.execute(testDir);
 
-    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(false);
   });
 
@@ -883,7 +922,7 @@ describe('InitCommand - profile and detection features', () => {
     const initCommand1 = new InitCommand({ tools: 'claude', force: true });
     await initCommand1.execute(testDir);
 
-    const cmdFile = path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md');
+    const cmdFile = path.join(testDir, '.claude', 'commands', 'qsx', 'analyze.md');
     expect(await fileExists(cmdFile)).toBe(true);
 
     saveGlobalConfig({
@@ -897,7 +936,7 @@ describe('InitCommand - profile and detection features', () => {
 
     expect(await fileExists(cmdFile)).toBe(false);
 
-    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+    const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(true);
   });
 });

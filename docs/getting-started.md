@@ -9,10 +9,12 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 **Default path (core profile)** — installed by `qaspec init`:
 
 ```text
-/qsx:explore ──► /qsx:analyze ──► /qsx:matrix ──► /qsx:publish ──► /qsx:archive
+/qsx:analyze ──► /qsx:matrix ──► /qsx:publish ──► /qsx:archive
 ```
 
-The global **`core`** profile includes exactly five workflows: `explore`, `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
+The global **`core`** profile includes exactly four workflows: `analyze`, `matrix`, `publish`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
+
+Free-form investigation happens in normal chat or at the start of `/qsx:analyze` — no separate explore command is required.
 
 > **Default install:** QASpec ships `/qsx:*` agent commands via `qaspec init`. Third-party upstream tooling is not installed by this CLI.
 
@@ -46,19 +48,11 @@ qaspec/                          # Planning home
 | Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved matrix to Qase after human approval (only TCMS supported today) |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
-`/qsx:explore` investigates ideas without requiring prior artifacts. `/qsx:matrix` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
+`/qsx:analyze` includes investigation before writing `analisis.md`. `/qsx:matrix` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
 
 ## Example: First QA Change
 
-### 1. Explore (optional)
-
-```text
-You: /qsx:explore payment edge cases
-
-AI:  Investigates code and references; no analisis.md required yet.
-```
-
-### 2. Analyze
+### 1. Analyze
 
 ```text
 You: /qsx:analyze checkout-timeout
@@ -67,7 +61,7 @@ AI:  Creates qaspec/changes/checkout-timeout/analisis.md
      Halts for your confirmation before matrix work.
 ```
 
-### 3. Matrix
+### 2. Matrix
 
 ```text
 You: /qsx:matrix
@@ -76,7 +70,7 @@ AI:  Creates testmatrix.md and delta specs under the change
      Halts for approval of cases and requirements.
 ```
 
-### 4. Publish
+### 3. Publish
 
 ```text
 You: /qsx:publish

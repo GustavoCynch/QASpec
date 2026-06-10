@@ -1,7 +1,7 @@
 # qsx-command-naming Specification
 
 ## Purpose
-TBD - created by archiving change separate-qsx-qaspec-naming. Update Purpose after archive.
+Define how QASpec names generated slash commands and command files using the short `qsx` prefix, distinct from upstream `opsx` planning commands.
 ## Requirements
 ### Requirement: Short command prefix for QASpec workflows
 

@@ -3,12 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type SkillTemplate,
-  getQasExploreSkillTemplate,
   getQasAnalyzeSkillTemplate,
   getQasMatrixSkillTemplate,
   getQasPublishSkillTemplate,
   getQasArchiveSkillTemplate,
-  getQasExploreCommandTemplate,
   getQasAnalyzeCommandTemplate,
   getQasMatrixCommandTemplate,
   getQasPublishCommandTemplate,
@@ -40,12 +38,10 @@ function hash(value: string): string {
 describe('skill templates split parity', () => {
   it('preserves QASpec template function payloads exactly', () => {
     const functionFactories: Record<string, () => unknown> = {
-      getQasExploreSkillTemplate,
       getQasAnalyzeSkillTemplate,
       getQasMatrixSkillTemplate,
       getQasPublishSkillTemplate,
       getQasArchiveSkillTemplate,
-      getQasExploreCommandTemplate,
       getQasAnalyzeCommandTemplate,
       getQasMatrixCommandTemplate,
       getQasPublishCommandTemplate,
@@ -62,7 +58,6 @@ describe('skill templates split parity', () => {
 
   it('preserves generated QASpec skill file content exactly', () => {
     const skillFactories: Array<[string, () => SkillTemplate]> = [
-      ['qaspec-explore', getQasExploreSkillTemplate],
       ['qaspec-analyze', getQasAnalyzeSkillTemplate],
       ['qaspec-matrix', getQasMatrixSkillTemplate],
       ['qaspec-publish', getQasPublishSkillTemplate],

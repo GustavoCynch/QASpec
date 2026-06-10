@@ -9,7 +9,8 @@ import chalk from 'chalk';
 import type { AIToolOption } from './config.js';
 import { getGlobalConfig, getGlobalConfigPath, saveGlobalConfig, type Delivery } from './global-config.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
-import { ALL_WORKFLOWS, isLegacyCoreWorkflowSet } from './profiles.js';
+import { ALL_WORKFLOWS, isLegacyCoreWorkflowSet, RETIRED_QAS_WORKFLOW_IDS } from './profiles.js';
+import { qaspecSkillDirName } from './qaspec-commands.js';
 import { SKILL_NAMES } from './shared/tool-detection.js';
 import { workflowIdForSkillDir } from './skill-paths.js';
 import path from 'path';
@@ -48,7 +49,7 @@ function scanInstalledWorkflowArtifacts(
     const adapter = CommandAdapterRegistry.get(tool.value);
     if (!adapter) continue;
 
-    for (const workflowId of ALL_WORKFLOWS) {
+    for (const workflowId of [...ALL_WORKFLOWS, ...RETIRED_QAS_WORKFLOW_IDS]) {
       const commandPath = adapter.getFilePath(workflowId);
       const fullPath = path.isAbsolute(commandPath)
         ? commandPath
@@ -58,10 +59,24 @@ function scanInstalledWorkflowArtifacts(
         hasCommands = true;
       }
     }
+
+    for (const workflowId of RETIRED_QAS_WORKFLOW_IDS) {
+      const skillDirName = qaspecSkillDirName(workflowId);
+      if (SKILL_NAMES.includes(skillDirName as (typeof SKILL_NAMES)[number])) {
+        continue;
+      }
+      const skillFile = path.join(skillsDir, skillDirName, 'SKILL.md');
+      if (fs.existsSync(skillFile)) {
+        hasSkills = true;
+        installed.add(workflowId);
+      }
+    }
   }
 
+  const knownWorkflowOrder = [...ALL_WORKFLOWS, ...RETIRED_QAS_WORKFLOW_IDS];
+
   return {
-    workflows: ALL_WORKFLOWS.filter((workflowId) => installed.has(workflowId)),
+    workflows: knownWorkflowOrder.filter((workflowId) => installed.has(workflowId)),
     hasSkills,
     hasCommands,
   };
@@ -103,7 +118,7 @@ export function migrateLegacyCoreProfileIfNeeded(): boolean {
 
   console.log(
     chalk.dim(
-      'Migrated global profile from legacy OpenSpec core to QASpec core (explore, analyze, matrix, publish, archive).'
+      'Migrated global profile from legacy OpenSpec core to QASpec core (analyze, matrix, publish, archive).'
     )
   );
   return true;
@@ -156,5 +171,5 @@ export function migrateIfNeeded(projectPath: string, tools: AIToolOption[]): voi
   saveGlobalConfig(config);
 
   console.log(`Migrated: custom profile with ${installedWorkflows.length} workflows`);
-  console.log("Try 'qaspec config profile core' for the QASpec QA workflow (/qsx:explore, /qsx:analyze, /qsx:matrix, /qsx:publish).");
+  console.log("Try 'qaspec config profile core' for the QASpec QA workflow (/qsx:analyze, /qsx:matrix, /qsx:publish, /qsx:archive).");
 }

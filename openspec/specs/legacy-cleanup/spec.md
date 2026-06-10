@@ -145,7 +145,7 @@ The system SHALL preserve project.md and display a migration hint instead of del
 - **GIVEN** project.md may contain user-written project documentation
 - **AND** config.yaml's context field serves the same purpose (auto-injected into artifacts)
 - **WHEN** displaying the migration hint
-- **THEN** users can migrate manually or use `/qas:explore` to get AI assistance
+- **THEN** users can migrate manually or use `/qsx:analyze` to get AI assistance
 
 ### Requirement: Cleanup reporting
 

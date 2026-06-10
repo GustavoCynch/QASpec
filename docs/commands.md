@@ -10,39 +10,14 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 
 | Command | Purpose |
 |---------|---------|
-| `/qsx:explore` | Investigate a topic before committing to analysis |
 | `/qsx:analyze` | Create `analisis.md` (risk, capabilities, dual review) |
 | `/qsx:matrix` | Create `testmatrix.md` and change delta specs |
 | `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
 | `/qsx:archive` | Finalize and archive the change |
 
-Workflow ids: `explore`, `analyze`, `matrix`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these five).
+Workflow ids: `analyze`, `matrix`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these four).
 
----
-
-## `/qsx:explore`
-
-Think through ideas, investigate the codebase, and clarify scope **without** requiring `analisis.md` or `testmatrix.md`.
-
-**Syntax:**
-
-```text
-/qsx:explore [topic]
-```
-
-**What it does:**
-
-- Open-ended investigation; may produce notes or diagrams
-- Does not skip halts for later `/qsx:analyze` or `/qsx:matrix`
-- Can hand off to `/qsx:analyze` when you are ready to formalize
-
-**Example:**
-
-```text
-You: /qsx:explore How does session refresh interact with 2FA?
-
-AI:  Reviews auth module and references; suggests running /qsx:analyze when scope is clear.
-```
+Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
 ---
 

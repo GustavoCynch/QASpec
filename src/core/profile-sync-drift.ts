@@ -13,7 +13,6 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
  * Maps workflow IDs to their skill directory names.
  */
 export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
-  explore: qaspecSkillDirName('explore'),
   analyze: qaspecSkillDirName('analyze'),
   matrix: qaspecSkillDirName('matrix'),
   publish: qaspecSkillDirName('publish'),

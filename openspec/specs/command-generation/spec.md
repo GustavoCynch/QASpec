@@ -106,7 +106,7 @@ The body content of commands SHALL be shared across all tools.
 
 #### Scenario: Same instructions across tools
 
-- **WHEN** generating the 'explore' command for Claude and Cursor
+- **WHEN** generating the 'analyze' command for Claude and Cursor
 - **THEN** both SHALL use the same `body` content
 - **AND** only the frontmatter and file path SHALL differ
 
@@ -127,19 +127,13 @@ When generating commands for QASpec workflows, adapters SHALL use the `qsx-` fil
 
 ### Requirement: QASpec command content registry
 
-The skill generation registry SHALL map workflow ids `explore`, `analyze`, `matrix`, `publish`, and `archive` to QASpec template getters. Init and update SHALL emit the `publish` command whenever `publish` is in the resolved active workflow list (including after legacy global-config migration to core).
+The skill generation registry SHALL map workflow ids `analyze`, `matrix`, `publish`, and `archive` to QASpec template getters. `explore` SHALL NOT be a recognized QASpec workflow id. Init and update SHALL emit the `publish` command whenever `publish` is in the resolved active workflow list (including after legacy global-config migration to core).
 
 #### Scenario: Core profile command set
 
 - **WHEN** init or update resolves workflows to the QASpec core profile
 - **THEN** `getCommandContents()` includes an entry with `id: publish`
-- **AND** generated command files use the QASpec naming convention for the target tool adapter
-
-#### Scenario: Filtered generation
-
-- **WHEN** init requests workflows `['analyze', 'matrix']` only
-- **THEN** only matching QASpec command and skill templates are emitted
-- **AND** `publish` is not emitted
+- **AND** no entry with `id: explore` is produced
 
 ### Requirement: Command metadata categories
 

@@ -100,12 +100,12 @@ describe('UpdateCommand', () => {
     it('should update skill files for configured Claude tool', async () => {
       // Set up a configured Claude tool by creating skill directories
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      const exploreSkillDir = path.join(skillsDir, 'qaspec-explore');
+      const exploreSkillDir = path.join(skillsDir, 'qaspec-analyze');
       await fs.mkdir(exploreSkillDir, { recursive: true });
 
       // Create an existing skill file
       const oldSkillContent = `---
-name: qaspec-explore (old)
+name: qaspec-analyze (old)
 description: Old description
 license: MIT
 compatibility: Requires openspec CLI.
@@ -130,7 +130,7 @@ Old instructions content
         path.join(exploreSkillDir, 'SKILL.md'),
         'utf-8'
       );
-      expect(updatedSkill).toContain('name: qaspec-explore');
+      expect(updatedSkill).toContain('name: qaspec-analyze');
       expect(updatedSkill).not.toContain('Old instructions content');
       expect(updatedSkill).toContain('license: MIT');
 
@@ -147,23 +147,22 @@ Old instructions content
       const skillsDir = path.join(testDir, '.claude', 'skills');
 
       // Create at least one skill to mark tool as configured
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old content'
       );
 
       await updateCommand.execute(testDir);
 
-      // Verify core profile skill files were created/updated (propose, explore, apply, sync, archive)
+      // Verify core profile skill files were created/updated
       const coreSkillNames = [
-        'qaspec-explore',
+        'qaspec-analyze',
         'qaspec-matrix',
         'qaspec-publish',
         'qaspec-archive',
-        'qaspec-analyze',
       ];
 
       for (const skillName of coreSkillNames) {
@@ -199,10 +198,10 @@ Old instructions content
       await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
-        '---\nname: qaspec-explore\nmetadata:\n  author: qaspec\n  generatedBy: "0.0.1"\n---\n\nold qas content\n'
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
+        '---\nname: qaspec-analyze\nmetadata:\n  author: qaspec\n  generatedBy: "0.0.1"\n---\n\nold qas content\n'
       );
 
       for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
@@ -218,7 +217,7 @@ Old instructions content
         featureFlags: {},
         profile: 'custom',
         delivery: 'both',
-        workflows: ['explore', 'propose', 'apply'],
+        workflows: ['analyze', 'propose', 'apply'],
       });
 
       const forceUpdate = new UpdateCommand({ force: true });
@@ -230,7 +229,7 @@ Old instructions content
       }
 
       const exploreContent = await fs.readFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'utf-8'
       );
       expect(exploreContent).not.toContain('old qas content');
@@ -240,8 +239,8 @@ Old instructions content
       await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), '---\nname: qaspec-explore\n---\n');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), '---\nname: qaspec-analyze\n---\n');
 
       const existingMarker = 'EXISTING_SYNC_SKILL';
       await fs.mkdir(path.join(skillsDir, 'openspec-sync-specs'), { recursive: true });
@@ -272,11 +271,11 @@ Old instructions content
     it('should update qas commands for configured Claude tool', async () => {
       // Set up a configured Claude tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old content'
       );
 
@@ -284,11 +283,11 @@ Old instructions content
 
       // Check qas command files were created
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
-      const exploreCmd = path.join(commandsDir, 'explore.md');
-      const exists = await FileSystemUtils.fileExists(exploreCmd);
+      const analyzeCmd = path.join(commandsDir, 'analyze.md');
+      const exists = await FileSystemUtils.fileExists(analyzeCmd);
       expect(exists).toBe(true);
 
-      const content = await fs.readFile(exploreCmd, 'utf-8');
+      const content = await fs.readFile(analyzeCmd, 'utf-8');
       expect(content).toContain('---');
       expect(content).toContain('name:');
       expect(content).toContain('description:');
@@ -299,18 +298,18 @@ Old instructions content
     it('should update core profile qas commands when tool is configured', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old content'
       );
 
       await updateCommand.execute(testDir);
 
-      // Verify core profile commands were created (explore, analyze, matrix, publish, archive)
-      const coreCommandIds = ['explore', 'analyze', 'matrix', 'publish', 'archive'];
+      // Verify core profile commands were created (analyze, matrix, publish, archive)
+      const coreCommandIds = ['analyze', 'matrix', 'publish', 'archive'];
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       for (const cmdId of coreCommandIds) {
         const cmdFile = path.join(commandsDir, `${cmdId}.md`);
@@ -333,21 +332,21 @@ Old instructions content
     it('should update multiple configured tools', async () => {
       // Set up Claude
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
       // Set up Cursor
       const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
-      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -362,17 +361,17 @@ Old instructions content
 
       // Verify Claude skills updated
       const claudeSkill = await fs.readFile(
-        path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'utf-8'
       );
-      expect(claudeSkill).toContain('name: qaspec-explore');
+      expect(claudeSkill).toContain('name: qaspec-analyze');
 
       // Verify Cursor skills updated
       const cursorSkill = await fs.readFile(
-        path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'utf-8'
       );
-      expect(cursorSkill).toContain('name: qaspec-explore');
+      expect(cursorSkill).toContain('name: qaspec-analyze');
 
       consoleSpy.mockRestore();
     });
@@ -380,11 +379,11 @@ Old instructions content
     it('should update Qwen tool with correct command format', async () => {
       // Set up Qwen
       const qwenSkillsDir = path.join(testDir, '.qwen', 'skills');
-      await fs.mkdir(path.join(qwenSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(qwenSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(qwenSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(qwenSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -395,7 +394,7 @@ Old instructions content
         testDir,
         '.qwen',
         'commands',
-        'qsx-explore.toml'
+        'qsx-analyze.toml'
       );
       const exists = await FileSystemUtils.fileExists(qwenCmd);
       expect(exists).toBe(true);
@@ -408,11 +407,11 @@ Old instructions content
     it('should update Windsurf tool with correct command format', async () => {
       // Set up Windsurf
       const windsurfSkillsDir = path.join(testDir, '.windsurf', 'skills');
-      await fs.mkdir(path.join(windsurfSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(windsurfSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(windsurfSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(windsurfSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -423,7 +422,7 @@ Old instructions content
         testDir,
         '.windsurf',
         'workflows',
-        'qsx-explore.md'
+        'qsx-analyze.md'
       );
       const exists = await FileSystemUtils.fileExists(windsurfCmd);
       expect(exists).toBe(true);
@@ -438,11 +437,11 @@ Old instructions content
     it('should handle tool update failures gracefully', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -474,20 +473,20 @@ Old instructions content
     it('should continue updating other tools when one fails', async () => {
       // Set up Claude and Cursor
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
       const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
-      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -567,18 +566,18 @@ Old instructions content
     it('should generate valid YAML frontmatter in skill files', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
       await updateCommand.execute(testDir);
 
       const skillContent = await fs.readFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'utf-8'
       );
 
@@ -620,11 +619,11 @@ Old instructions content
     it('should display success message with tool name', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -643,11 +642,11 @@ Old instructions content
     it('should suggest IDE restart after update', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -686,13 +685,13 @@ Old instructions content
     it('should detect update needed when generatedBy is missing', async () => {
       // Set up a configured tool without generatedBy
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         `---
-name: qaspec-explore
+name: qaspec-analyze
 metadata:
   author: openspec
   version: "1.0"
@@ -717,13 +716,13 @@ Legacy content without generatedBy
     it('should detect update needed when version differs', async () => {
       // Set up a configured tool with old version
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         `---
-name: qaspec-explore
+name: qaspec-analyze
 metadata:
   generatedBy: "0.1.0"
 ---
@@ -747,18 +746,18 @@ Old version content
     it('should embed generatedBy in updated skill files', async () => {
       // Set up a configured tool without generatedBy
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old content without version'
       );
 
       await updateCommand.execute(testDir);
 
       const updatedContent = await fs.readFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'utf-8'
       );
 
@@ -771,13 +770,13 @@ Old version content
     it('should update when force is true even if up to date', async () => {
       // Set up a configured tool with current version
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
 
       const { version } = await import('../../package.json');
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         `---
 metadata:
   generatedBy: "${version}"
@@ -808,11 +807,11 @@ Content
     it('should not show --force hint when force is used', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old content'
       );
 
@@ -836,7 +835,7 @@ Content
     it('should update all tools when force is used with mixed versions', async () => {
       // Set up Claude with current version
       const { version } = await import('../../package.json');
-      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-explore');
+      const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'qaspec-analyze');
       await fs.mkdir(claudeSkillDir, { recursive: true });
       await fs.writeFile(
         path.join(claudeSkillDir, 'SKILL.md'),
@@ -848,7 +847,7 @@ metadata:
       );
 
       // Set up Cursor with old version
-      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qaspec-explore');
+      const cursorSkillDir = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze');
       await fs.mkdir(cursorSkillDir, { recursive: true });
       await fs.writeFile(
         path.join(cursorSkillDir, 'SKILL.md'),
@@ -877,11 +876,11 @@ metadata:
     it('should show version in success message', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -904,7 +903,7 @@ metadata:
       await initCommand.execute(testDir);
 
       // Make Claude stale to force a version update.
-      const claudeSkillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const claudeContent = await fs.readFile(claudeSkillFile, 'utf-8');
       await fs.writeFile(
         claudeSkillFile,
@@ -933,11 +932,11 @@ metadata:
     it('should detect and auto-cleanup legacy files with --force flag', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -983,11 +982,11 @@ ${OPENSPEC_MARKERS.end}
     it('should warn but continue with update when legacy files found in non-interactive mode', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -1030,11 +1029,11 @@ ${OPENSPEC_MARKERS.end}
     it('should cleanup legacy slash command directories with --force', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -1067,11 +1066,11 @@ ${OPENSPEC_MARKERS.end}
     it('should cleanup legacy openspec/AGENTS.md with --force', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -1104,11 +1103,11 @@ ${OPENSPEC_MARKERS.end}
     it('should not show legacy cleanup messages when no legacy files exist', async () => {
       // Set up a configured tool with no legacy files
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -1131,11 +1130,11 @@ ${OPENSPEC_MARKERS.end}
     it('should remove OpenSpec marker block from mixed content files', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), {
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
         recursive: true,
       });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old'
       );
 
@@ -1217,11 +1216,11 @@ More user content after markers.
         expect.stringContaining('Getting started')
       );
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/qsx:explore')
+        expect.stringContaining('/qsx:analyze')
       );
 
       // Skills should be created
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
+      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
       const skillExists = await FileSystemUtils.fileExists(skillFile);
       expect(skillExists).toBe(true);
 
@@ -1258,8 +1257,8 @@ More user content after markers.
       );
 
       // Both tools should have skills created
-      const claudeSkillFile = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const claudeSkillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
+      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
 
       expect(await FileSystemUtils.fileExists(claudeSkillFile)).toBe(true);
       expect(await FileSystemUtils.fileExists(cursorSkillFile)).toBe(true);
@@ -1270,9 +1269,9 @@ More user content after markers.
     it('should not upgrade legacy tools already configured', async () => {
       // Set up a configured Claude tool with skills
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'existing skill'
       );
 
@@ -1315,9 +1314,9 @@ More user content after markers.
     it('should upgrade only unconfigured legacy tools when mixed', async () => {
       // Set up configured Claude tool with skills
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(
-        path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'),
         'existing skill'
       );
 
@@ -1346,7 +1345,7 @@ More user content after markers.
       );
 
       // Cursor skills should be created
-      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-explore', 'SKILL.md');
+      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
       expect(await FileSystemUtils.fileExists(cursorSkillFile)).toBe(true);
 
       // Should show "Getting started" for newly configured Cursor
@@ -1360,9 +1359,9 @@ More user content after markers.
     it('should not show getting started message when no new tools configured', async () => {
       // Set up a configured tool (no legacy artifacts)
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         'old skill'
       );
 
@@ -1397,7 +1396,7 @@ More user content after markers.
       // Default profile is core, so only core workflows should be generated.
       const skillNames = [
         'qaspec-analyze',
-        'qaspec-explore',
+        'qaspec-analyze',
         'qaspec-matrix',
         'qaspec-publish',
         'qaspec-archive',
@@ -1428,8 +1427,8 @@ More user content after markers.
 
       // New qas commands should be created
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
-      const exploreCmd = path.join(commandsDir, 'explore.md');
-      const exists = await FileSystemUtils.fileExists(exploreCmd);
+      const analyzeCmd = path.join(commandsDir, 'analyze.md');
+      const exists = await FileSystemUtils.fileExists(analyzeCmd);
       expect(exists).toBe(true);
     });
 
@@ -1438,7 +1437,7 @@ More user content after markers.
         featureFlags: {},
         profile: 'custom',
         delivery: 'both',
-        workflows: ['explore'],
+        workflows: ['analyze'],
       });
 
       await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
@@ -1452,15 +1451,15 @@ More user content after markers.
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
       )).toBe(false);
 
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'explore.md')
+        path.join(commandsDir, 'analyze.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(commandsDir, 'propose.md')
@@ -1474,27 +1473,86 @@ More user content after markers.
         featureFlags: {},
         profile: 'custom',
         delivery: 'both',
-        workflows: ['explore', 'new'],
+        workflows: ['analyze', 'matrix'],
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       await updateCommand.execute(testDir);
 
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
+      )).toBe(true);
+      expect(await FileSystemUtils.fileExists(
+        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'openspec-new-change', 'SKILL.md')
       )).toBe(false);
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-publish', 'SKILL.md')
       )).toBe(false);
+    });
+
+    it('should skip retired explore in custom profile with notice', async () => {
+      setMockConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['explore', 'analyze', 'matrix'],
+      });
+
+      const skillsDir = path.join(testDir, '.claude', 'skills');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
+
+      const consoleSpy = vi.spyOn(console, 'log');
+      await updateCommand.execute(testDir);
+
       expect(await FileSystemUtils.fileExists(
         path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
+      )).toBe(true);
+      expect(await FileSystemUtils.fileExists(
+        path.join(skillsDir, 'qaspec-matrix', 'SKILL.md')
+      )).toBe(true);
+      expect(await FileSystemUtils.fileExists(
+        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
       )).toBe(false);
+
+      const allCalls = consoleSpy.mock.calls.map((call) => String(call[0] ?? ''));
+      expect(allCalls.some((line) => line.includes('Skipped retired workflow id "explore"'))).toBe(true);
+      consoleSpy.mockRestore();
+    });
+
+    it('should remove retired explore artifacts from Claude and Cursor layouts', async () => {
+      const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
+      const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'configured');
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'configured');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'), 'stale explore');
+      await fs.mkdir(path.join(cursorSkillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'), 'stale explore');
+
+      const claudeExploreCmd = path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md');
+      const cursorExploreCmd = path.join(testDir, '.cursor', 'commands', 'qsx-explore.md');
+      await fs.mkdir(path.dirname(claudeExploreCmd), { recursive: true });
+      await fs.mkdir(path.dirname(cursorExploreCmd), { recursive: true });
+      await fs.writeFile(claudeExploreCmd, '# explore');
+      await fs.writeFile(cursorExploreCmd, '# explore');
+
+      await updateCommand.execute(testDir);
+
+      expect(await FileSystemUtils.fileExists(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(false);
+      expect(await FileSystemUtils.fileExists(path.join(cursorSkillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(false);
+      expect(await FileSystemUtils.fileExists(claudeExploreCmd)).toBe(false);
+      expect(await FileSystemUtils.fileExists(cursorExploreCmd)).toBe(false);
+      expect(await FileSystemUtils.fileExists(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
+      expect(await FileSystemUtils.fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
     });
 
     it('should migrate legacy four-workflow custom profile to core on init', async () => {
@@ -1526,20 +1584,20 @@ More user content after markers.
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       await updateCommand.execute(testDir);
 
       // Skills should be created
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(true);
 
       // Commands should NOT be created
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'explore.md')
+        path.join(commandsDir, 'analyze.md')
       )).toBe(false);
     });
 
@@ -1551,20 +1609,20 @@ More user content after markers.
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       await updateCommand.execute(testDir);
 
       // Commands should be created
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'explore.md')
+        path.join(commandsDir, 'analyze.md')
       )).toBe(true);
 
       // Skills should be removed for commands-only delivery
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(false);
     });
 
@@ -1584,13 +1642,13 @@ More user content after markers.
       }
 
       const skillsDir = path.join(testDir, adapterlessTool.skillsDir, 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       await expect(updateCommand.execute(testDir)).resolves.toBeUndefined();
 
       expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md')
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
       )).toBe(false);
     });
 
@@ -1602,13 +1660,13 @@ More user content after markers.
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
       const packageJsonPath = path.join(process.cwd(), 'package.json');
       const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8')) as { version: string };
       await fs.writeFile(
-        path.join(skillsDir, 'qaspec-explore', 'SKILL.md'),
+        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
         `---
-name: qaspec-explore
+name: qaspec-analyze
 metadata:
   generatedBy: "${packageJson.version}"
 ---
@@ -1618,13 +1676,13 @@ content
 
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       await fs.mkdir(commandsDir, { recursive: true });
-      await fs.writeFile(path.join(commandsDir, 'explore.md'), 'old command');
+      await fs.writeFile(path.join(commandsDir, 'analyze.md'), 'old command');
 
       await updateCommand.execute(testDir);
 
       // Command files should be removed due to delivery change, even though skill version is current
       expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'explore.md')
+        path.join(commandsDir, 'analyze.md')
       )).toBe(false);
     });
 
@@ -1637,7 +1695,7 @@ content
 
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       await fs.mkdir(commandsDir, { recursive: true });
-      await fs.writeFile(path.join(commandsDir, 'explore.md'), 'existing command');
+      await fs.writeFile(path.join(commandsDir, 'analyze.md'), 'existing command');
 
       const consoleSpy = vi.spyOn(console, 'log');
 
@@ -1671,8 +1729,8 @@ content
       });
 
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       // Add a non-core workflow
       await fs.mkdir(path.join(skillsDir, 'openspec-new-change'), { recursive: true });
@@ -1709,8 +1767,8 @@ content
     it('should detect new tool directories not currently configured', async () => {
       // Set up a configured Claude tool
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       // Create a Cursor directory (not configured — no skills)
       await fs.mkdir(path.join(testDir, '.cursor'), { recursive: true });
@@ -1734,8 +1792,8 @@ content
     it('should consolidate multiple new tools into one message', async () => {
       // Set up a configured Claude tool
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       // Create two unconfigured tool directories
       await fs.mkdir(path.join(testDir, '.github'), { recursive: true });
@@ -1769,8 +1827,8 @@ content
     it('should not show new tool message when no new tools detected', async () => {
       // Set up a configured tool (only Claude, no other tool directories)
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       const consoleSpy = vi.spyOn(console, 'log');
 
@@ -1792,22 +1850,22 @@ content
     it('should detect installed workflows across tools', async () => {
       // Create skills for Claude
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'), 'content');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'content');
       await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-matrix'), { recursive: true });
       await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'content');
 
       const workflows = scanInstalledWorkflows(testDir, ['claude']);
-      expect(workflows).toContain('explore');
+      expect(workflows).toContain('analyze');
       expect(workflows).toContain('matrix');
       expect(workflows).not.toContain('propose');
     });
 
     it('should return union of workflows across multiple tools', async () => {
-      // Claude has explore
+      // Claude has analyze
       const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-explore', 'SKILL.md'), 'content');
+      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'), 'content');
 
       // Cursor has apply
       const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
@@ -1815,7 +1873,7 @@ content
       await fs.writeFile(path.join(cursorSkillsDir, 'qaspec-matrix', 'SKILL.md'), 'content');
 
       const workflows = scanInstalledWorkflows(testDir, ['claude', 'cursor']);
-      expect(workflows).toContain('explore');
+      expect(workflows).toContain('analyze');
       expect(workflows).toContain('matrix');
     });
 
@@ -1847,8 +1905,8 @@ content
   describe('tools output', () => {
     it('should list affected tools in output', async () => {
       const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-explore'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'), 'old');
+      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
+      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
       const consoleSpy = vi.spyOn(console, 'log');
 

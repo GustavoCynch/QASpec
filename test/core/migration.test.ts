@@ -74,7 +74,7 @@ describe('migration', () => {
     const config = readRawConfig();
     expect(config.profile).toBe('custom');
     expect(config.delivery).toBe('skills');
-    expect(config.workflows).toEqual(['explore', 'analyze']);
+    expect(config.workflows).toEqual(['analyze', 'explore']);
   });
 
   it('migrates to custom commands delivery when only managed commands are detected', async () => {
@@ -86,7 +86,7 @@ describe('migration', () => {
     const config = readRawConfig();
     expect(config.profile).toBe('custom');
     expect(config.delivery).toBe('commands');
-    expect(config.workflows).toEqual(['explore', 'archive']);
+    expect(config.workflows).toEqual(['archive', 'explore']);
   });
 
   it('migrates to both delivery when qas skills and commands coexist', async () => {
