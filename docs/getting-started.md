@@ -31,7 +31,7 @@ qaspec/                          # Planning home
     └── <change-name>/
         ├── analysis.md          # From /qsx:analyze
         ├── testcases.md        # From /qsx:cases
-        └── specs/               # Delta specs (from cases phase)
+        └── specs/               # Delta specs (from analyze phase)
 ```
 
 **Agent artifacts** (per selected AI tool), for example on Cursor:
@@ -43,12 +43,12 @@ qaspec/                          # Planning home
 
 | Artifact | Produced by | Purpose |
 |----------|-------------|---------|
-| `analysis.md` | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis |
-| `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes; may create delta specs |
+| `analysis.md` + delta specs | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis, and delta specs for agreed behavior |
+| `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes covering the approved specs |
 | Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to Qase after human approval (only TCMS supported today) |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
-`/qsx:analyze` includes investigation before writing `analysis.md`. `/qsx:cases` and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
+`/qsx:analyze` includes investigation before writing `analysis.md`. `/qsx:analyze`, `/qsx:cases`, and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
 
 ## Example: First QA Change
 
@@ -58,16 +58,17 @@ qaspec/                          # Planning home
 You: /qsx:analyze checkout-timeout
 
 AI:  Creates qaspec/changes/checkout-timeout/analysis.md
-     Halts for your confirmation before cases work.
+     and delta specs under specs/.
+     Halts for your confirmation of both before cases work.
 ```
 
-### 2. Matrix
+### 2. Cases
 
 ```text
 You: /qsx:cases
 
-AI:  Creates testcases.md and delta specs under the change
-     Halts for approval of cases and requirements.
+AI:  Creates testcases.md covering the approved delta specs
+     Halts for approval of the case list.
 ```
 
 ### 3. Publish

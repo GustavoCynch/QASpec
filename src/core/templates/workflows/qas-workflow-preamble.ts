@@ -25,12 +25,12 @@ export const QAS_BASE_CONFIG_PREAMBLE = `## Config
 Read \`qaspec/config.yaml\` \`context\` (and \`rules\` when relevant) for project language and QA role constraints.
 **Read-only** on application source under test.`;
 
-export const QAS_CASES_ANALYSIS_AUTHORITY = `## analysis.md is source of truth (cases phase)
+export const QAS_CASES_ANALYSIS_AUTHORITY = `## analysis.md and delta specs are source of truth (cases phase)
 
-- \`analysis.md\` is user-validated output from \`/qsx:analyze\`; read it **in full** before \`gh pr diff\` / \`git diff\`.
-- **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for cases phase, Synthesis notes.
-- When analysis conflicts with the diff or current code, **analysis.md wins**. Use the diff only to decide *how* to test agreed behavior.
-- Items marked defect/bug in analysis → test cases and delta specs verify the **correct** behavior (fail today / pass after fix); never encode the defect as accepted SHALL/MUST.`;
+- \`analysis.md\` and the change delta specs under \`specs/**/*.md\` are user-validated output from \`/qsx:analyze\`; read both **in full** before \`gh pr diff\` / \`git diff\`.
+- **Binding sections:** Validated clarifications, Functional intent vs implementation, Affected capabilities, Risks for cases phase, Synthesis notes, and every requirement/scenario in the delta specs.
+- When they conflict with the diff or current code, **the validated artifacts win**. Use the diff only to decide *how* to test agreed behavior.
+- Items marked defect/bug in analysis → test cases verify the **correct** behavior (fail today / pass after fix); the defect is never an accepted SHALL/MUST.`;
 
 /** @deprecated Use getQasDualAnalystProtocol() — kept for imports during transition */
 export const QAS_DUAL_ANALYST_PROTOCOL = getQasDualAnalystProtocol();
@@ -80,7 +80,7 @@ ${getQasDualAnalystProtocol()}`;
 export function getQasAnalystPromptBlock(phase: 'analyze' | 'cases'): string {
   const phaseTask =
     phase === 'analyze'
-      ? 'Produce structured PR/change analysis per schema template sections. Do NOT add the final user halt question.'
+      ? 'Produce structured PR/change analysis per schema template sections, plus proposed delta spec requirements (ADDED/MODIFIED/REMOVED/RENAMED per affected capability). Do NOT add the final user halt question.'
       : 'Produce draft test cases in Markdown (suites, checkbox lines, types). Do NOT add approval halt. Do NOT publish to Qase.';
 
   const extraRef =
@@ -91,11 +91,12 @@ export function getQasAnalystPromptBlock(phase: 'analyze' | 'cases'): string {
   const casesAuthority =
     phase === 'cases'
       ? `
-## Validated analysis (binding — orchestrator pastes full analysis.md)
-{FULL analysis.md BODY — mandatory; overrides PR/diff when they conflict}
+## Validated analysis and specs (binding — orchestrator pastes full analysis.md and change delta specs)
+{FULL analysis.md BODY plus change specs/**/*.md content — mandatory; overrides PR/diff when they conflict}
 
 ## Conflict rule (cases only)
-- analysis.md wins over gh/git diff and over current implementation
+- analysis.md and the delta specs win over gh/git diff and over current implementation
+- Cover every requirement scenario in the delta specs with at least one case
 - Defects in analysis → draft cases for corrected behavior, not for accepting the bug
 `
       : '';
@@ -115,7 +116,7 @@ ${casesAuthority}
 - GitHub PR: run gh pr diff and gh pr view (--repo if specified in brief)
 - Otherwise: run git diff or read the patch path from the brief
 - Read changed source files with read/search after you have the patch
-${phase === 'cases' ? '- Use the diff only where analysis.md does not already decide expected vs defective behavior' : ''}
+${phase === 'cases' ? '- Use the diff only where analysis.md and the delta specs do not already decide expected vs defective behavior' : ''}
 
 ## PR / change identity (orchestrator fills — identical for both analysts)
 {PR number, URL, gh flags, developer notes, or non-GH fallback}

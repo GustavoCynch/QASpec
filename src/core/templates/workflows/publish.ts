@@ -11,7 +11,7 @@ Run QASpec **publish** (Phase 3). Resolve TCMS target, get user confirmation via
 1. Run \`qaspec instructions apply --change "<name>" --json\` (publish phase for \`qaspec-pr-review\`).
 2. Apply JSON \`context\` and \`rules\` from the apply instructions response; do not copy them into outputs.
 3. Re-read \`qaspec/references/qase_test_case_rules.md\`; confirm test cases approved and checkbox-formatted.
-4. If \`testcases.md\` exists but no files under change \`specs/\` and apply requires \`specs\`, stop and direct user to complete \`/qsx:cases\` — do not invoke Qase MCP.
+4. If \`testcases.md\` exists but no files under change \`specs/\` and apply requires \`specs\`, stop and direct user to complete \`/qsx:analyze\` (delta specs are co-produced there) — do not invoke Qase MCP.
 5. Read completed \`specs/**/*.md\` for context when files exist.
 6. Resolve TCMS target (provider, project code, base URL) from \`tcms\` block in \`qaspec/config.yaml\`.
 7. When config has no usable \`tcms\` block: if change has legacy \`execution-context.md\`, read project code and base URL and offer persisting to config; otherwise discover Qase projects via MCP (or ask for project code when list/create tools are missing), offer create-new when supported, persist chosen target to \`qaspec/config.yaml\` \`tcms\` block and announce the edit. **Do not invoke Qase MCP for upload in this message.** Ignore legacy \`publish-plan.md\`.

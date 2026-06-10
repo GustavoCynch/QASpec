@@ -3,22 +3,22 @@
 exports[`skill templates split parity > preserves QASpec template function payloads exactly 1`] = `
 {
   "getFeedbackSkillTemplate": "dce6603ee7962b58386ff614104435015d84230934f4c49e28a724170c52b348",
-  "getQasAnalyzeCommandTemplate": "758e059bcc7a4b4639a05fdf97e51c732c5ba28e979393918656bc8c2e6ed58d",
-  "getQasAnalyzeSkillTemplate": "f92b29065c1f7e7b0323b5fcb65fc30b3964260f46007a407f2e2bc218597508",
+  "getQasAnalyzeCommandTemplate": "83342f1a0106443a05441ae496d6d2a21638383edcb726150f940b642a65d34e",
+  "getQasAnalyzeSkillTemplate": "19b9f3c16400510cd69b08b1bd67d9ccf31236613206d85e507a40b8d331fe51",
   "getQasArchiveCommandTemplate": "ad8abcfaffc665b59721a6d1d889881cdea221a35b315754fae7f40dbeeda555",
   "getQasArchiveSkillTemplate": "7ce5be39f7d27e00f154651f8d94cd621b72b28840a4e25ac6e11e5d86ead19d",
-  "getQasCasesCommandTemplate": "60939c2c1756d749f9185eb1f6feac16d0e3f367ebc2da292f0af14730e6e85b",
-  "getQasCasesSkillTemplate": "e7cbb0fa68c342d5915ca99952c737f8a9582721ad2506b102fbdc9d88347b7d",
-  "getQasPublishCommandTemplate": "ffab6df13c8de6fc09c11c60b1c3ee4334e93e27c661a2e87558eabe80ba2680",
-  "getQasPublishSkillTemplate": "81dcb2234fcc595d8587237a130f56b9259093d6522113d42a4982fcd43bd780",
+  "getQasCasesCommandTemplate": "d756ff054a81592cf829b894326dcf8f95489ea9d9bc0dddeadbd6c280395343",
+  "getQasCasesSkillTemplate": "17d697020b4de8f2812d8e9f1adb573d5764f196a9e1dca64d5e5ff2f751a978",
+  "getQasPublishCommandTemplate": "07a672ac226cd876497ccab41fb38c4f94af99039786826aeadf26a694e79bba",
+  "getQasPublishSkillTemplate": "3c21f1afb871b1fd7d14d550f0d5300babeec15fb32a71f9a729a6233912c550",
 }
 `;
 
 exports[`skill templates split parity > preserves generated QASpec skill file content exactly 1`] = `
 {
-  "qaspec-analyze": "6e1e69e74ffb019189e9056cdf0d39e7647289d22e86c21ee6720e142c7410c1",
+  "qaspec-analyze": "202ae13fef4ea184ee35d8671ea0299302227ac1d66f2d19b61916277b24ebc3",
   "qaspec-archive": "bf0dd675e21cd9305bc8984d1060510a66d564297dbe31a00c67a60b86c5c070",
-  "qaspec-cases": "2d11da9cbc2e41cf782fbce8391d4fec5ab7ea9454b79846f204ac465f6d0267",
-  "qaspec-publish": "bed9fd4baae238adc3fd67ae192f528486f7ecdd74d2ada723026083cd6c0922",
+  "qaspec-cases": "3b0e843e5b60c6823b2d73c69abfd0b98e20c872784f48d2d522113ed6d87a9a",
+  "qaspec-publish": "2f184114550c536c077bced44c2ed6c4e61dff14086b746550117c2387a79179",
 }
 `;

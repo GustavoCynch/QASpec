@@ -10,8 +10,8 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 
 | Command | Purpose |
 |---------|---------|
-| `/qsx:analyze` | Create `analysis.md` (risk, capabilities, dual review) |
-| `/qsx:cases` | Create `testcases.md` and change delta specs |
+| `/qsx:analyze` | Create `analysis.md` and change delta specs (risk, capabilities, dual review) |
+| `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
 | `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
 | `/qsx:archive` | Finalize and archive the change |
 
@@ -23,7 +23,7 @@ Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
 ## `/qsx:analyze`
 
-Produce **`analysis.md`** for the active change: risks, affected capabilities (kebab-case), and synthesis from dual blind analysts by default.
+Produce **`analysis.md`** and co-produced **delta specs** for the active change: risks, affected capabilities (kebab-case), and requirements for agreed testable behavior.
 
 **Syntax:**
 
@@ -35,8 +35,9 @@ Produce **`analysis.md`** for the active change: risks, affected capabilities (k
 
 - Creates or updates a folder under `qaspec/changes/<change>/`
 - Writes `analysis.md`; reads `qaspec/references/historical_bugs.md` when present
-- Does **not** write `specs/**/*.md` in this step
-- Ends with a **halt** for human confirmation; persist answers in `analysis.md` (**Validated clarifications**) before `/qsx:cases`
+- Reads existing `qaspec/specs/<capability>/spec.md` for each affected capability (previously agreed behavior)
+- Writes or updates `specs/<capability>/spec.md` deltas in the same phase
+- Ends with a **halt** covering both `analysis.md` and the delta specs; answers update **Validated clarifications** and the affected specs before `/qsx:cases`
 
 **CLI support:**
 
@@ -48,7 +49,7 @@ qaspec instructions analyze --json
 
 ## `/qsx:cases`
 
-Produce **`testcases.md`** with mandatory checkboxes and create or update **delta specs** under the change.
+Produce **`testcases.md`** with mandatory checkboxes covering the approved delta specs.
 
 **Syntax:**
 
@@ -58,14 +59,15 @@ Produce **`testcases.md`** with mandatory checkboxes and create or update **delt
 
 **Prerequisites:**
 
-- Prior `/qsx:analyze` (or manually authored `analysis.md`) unless you explicitly accept gaps
+- Prior `/qsx:analyze` with approved `analysis.md` and delta specs unless you explicitly accept gaps
 - Reads `qaspec/references/qase_test_case_rules.md` when publishing to Qase later
 - Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md`
 
 **What it does:**
 
-- Treats approved `analysis.md` as source of truth (over PR diff when they conflict)
-- Halts once for approval of **both** the case list and requirements
+- Treats approved `analysis.md` and the change delta specs as source of truth (over PR diff when they conflict)
+- Covers every requirement scenario in the delta specs with at least one case
+- Halts once for approval of the case list
 
 ---
 
@@ -81,8 +83,8 @@ Prepare and upload **approved** test cases from `testcases.md` to **Qase** via M
 
 **Prerequisites:**
 
-- Approved `testcases.md` and delta specs from `/qsx:cases`
-- Agent directs you back to `/qsx:cases` if artifacts are missing
+- Approved delta specs from `/qsx:analyze` and approved `testcases.md` from `/qsx:cases`
+- Agent directs you back to the missing phase if artifacts are missing
 
 **What it does:**
 

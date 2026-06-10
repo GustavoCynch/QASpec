@@ -6,9 +6,9 @@ Common patterns for the QASpec **QA pipeline** and when to use each `/qsx:*` com
 
 QASpec treats testing work as **actions**, not rigid phases:
 
-- Run `/qsx:analyze` when you need investigation and a signed-off analysis artifact
+- Run `/qsx:analyze` when you need investigation, a signed-off analysis artifact, and delta specs
 - Use normal chat for informal exploration before starting analyze
-- Run `/qsx:cases` when you need cases and delta specs
+- Run `/qsx:cases` when you need test cases covering the approved specs
 - Run `/qsx:publish` only after human approval
 - Run `/qsx:archive` when the change is done
 
@@ -20,8 +20,8 @@ You can revisit earlier steps; halts exist where human judgment matters.
 
 | Id | Slash command | Output |
 |----|---------------|--------|
-| `analyze` | `/qsx:analyze` | `analysis.md` |
-| `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) + delta specs |
+| `analyze` | `/qsx:analyze` | `analysis.md` + delta specs |
+| `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) |
 | `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; `publish-log.md` trace |
 | `archive` | `/qsx:archive` | Archived change |
 
@@ -33,8 +33,8 @@ Typical happy path:
 
 ### Halts and prerequisites
 
-- **Analyze → cases:** `analysis.md` is the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; cases reads it before the PR diff and overrides the diff when they conflict.
-- **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case and requirement approval. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
+- **Analyze → cases:** `analysis.md` and the co-produced delta specs are the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze reads existing `qaspec/specs/<capability>/spec.md` baselines, halts once covering both artifacts, and persists halt answers into both; cases reads them before the PR diff and they override the diff when they conflict.
+- **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case-list approval and covers every requirement scenario in the specs with at least one case. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
 - **Publish summary → upload:** Publish resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice), presents an in-chat summary of unchecked cases, halts once for confirm, then runs **Qase MCP** only after confirmation and writes `publish-log.md`. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
 - **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` (source of truth) or state exclusions in chat instead. Legacy `execution-context.md` in a change is read once and offered for migration to config.
 - **Cases without analyze:** Not supported — cases requires `analysis.md` from analyze.
@@ -48,8 +48,8 @@ By default both flags are **false** — the **orchestrator** (main agent) runs a
 ```yaml
 workflow:
   multipleSubagents:
-    review: false   # /qsx:analyze — PR analysis (analysis.md)
-    cases: false   # /qsx:cases — testcases.md + delta specs
+    review: false   # /qsx:analyze — PR analysis (analysis.md + delta specs)
+    cases: false   # /qsx:cases — testcases.md
 ```
 
 Set `review: true` and/or `cases: true` to restore **two parallel blind Task** analysts for that phase (synthesis merge as today). When a flag is false, do not delegate to even one subagent as a shortcut.

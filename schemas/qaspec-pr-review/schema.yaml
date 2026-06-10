@@ -7,7 +7,7 @@ artifacts:
     description: PR/requirements analysis, risks, and regression signals
     template: analysis.md
     instruction: |
-      Create `analysis.md` as the testable-change analysis artifact.
+      Create `analysis.md` as the testable-change analysis artifact, co-produced with change delta specs.
 
       **Language:** Write all artifact body text and halt messages in the project language from
       `qaspec/config.yaml` `context` and `rules.analyze` (see docs/multi-language.md).
@@ -18,20 +18,28 @@ artifacts:
       - Run `/qsx:analyze` skill steps: `qaspec instructions analyze --json` for template and resolvedOutputPath.
       - Read `qaspec/references/historical_bugs.md` from the project root (mandatory; re-read every pass).
       - Gather the change set via `gh pr diff` / `gh pr view` when reviewing a GitHub PR, or `git diff` / user-supplied patch otherwise.
+      - For each affected capability, read `qaspec/specs/<capability>/spec.md` when that file exists (previously agreed behavior; baseline for MODIFIED deltas).
       - Honor `workflow.multipleSubagents.review` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations in parallel (each analyst fetches the diff) and synthesize Agreed / Single-analyst / Contradiction in **Synthesis notes**; when false, orchestrator fetches the diff and writes `analysis.md` with no Task subagents.
 
       Fill every section in the template, using N/A when not applicable:
-      - Summary, **Affected capabilities** (kebab-case; no delta spec files in this step)
+      - Summary, **Affected capabilities** (kebab-case)
       - Functional intent vs implementation, **Validated clarifications** (N/A until user responds to halt)
       - Functional impact, framework/UI, backend/API, settings/flags
       - Regression signals, responsive/usability, localization, security/data handling
       - Risks for cases phase, synthesis notes, exactly **one** open question (halt)
 
-      After the user answers the halt (or requests edits), persist every clarification in **Validated clarifications**
-      and adjust **Functional intent vs implementation** when intent differs from the diff. Do not leave
-      approvals only in chat — `/qsx:cases` reads `analysis.md` as the sole approved source of truth.
+      **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this
+      change for testable behavior introduced or changed, using the `specs` artifact instructions and
+      `templates/spec.md` delta format. Copy the full requirement block from `qaspec/specs/<capability>/spec.md`
+      before editing MODIFIED blocks. Encode agreed intent — never document a known defect as accepted SHALL/MUST behavior.
 
-      Do NOT write `testcases.md` or `specs/**/*.md` in this step. End with one halt question; do not continue to cases in the same message.
+      After the user answers the halt (or requests edits), persist every clarification in **Validated clarifications**,
+      adjust **Functional intent vs implementation** when intent differs from the diff, and update affected
+      `specs/**/*.md` so requirements reflect the clarified intent. Do not leave approvals only in chat —
+      `/qsx:cases` reads `analysis.md` and the delta specs as the approved source of truth.
+
+      Do NOT write `testcases.md` in this step. End with exactly **one** halt question covering both `analysis.md`
+      and the delta specs; do not continue to cases in the same message.
     requires: []
 
   - id: test-cases
@@ -42,27 +50,31 @@ artifacts:
       Create or update `testcases.md` as the QA task list (equivalent to `tasks.md` in spec-driven).
 
       **Language:** Write all artifact body text and halt messages in the project language from
-      `qaspec/config.yaml` `context` and `rules.test-cases` / `rules.specs`.
+      `qaspec/config.yaml` `context` and `rules.test-cases`.
 
-      **Config:** Apply `rules.test-cases` and `rules.specs` — readable narrative, explicit BVA, API blocking when HTTP surface exists, settings on/off pairs when applicable.
+      **Config:** Apply `rules.test-cases` — readable narrative, explicit BVA, API blocking when HTTP surface exists, settings on/off pairs when applicable.
 
-      **Source of truth:** `analysis.md` is user-validated from `/qsx:analyze`. Read it in full before the PR diff.
-      When `analysis.md` (especially **Validated clarifications**, **Functional intent vs implementation**, and
-      **Synthesis notes**) conflicts with current code or the diff, **analysis.md wins** — encode tests and specs
-      for agreed intent, not accidental implementation. Known defects get cases that fail today and pass after fix;
-      never document a defect as accepted SHALL/MUST behavior.
+      **Source of truth:** `analysis.md` and the change delta specs under `specs/**/*.md` are user-validated from
+      `/qsx:analyze`. Read both in full before the PR diff. When they (especially **Validated clarifications**,
+      **Functional intent vs implementation**, and **Synthesis notes**) conflict with current code or the diff,
+      **the validated artifacts win** — encode tests for agreed intent, not accidental implementation. Known defects
+      get cases that fail today and pass after fix.
 
       Before writing:
-      - Load instructions for both `test-cases` and `specs` artifacts (`qaspec instructions` JSON).
+      - Load instructions for the `test-cases` artifact (`qaspec instructions` JSON).
       - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
       - Read `analysis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
         **Functional intent vs implementation**, **Risks for cases phase**, **Synthesis notes**.
-      - For each capability listed in `analysis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (baseline for MODIFIED deltas).
-      - Honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations for draft lists and pass the full `analysis.md` body in each analyst brief as binding constraints; when false, orchestrator drafts cases and specs with no Task subagents.
-      - Use the PR diff only to derive how to observe/test agreed behavior — not to override validated analysis.
+      - Read the change `specs/**/*.md` files in full (mandatory; binding input for the case list).
+      - For each capability listed in `analysis.md`, read `qaspec/specs/<capability>/spec.md` when that file exists (context for regression cases).
+      - Honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default false): when true, use dual blind analyst Task delegations for draft lists and pass the full `analysis.md` body and delta specs in each analyst brief as binding constraints; when false, orchestrator drafts cases with no Task subagents.
+      - Use the PR diff only to derive how to observe/test agreed behavior — not to override validated analysis or specs.
       - Merge analyst drafts by intent; dedupe only when behavior and boundaries match.
 
-      **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this change for testable behavior introduced or changed. Align requirements and scenarios with cases in `testcases.md` (no orphan requirements). Use the `specs` artifact instructions and `templates/spec.md` delta format.
+      **Cover the approved specs:** Every requirement scenario in the change delta specs MUST map to at least one
+      case in `testcases.md` (self-audit before halt). Do not create or update `specs/**/*.md` in this step; when a
+      user clarification during this conversation changes agreed behavior, update `analysis.md` and the affected
+      delta specs first, then the case list.
 
       **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]` only on checkbox lines; enriched case detail lives **below** each checkbox line.
 
@@ -77,12 +89,13 @@ artifacts:
       - One case = one checkbox: `- [ ] 1.1 Observable case title`, then Preconditions and Steps blocks
       - Optional traceability: `<!-- req: capability/requirement-slug -->` on a case line
       - Use plain-language titles (tester-observable); no code identifiers in preconditions, steps, or expected results
-      - Include explicit BVA, negative, regression, and resilience cases per `analysis.md` and config rules
-      - Self-audit before halt: every step traceable to a source unless marked as a documented gap
+      - Include explicit BVA, negative, regression, and resilience cases per `analysis.md`, the delta specs, and config rules
+      - Self-audit before halt: every requirement scenario covered by at least one case, and every step traceable to a source unless marked as a documented gap
 
-      End with exactly **one** approval question covering **both** the case list and the delta specs (halt). Do not publish to Qase in this step.
+      End with exactly **one** approval question covering the case list (halt). Do not publish to Qase in this step.
     requires:
       - analyze
+      - specs
 
   - id: specs
     generates: "specs/**/*.md"
@@ -93,11 +106,10 @@ artifacts:
 
       **Language:** Write requirement and scenario text in the project language from config.
 
-      **Source of truth:** Same as test-cases — `analysis.md` overrides PR/diff when they conflict.
+      **Source of truth:** Same as analyze — `analysis.md` overrides PR/diff when they conflict.
 
       Before writing:
       - Read `analysis.md` in full (**Validated clarifications**, **Affected capabilities**, intent vs implementation).
-      - Read `testcases.md` when it exists; keep requirements aligned with listed cases.
       - For each affected capability, read `qaspec/specs/<capability>/spec.md` when present before writing MODIFIED blocks.
 
       Create one spec file per affected capability: `specs/<capability>/spec.md`.
@@ -114,9 +126,11 @@ artifacts:
       - Each scenario: `#### Scenario: <name>` with WHEN/THEN format (exactly four `#` on Scenario headers)
       - Every requirement MUST have at least one scenario
 
-      Co-produced with `testcases.md` in the cases phase (`/qsx:cases`). Chat iterations that change cases or requirements MUST update both artifacts.
+      Co-produced with `analysis.md` in the analyze phase (`/qsx:analyze`). Chat iterations that change agreed
+      behavior MUST update both `analysis.md` and these specs. In the cases phase, every requirement scenario here
+      MUST be covered by at least one case in `testcases.md`.
 
-      End with the same single halt as test-cases when both are produced in one turn — do not start publish in the same message.
+      End with the same single halt as analyze when both are produced in one turn — do not start cases in the same message.
     requires:
       - analyze
 

@@ -696,11 +696,11 @@ qaspec/
 │                         QASPEC QA FLOW (core profile)                        │
 │                                                                              │
 │   ┌────────────────┐                                                         │
-│   │  1. ANALYZE    │  /qsx:analyze → analysis.md (halt)                      │
+│   │  1. ANALYZE    │  /qsx:analyze → analysis.md + delta specs (halt)        │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  2. CASES     │  /qsx:cases → testcases.md + delta specs (halt)       │
+│   │  2. CASES     │  /qsx:cases → testcases.md covering specs (halt)      │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
