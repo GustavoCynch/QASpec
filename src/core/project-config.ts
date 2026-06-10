@@ -26,6 +26,12 @@ const WorkflowConfigSchema = z.object({
   multipleSubagents: MultipleSubagentsConfigSchema.optional(),
 });
 
+const TcmsConfigSchema = z.object({
+  provider: z.string().optional().describe('TCMS provider (v1: qase)'),
+  project: z.string().optional().describe('TCMS project code'),
+  baseUrl: z.string().optional().describe('TCMS base URL'),
+});
+
 export const ProjectConfigSchema = z.object({
   // Required: which schema to use (e.g., "spec-driven", or project-local schema name)
   schema: z
@@ -51,6 +57,9 @@ export const ProjectConfigSchema = z.object({
 
   // Optional: workflow execution toggles (e.g. dual blind subagents per phase)
   workflow: WorkflowConfigSchema.optional(),
+
+  // Optional: TCMS target for publish (provider, project code, base URL)
+  tcms: TcmsConfigSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
@@ -233,6 +242,51 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
         }
       } else {
         console.warn(`Invalid 'workflow' field in config (must be object)`);
+      }
+    }
+
+    // Parse tcms block (resilient per field)
+    if (raw.tcms !== undefined) {
+      if (typeof raw.tcms === 'object' && raw.tcms !== null && !Array.isArray(raw.tcms)) {
+        const tcmsRaw = raw.tcms as Record<string, unknown>;
+        const parsedTcms: { provider?: string; project?: string; baseUrl?: string } = {};
+        let hasTcms = false;
+
+        if (tcmsRaw.provider !== undefined) {
+          const providerResult = z.string().safeParse(tcmsRaw.provider);
+          if (providerResult.success) {
+            parsedTcms.provider = providerResult.data;
+            hasTcms = true;
+          } else {
+            console.warn(`Invalid 'tcms.provider' in config (must be string)`);
+          }
+        }
+
+        if (tcmsRaw.project !== undefined) {
+          const projectResult = z.string().safeParse(tcmsRaw.project);
+          if (projectResult.success) {
+            parsedTcms.project = projectResult.data;
+            hasTcms = true;
+          } else {
+            console.warn(`Invalid 'tcms.project' in config (must be string)`);
+          }
+        }
+
+        if (tcmsRaw.baseUrl !== undefined) {
+          const baseUrlResult = z.string().safeParse(tcmsRaw.baseUrl);
+          if (baseUrlResult.success) {
+            parsedTcms.baseUrl = baseUrlResult.data;
+            hasTcms = true;
+          } else {
+            console.warn(`Invalid 'tcms.baseUrl' in config (must be string)`);
+          }
+        }
+
+        if (hasTcms) {
+          config.tcms = parsedTcms;
+        }
+      } else {
+        console.warn(`Invalid 'tcms' field in config (must be object)`);
       }
     }
 

@@ -22,6 +22,7 @@
 
 - **Removed `openspec` npm binary** — The package exposes only `qaspec`. Replace `openspec` with `qaspec` in scripts and CI.
 - **Fork planning home** — This repository dogfoods under `qaspec/` (`qaspec/changes/`, `qaspec/specs/`, `qaspec/config.yaml`). Consumer repos with only `openspec/` are still supported by the CLI resolver.
+- **Slim publish flow** — `/qsx:publish` no longer writes `publish-plan.md` or `execution-context.md`. The pre-upload review is an in-chat summary derived from `testcases.md`; only `publish-log.md` is written after upload. The TCMS target (provider, project code, base URL) lives in a `tcms` block in `qaspec/config.yaml`, discovered and persisted on first publish when absent. Legacy `execution-context.md` in a change is read once and offered for migration to config; legacy `publish-plan.md` files are ignored. If you edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.
 
 ## 1.3.1
 

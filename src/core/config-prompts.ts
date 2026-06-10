@@ -8,6 +8,12 @@ const CONFIG_HEADER = `# QASpec project config
 
 /** Optional footer hints appended after the active qaspec-pr-review seed (not injected into prompts). */
 const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
+# tcms — project-wide TCMS target for /qsx:publish (uncomment and edit, or let publish fill on first run)
+# tcms:
+#   provider: qase
+#   project: YOUR_PROJECT_CODE
+#   baseUrl: https://app.qase.io
+#
 # workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
 # workflow.multipleSubagents.cases — dual Task analysts for /qsx:cases (default: false)
 # When false, the orchestrator does the phase with no Task subagents (not a single subagent).

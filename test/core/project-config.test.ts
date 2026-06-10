@@ -514,6 +514,70 @@ workflow:
       });
     });
 
+    describe('tcms block', () => {
+      it('should parse valid tcms block', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+tcms:
+  provider: qase
+  project: DEMO
+  baseUrl: https://app.qase.io
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.tcms).toEqual({
+          provider: 'qase',
+          project: 'DEMO',
+          baseUrl: 'https://app.qase.io',
+        });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should load clean when tcms block is missing', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.tcms).toBeUndefined();
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn and omit invalid tcms field while keeping valid siblings', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: qaspec-pr-review
+tcms:
+  provider: qase
+  project: 123
+  baseUrl: https://app.qase.io
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.tcms).toEqual({
+          provider: 'qase',
+          baseUrl: 'https://app.qase.io',
+        });
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'tcms.project'")
+        );
+      });
+    });
+
     describe('multi-line and special characters', () => {
       it('should preserve multi-line context', () => {
         const configDir = path.join(tempDir, 'openspec');

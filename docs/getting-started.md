@@ -75,10 +75,10 @@ AI:  Creates testcases.md and delta specs under the change
 ```text
 You: /qsx:publish
 
-AI:  Writes execution-context.md and publish-plan.md, halts for your edit or confirm.
-You: Confirm (or edit the plan files first).
+AI:  Resolves Qase target from config (or asks once on first publish), shows an in-chat summary, halts for confirm.
+You: Confirm (or adjust testcases.md / scope in chat first).
 
-AI:  Uploads approved cases via Qase MCP, updates publish-log.md and checkboxes.
+AI:  Uploads approved cases via Qase MCP, writes publish-log.md, and marks checkboxes.
 ```
 
 > **TCMS support:** v1 publish is **Qase-only**. TestRail, Xray, and install-time TCMS selection are in active development. To help or request another system, see [Test management (TCMS)](../README.md#test-management-tcms) in the README.

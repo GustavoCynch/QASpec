@@ -51,13 +51,26 @@ describe('qa-config-seed', () => {
     expect(parsed.rules.apply.length).toBeGreaterThan(0);
   });
 
-  it('apply seed rules require publish-plan and confirmation before MCP', () => {
+  it('apply seed rules require tcms target and confirmation before MCP', () => {
     const seed = getQaspecPrReviewConfigSeed();
     const applyRules = seed.rules!.apply.join('\n');
 
-    expect(applyRules).toContain('publish-plan.md');
+    expect(applyRules).toContain('tcms');
+    expect(applyRules).not.toMatch(/write.*publish-plan\.md/i);
+    expect(applyRules).not.toMatch(/persist to execution-context\.md/i);
     expect(applyRules).toMatch(/confirmation halt/i);
-    expect(applyRules).toMatch(/do not upload in the same message/i);
+    expect(applyRules).toMatch(/never upload in the same message/i);
+    expect(applyRules).toMatch(/in-chat publish summary/i);
+  });
+
+  it('serializeConfig for qaspec-pr-review includes commented tcms example', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+
+    expect(yaml).toMatch(/# tcms:/);
+    expect(yaml).toContain('provider: qase');
+    expect(yaml).toContain('YOUR_PROJECT_CODE');
+    expect(yaml).toContain('https://app.qase.io');
+    expect(yaml).toMatch(/first run/i);
   });
 
   it('test-cases seed rules require enriched case bodies', () => {
@@ -104,23 +117,21 @@ describe('qa-config-seed', () => {
     expect(content).toMatch(/Build from sources/i);
   });
 
-  it('qaspec-pr-review schema apply instruction requires prepare and confirm before MCP', () => {
+  it('qaspec-pr-review schema apply instruction requires tcms target and confirm before MCP', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../..');
     const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
     const content = fs.readFileSync(schemaPath, 'utf-8');
 
-    expect(content).toContain('publish-plan.md');
+    expect(content).toContain('tcms');
+    expect(content).not.toMatch(/Write or update `publish-plan\.md`/);
+    expect(content).toMatch(/Do not write `execution-context\.md` or `publish-plan\.md`/);
     expect(content).toMatch(/confirmation halt/i);
     expect(content).toMatch(/Do not invoke Qase MCP/i);
     expect(content).toMatch(/Preconditions.*Steps/s);
 
-    const planTemplate = path.join(
-      repoRoot,
-      'schemas',
-      'qaspec-pr-review',
-      'templates',
-      'publish-plan.md'
-    );
-    expect(fs.existsSync(planTemplate)).toBe(true);
+    const templatesDir = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'templates');
+    expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(true);
+    expect(fs.existsSync(path.join(templatesDir, 'execution-context.md'))).toBe(false);
+    expect(fs.existsSync(path.join(templatesDir, 'publish-plan.md'))).toBe(false);
   });
 });

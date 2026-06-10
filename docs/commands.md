@@ -86,9 +86,20 @@ Prepare and upload **approved** test cases from `testcases.md` to **Qase** via M
 
 **What it does:**
 
-1. Writes or updates `execution-context.md` (Qase project, role, base URL) and `publish-plan.md` (suites and unchecked cases to upload).
-2. Halts once so you can edit those files or confirm publish — **no Qase upload in that message**.
+1. Resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice to config).
+2. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no Qase upload in that message**.
 3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testcases.md`.
+
+**TCMS config** (`qaspec/config.yaml`):
+
+```yaml
+tcms:
+  provider: qase
+  project: YOUR_PROJECT_CODE
+  baseUrl: https://app.qase.io
+```
+
+Fresh installs include a commented example. If you previously edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.
 
 ---
 

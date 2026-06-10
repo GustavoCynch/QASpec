@@ -128,26 +128,34 @@ apply:
   instruction: |
     Publish the approved test cases to Qase (MCP) and update tracking.
 
-    **Language:** Write `publish-log.md`, `execution-context.md`, `publish-plan.md`, and user-facing halt text in the project language from config.
+    **Language:** Write `publish-log.md` and user-facing halt text in the project language from config.
 
-    Prepare (no Qase MCP in this phase):
+    Resolve TCMS target (no case upload in this phase):
     - Re-read `qaspec/references/qase_test_case_rules.md`
     - Confirm `testcases.md` is approved and checkbox-formatted
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
     - Read completed `specs/**/*.md` for context when files exist
-    - Resolve Qase prerequisites (project code, role, base URL) from existing artifacts, `execution-context.md`, or **one** halt question if missing — then persist to `execution-context.md`
-    - Write or update `publish-plan.md` from unchecked cases in `testcases.md`, including each case's **Preconditions** and **Steps** when present (use template `templates/publish-plan.md`)
-    - End with **exactly one** confirmation halt: user may edit `execution-context.md` and `publish-plan.md` or confirm publish
-    - **Do not invoke Qase MCP** in the same message as initial creation of `execution-context.md` and `publish-plan.md`
-    - If an approved case has no **Steps** block, warn the user to complete cases before MCP (legacy title-only rows are not sufficient for Qase upload)
+    - Resolve TCMS target (provider, project code, base URL) from `tcms` block in `qaspec/config.yaml`
+    - When config has no usable `tcms` block:
+      - If change contains legacy `execution-context.md`, read project code and base URL from it and offer persisting them to `qaspec/config.yaml` `tcms` block
+      - Otherwise discover Qase projects via MCP when a listing tool exists; present existing projects plus "create new" in **one** halt; on create-new use MCP creation tool when available, otherwise instruct user to create in Qase UI and provide code
+      - When MCP lacks list/create tools, ask for project code in the same single halt
+      - Persist chosen target to `qaspec/config.yaml` `tcms` block and announce the edit
+      - **Do not invoke Qase MCP for upload** in the same message as target selection or `tcms` persistence
+    - Ignore legacy `publish-plan.md` if present
+
+    Prepare summary and confirm (no Qase MCP upload in this phase):
+    - Present in-chat publish summary derived from `testcases.md`: target (provider, project, base URL), each suite with unchecked-case count, warnings (cases without **Steps** blocks, suspected PII)
+    - End with **exactly one** confirmation halt
+    - **Do not invoke Qase MCP** in the same message as the summary
 
     After user confirms:
-    - Re-read `execution-context.md`, `publish-plan.md`, and `testcases.md`
-    - Read **Preconditions** and **Steps** under each case to publish; do not re-generate steps from titles alone when a **Steps** block exists
+    - Re-read `testcases.md`
+    - Read **Preconditions** and **Steps** under each unchecked case to publish; do not re-generate steps from titles alone when a **Steps** block exists
     - Read Qase MCP tool schemas before the first call
-    - Validate cases against rules; upload via MCP; write `publish-log.md` with suite/case trace
+    - Validate cases against rules; upload via MCP; write `publish-log.md` with suite/case trace (use template `templates/publish-log.md`)
     - Mark each published case `- [x]` in `testcases.md`
 
-    User edits after the confirm halt: update the prepare files in chat, then ask again for confirm before MCP.
+    User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-present summary, ask again for confirm before MCP.
 
-    Do not modify application source code under test. Stop on PII/secrets.
+    Do not write `execution-context.md` or `publish-plan.md`. Do not modify application source code under test. Stop on PII/secrets.

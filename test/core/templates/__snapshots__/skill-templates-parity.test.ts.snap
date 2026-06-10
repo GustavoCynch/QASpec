@@ -9,8 +9,8 @@ exports[`skill templates split parity > preserves QASpec template function paylo
   "getQasArchiveSkillTemplate": "cb3dbcb7ee647e8a475188b90b572aa3d11ba0c6384e481f06994337f7e64067",
   "getQasCasesCommandTemplate": "81a08332b547c46af2ee2b7c092dc04325205a110b13182ae24499c5572ef53c",
   "getQasCasesSkillTemplate": "132bd1acbf9b65d839faced8d7e27a7c021c3843e0d37fd44b7870e2351ee9b8",
-  "getQasPublishCommandTemplate": "584334498c95436d98ff79cab0589763c0946ebaa0d4c5a16cd336d19a333ce7",
-  "getQasPublishSkillTemplate": "65eacc233fc96fafc203fab63dd5967e35e29c2e382d16457be839096ca538b6",
+  "getQasPublishCommandTemplate": "ffab6df13c8de6fc09c11c60b1c3ee4334e93e27c661a2e87558eabe80ba2680",
+  "getQasPublishSkillTemplate": "81dcb2234fcc595d8587237a130f56b9259093d6522113d42a4982fcd43bd780",
 }
 `;
 
@@ -19,6 +19,6 @@ exports[`skill templates split parity > preserves generated QASpec skill file co
   "qaspec-analyze": "00d621069ebb15faf0103fdbc9121d59e60d2ff06b026dd4519c8e1d63bd1f18",
   "qaspec-archive": "3aa5b5ef516567b2401d5dd3044c706f068bd5e098d501147f476a264ab806aa",
   "qaspec-cases": "7e5ba432184a737803466455661615345af22078ab8d74bb31f307df65a71182",
-  "qaspec-publish": "37608822b549e6ab471f56d45775e46aa67e433852fdad1bf4548e321301b2d8",
+  "qaspec-publish": "bed9fd4baae238adc3fd67ae192f528486f7ecdd74d2ada723026083cd6c0922",
 }
 `;

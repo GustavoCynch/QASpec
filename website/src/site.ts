@@ -49,8 +49,8 @@ export const WORKFLOW_COMMANDS = [
     command: '/qsx:publish',
     label: 'Publish',
     description:
-      'Approved cases upload to Qase via MCP — only after you review the plan and confirm.',
-    artifact: '→ publish-plan.md',
+      'Approved cases upload to Qase via MCP — only after you review the in-chat summary and confirm.',
+    artifact: '→ publish-log.md',
   },
   {
     num: '04',

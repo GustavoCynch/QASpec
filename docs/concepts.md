@@ -704,7 +704,7 @@ qaspec/
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  3. PUBLISH    │  /qsx:publish → Qase (only TCMS today) when approved    │
+│   │  3. PUBLISH    │  /qsx:publish → in-chat summary, Qase upload, publish-log │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │

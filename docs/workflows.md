@@ -22,7 +22,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 |----|---------------|--------|
 | `analyze` | `/qsx:analyze` | `analisis.md` |
 | `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) + delta specs |
-| `publish` | `/qsx:publish` | `execution-context.md`, `publish-plan.md`, then **Qase** upload after confirm |
+| `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; `publish-log.md` trace |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
@@ -35,7 +35,8 @@ Typical happy path:
 
 - **Analyze → cases:** `analisis.md` is the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze must persist halt answers into that file; cases reads it before the PR diff and overrides the diff when they conflict.
 - **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case and requirement approval. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
-- **Publish prepare → upload:** Publish writes `execution-context.md` and `publish-plan.md`, halts for edit or confirm, then runs **Qase MCP** only after confirmation. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
+- **Publish summary → upload:** Publish resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice), presents an in-chat summary of unchecked cases, halts once for confirm, then runs **Qase MCP** only after confirmation and writes `publish-log.md`. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
+- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` (source of truth) or state exclusions in chat instead. Legacy `execution-context.md` in a change is read once and offered for migration to config.
 - **Cases without analyze:** Not supported — cases requires `analisis.md` from analyze.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
@@ -66,7 +67,7 @@ Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_t
 ### Exploratory PR review
 
 ```text
-/qsx:analyze ──► /qsx:cases ──► (approve) ──► /qsx:publish ──► (confirm plan) ──► Qase upload
+/qsx:analyze ──► /qsx:cases ──► (approve) ──► /qsx:publish ──► (confirm summary) ──► Qase upload
 ```
 
 Use when a PR or requirement doc needs structured risk analysis before cases are written.
