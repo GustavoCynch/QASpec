@@ -3,9 +3,7 @@
 ## Purpose
 
 Ensure every QASpec-initialized project has editable reference files for regression patterns and Qase authoring rules.
-
 ## Requirements
-
 ### Requirement: Reference directory scaffolding
 
 On init, the system SHALL create `qaspec/references/` when it does not exist.
@@ -32,12 +30,25 @@ Init SHALL create `qaspec/references/historical_bugs.md` only if that file does 
 
 ### Requirement: Qase rules template
 
-Init SHALL create `qaspec/references/qase_test_case_rules.md` only if that file does not exist.
+Init SHALL create `qaspec/references/qase_test_case_rules.md` only if that file does not exist. The seeded template SHALL be structured around a closed field mapping table (Qase field → source in `testcases.md` → default → allowed values) and SHALL state that fields absent from the table are omitted or sent with the documented default, never inferred.
 
 #### Scenario: Seed Qase rules template
 
 - **WHEN** the file is missing
-- **THEN** init writes a dummy template describing suite layout, steps, and observable wording rules for Qase
+- **THEN** init writes a template describing suite layout, steps, and observable wording rules for Qase
+- **AND** the template contains a field mapping table with columns for Qase field, source, default, and allowed values, including placeholder rows teams replace with their field codes
+
+#### Scenario: Omit-on-unmapped rule is seeded
+
+- **WHEN** the seeded template is read during the publish phase
+- **THEN** it instructs that any Qase field without a mapping entry is omitted or defaulted
+- **AND** it states that severity, priority, and type values are never invented
+
+#### Scenario: Preserve user content
+
+- **WHEN** `qase_test_case_rules.md` already exists
+- **THEN** init does not modify the file
+- **AND** init still succeeds
 
 ### Requirement: Reference paths in workflow instructions
 
@@ -47,3 +58,4 @@ Generated analyze, cases, and publish workflow instructions SHALL reference thes
 
 - **WHEN** instructions embed reference paths in generated skills
 - **THEN** agents are told to resolve files from project root without hardcoded forward-slash-only assumptions
+
