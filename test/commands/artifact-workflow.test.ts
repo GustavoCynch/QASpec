@@ -466,19 +466,6 @@ describe('artifact-workflow CLI commands', () => {
       expect(instructionsJson.existingOutputPaths).toEqual([canonical(specPath)]);
     });
 
-    it('creates README.md when --description is provided', async () => {
-      const result = await runCLI(
-        ['new', 'change', 'described-feature', '--description', 'This is a test feature'],
-        { cwd: tempDir }
-      );
-      expect(result.exitCode).toBe(0);
-
-      const readmePath = path.join(changesDir, 'described-feature', 'README.md');
-      const content = await fs.readFile(readmePath, 'utf-8');
-      expect(content).toContain('described-feature');
-      expect(content).toContain('This is a test feature');
-    });
-
     it('errors for invalid change name with spaces', async () => {
       const result = await runCLI(['new', 'change', 'invalid name'], { cwd: tempDir });
       expect(result.exitCode).toBe(1);

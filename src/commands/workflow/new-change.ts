@@ -1,11 +1,10 @@
 /**
  * New Change Command
  *
- * Creates a new change directory with optional description and schema.
+ * Creates a new change directory with optional schema.
  */
 
 import ora from 'ora';
-import path from 'path';
 import { createChange, validateChangeName } from '../../utils/change-utils.js';
 import {
   formatChangeLocation,
@@ -19,7 +18,6 @@ import { validateSchemaExists } from './shared.js';
 // -----------------------------------------------------------------------------
 
 export interface NewChangeOptions {
-  description?: string;
   goal?: string;
   areas?: string;
   schema?: string;
@@ -83,9 +81,7 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
   const spinner = ora(`Creating change '${name}'${schemaDisplay}...`).start();
 
   try {
-    const workspaceGoal = planningHome.kind === 'workspace'
-      ? options.goal ?? options.description
-      : options.goal;
+    const workspaceGoal = options.goal;
     const result = await createChange(projectRoot, name, {
       schema: options.schema,
       defaultSchema: planningHome.defaultSchema,
@@ -95,13 +91,6 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
         ...(affectedAreas.length > 0 ? { affected_areas: affectedAreas } : {}),
       },
     });
-
-    // If description provided, create README.md with description
-    if (options.description) {
-      const { promises: fs } = await import('fs');
-      const readmePath = path.join(result.changeDir, 'README.md');
-      await fs.writeFile(readmePath, `# ${name}\n\n${options.description}\n`, 'utf-8');
-    }
 
     const location = formatChangeLocation(planningHome, name);
     const scope = planningHome.kind === 'workspace' ? 'workspace change' : 'change';

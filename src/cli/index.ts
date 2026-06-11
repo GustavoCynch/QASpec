@@ -485,7 +485,6 @@ const newCmd = program.command('new').description('Create new items');
 newCmd
   .command('change <name>')
   .description('Create a new change directory')
-  .option('--description <text>', 'Description to add to README.md')
   .option('--goal <text>', 'Workspace product goal to store with the change')
   .option('--areas <names>', 'Comma-separated affected workspace link names')
   .option('--schema <name>', `Workflow schema to use (default: ${DEFAULT_SCHEMA})`)
