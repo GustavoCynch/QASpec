@@ -1,5 +1,19 @@
 # @qaspec/cli
 
+## 1.5.0
+
+### Minor Changes
+
+- ### New Features
+
+  - **Approval ledger** — `qaspec approve` records phase approvals with digest tracking so agents can verify human sign-off before proceeding.
+  - **Cases validation** — `qaspec validate cases` enforces requirement annotations, structure, and checklist rules on `testcases.md`.
+  - **Publish gate** — `qaspec publish-gate` verifies publish preconditions and emits a gate token before Qase upload.
+
+  ### Other
+
+  - Updated analyze, cases, and publish workflow templates and config seed to use the hardened PR-review pipeline.
+
 ## 1.4.1
 
 ### Patch Changes

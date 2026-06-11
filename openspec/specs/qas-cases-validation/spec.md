@@ -1,7 +1,8 @@
 # qas-cases-validation Specification
 
 ## Purpose
-TBD - created by archiving change harden-pr-review-pipeline. Update Purpose after archive.
+
+Validate that test cases in a change cover every requirement scenario and satisfy structural rules before publish.
 ## Requirements
 ### Requirement: Deterministic coverage validation
 

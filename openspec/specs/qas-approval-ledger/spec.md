@@ -1,7 +1,8 @@
 # qas-approval-ledger Specification
 
 ## Purpose
-TBD - created by archiving change harden-pr-review-pipeline. Update Purpose after archive.
+
+Record and verify human approval of analyze-phase artifacts so later workflow phases can detect stale or missing sign-off before proceeding.
 ## Requirements
 ### Requirement: Phase approval recording
 

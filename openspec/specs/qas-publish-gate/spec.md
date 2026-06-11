@@ -1,7 +1,8 @@
 # qas-publish-gate Specification
 
 ## Purpose
-TBD - created by archiving change harden-pr-review-pipeline. Update Purpose after archive.
+
+Verify publish preconditions (valid approval, passing cases validation, configured TCMS) and emit a gate token before TCMS upload.
 ## Requirements
 ### Requirement: Publish gate verification
 
