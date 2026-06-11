@@ -1,5 +1,17 @@
 # @qaspec/cli
 
+## 1.5.2
+
+### Patch Changes
+
+- Remove unused `--description` option from `qaspec new change` command and its README.md generation. The option was never consumed by any phase in the artifact workflow, creating unnecessary files on every change creation.
+
+## 1.5.1
+
+### Patch Changes
+
+- Archived legacy OpenSpec artifacts and specifications; migrated all references to QASpec nomenclature.
+
 ## 1.5.0
 
 ### Minor Changes
