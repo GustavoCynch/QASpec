@@ -6,7 +6,7 @@ import {
   computeAnalyzeContentHash,
 } from './approval-ledger.js';
 import { validateCases } from './cases-validation.js';
-import { readProjectConfig } from './project-config.js';
+import { resolveTcmsTarget, type TcmsTarget } from './tcms-target.js';
 import {
   readChangeMetadata,
   writeChangeMetadata,
@@ -27,13 +27,9 @@ export interface PublishGateResult {
     coveredRequirements: number;
     totalRequirements: number;
   };
+  tcms?: TcmsTarget;
 }
 
-function hasUsableTcms(projectRoot: string): boolean {
-  const config = readProjectConfig(projectRoot);
-  const tcms = config?.tcms;
-  return !!(tcms?.provider && tcms?.project);
-}
 
 function deriveGateToken(contentHash: string, nonce: string): string {
   const digest = createHash('sha256')
@@ -86,11 +82,14 @@ export function runPublishGate(
     });
   }
 
-  if (!hasUsableTcms(projectRoot)) {
+  const resolvedTcms = resolveTcmsTarget(changeDir, projectRoot);
+  if (!resolvedTcms.usable) {
     failures.push({
       code: 'tcms-missing',
-      message: 'Project config missing usable tcms block (provider + project)',
-      resolve: 'Add tcms block to qaspec/config.yaml',
+      message:
+        'Change has no usable TCMS target (provider + project) in .openspec.yaml or config defaults',
+      resolve:
+        'qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]',
     });
   }
 
@@ -119,6 +118,7 @@ export function runPublishGate(
       coveredRequirements: casesResult.coverage.coveredRequirements,
       totalRequirements: casesResult.coverage.totalRequirements,
     },
+    tcms: resolvedTcms.target,
   };
 }
 

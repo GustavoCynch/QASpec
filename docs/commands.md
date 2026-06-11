@@ -88,20 +88,21 @@ Prepare and upload **approved** test cases from `testcases.md` to **Qase** via M
 
 **What it does:**
 
-1. Resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice to config).
-2. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no Qase upload in that message**.
-3. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testcases.md`.
+1. Resolves the TCMS target for the change (`qaspec tcms show`): the `tcms` block in the change's `.openspec.yaml`, with `qaspec/config.yaml` `tcms` as optional user-managed defaults.
+2. When no usable target exists, proposes **creating a new TCMS project** for the change (recommended), lists existing projects only as alternatives, and halts for your choice — an existing project is reused only when you explicitly pick it. Your choice is persisted per change with `qaspec tcms set`; the agent never writes `tcms` into `qaspec/config.yaml`.
+3. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no Qase upload in that message**.
+4. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testcases.md`.
 
-**TCMS config** (`qaspec/config.yaml`):
+**Per-change TCMS target** (change `.openspec.yaml`, written by `qaspec tcms set`):
 
 ```yaml
 tcms:
   provider: qase
-  project: YOUR_PROJECT_CODE
+  project: PR415
   baseUrl: https://app.qase.io
 ```
 
-Fresh installs include a commented example. If you previously edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.
+Project codes and base URLs often vary per PR or tenant, so the target lives with the change. Teams with one fixed target can uncomment the `tcms` defaults block in `qaspec/config.yaml` (user-managed; publish never writes it). If you previously edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.
 
 ---
 

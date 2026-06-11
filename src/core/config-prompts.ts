@@ -8,7 +8,9 @@ const CONFIG_HEADER = `# QASpec project config
 
 /** Optional footer hints appended after the active qaspec-pr-review seed (not injected into prompts). */
 const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
-# tcms — project-wide TCMS target for /qsx:publish (uncomment and edit, or let publish fill on first run)
+# tcms — optional user-managed DEFAULTS for /qsx:publish (uncomment and edit yourself).
+# The publish target lives per change in the change's .openspec.yaml (qaspec tcms set);
+# publish never writes this block. Set it only when every change targets the same project.
 # tcms:
 #   provider: qase
 #   project: YOUR_PROJECT_CODE

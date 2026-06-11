@@ -229,11 +229,11 @@ Generated `qaspec-analyze` and `qaspec-cases` skills SHALL instruct agents to re
 
 ### Requirement: Publish workflow behavior
 
-The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) from the `tcms` block in `qaspec/config.yaml`, run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full Qase payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — write the write-ahead rows to `publish-log.md`, call Qase via MCP, update each row with the returned ID, and mark published rows in the tracked cases file. On re-run with pending or in-flight rows, the agent SHALL reconcile against Qase by recorded ID or title before creating. Qase fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
+The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) per change via `qaspec tcms show` (change `.openspec.yaml` `tcms` block merged over project-config defaults), run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full Qase payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — write the write-ahead rows to `publish-log.md`, call Qase via MCP, update each row with the returned ID, and mark published rows in the tracked cases file. On re-run with pending or in-flight rows, the agent SHALL reconcile against Qase by recorded ID or title before creating. Qase fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
 
-#### Scenario: Target resolved from project config
+#### Scenario: Target resolved from change metadata
 
-- **GIVEN** `qaspec/config.yaml` contains a `tcms` block with provider, project code, and base URL
+- **GIVEN** the change's `.openspec.yaml` resolves a usable `tcms` target (directly or filled by project-config defaults)
 - **WHEN** the user runs `/qsx:publish`
 - **THEN** the agent uses that target without asking prerequisite questions
 - **AND** proceeds directly to the gate, the publish summary, and single confirm halt
@@ -285,33 +285,40 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 
 ### Requirement: TCMS target discovery and persistence
 
-When `qaspec/config.yaml` has no usable `tcms` target, the publish workflow SHALL discover available Qase projects via MCP when a listing tool exists, offer the user existing projects or creating a new project in one halt, create the project via MCP when the user chooses that and a creation tool exists (otherwise instruct the user to create it in the Qase UI and provide the code), persist the chosen target to the `tcms` block in `qaspec/config.yaml` announcing the edit, and SHALL NOT upload cases in the same message as target selection or creation.
+When the change resolves no usable TCMS target, the publish workflow SHALL default to proposing the creation of a new TCMS project for the change (suggesting a code derived from the change or PR), present that recommendation together with existing projects discovered via MCP (when a listing tool exists) as alternatives in one halt, and wait for the user's choice — it SHALL NOT select an existing project on its own; reuse happens only when the user explicitly picks one. After the user chooses, it SHALL persist the target with `qaspec tcms set --change <name>` announcing the edit, SHALL NOT write the `tcms` block in `qaspec/config.yaml`, and SHALL NOT upload cases in the same message as target selection or creation.
 
-#### Scenario: First publish in a project without tcms config
+#### Scenario: First publish without a target proposes a new project
 
-- **GIVEN** `qaspec/config.yaml` has no `tcms` block
+- **GIVEN** the change resolves no usable TCMS target
 - **WHEN** the user runs `/qsx:publish` with Qase MCP available
-- **THEN** the agent lists existing Qase projects and offers creating a new one in a single halt
-- **AND** after the user picks, the agent writes the `tcms` block to `qaspec/config.yaml` and says so
+- **THEN** the agent proposes creating a new project (with a suggested code) as the recommended option, listing existing projects only as alternatives, in a single halt
+- **AND** the agent does not persist any target or pick an existing project before the user answers
+- **AND** after the user picks, the agent persists the target via `qaspec tcms set` and says so
 - **AND** the publish summary and confirm halt follow in a later message, never alongside the upload
 
 #### Scenario: User chooses to create a new project
 
 - **WHEN** the user selects "create new project" and the Qase MCP exposes a project-creation tool
 - **THEN** the agent creates the project via MCP with a name and code the user approved
-- **AND** persists the new project code to the `tcms` block
+- **AND** persists the new project code via `qaspec tcms set --change <name>`
+
+#### Scenario: User explicitly reuses an existing project
+
+- **WHEN** the user picks an existing project from the alternatives in the halt
+- **THEN** the agent persists that project via `qaspec tcms set --change <name>`
+- **AND** `qaspec/config.yaml` is not modified
 
 #### Scenario: Discovery degrades without optional MCP tools
 
 - **WHEN** the Qase MCP lacks project listing or creation tools
-- **THEN** the agent asks for the project code in the same single halt instead of failing
-- **AND** persists the provided value to the `tcms` block
+- **THEN** the agent still proposes create-new first and asks for the project code in the same single halt instead of failing
+- **AND** persists the provided value via `qaspec tcms set --change <name>`
 
-#### Scenario: Legacy execution-context migrates to config
+#### Scenario: Legacy execution-context surfaces as an alternative
 
-- **GIVEN** config has no `tcms` block and the change contains a legacy `execution-context.md` with project code and base URL
+- **GIVEN** the change resolves no usable TCMS target and contains a legacy `execution-context.md` with project code and base URL
 - **WHEN** the user runs `/qsx:publish`
-- **THEN** the agent uses those values, offers persisting them to `qaspec/config.yaml`, and does not re-ask for them
+- **THEN** the agent surfaces those values as one alternative in the same halt without auto-selecting them
 - **AND** legacy `publish-plan.md` files are ignored and never required
 
 ### Requirement: Content migration from qa-pr-review

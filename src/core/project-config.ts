@@ -58,7 +58,9 @@ export const ProjectConfigSchema = z.object({
   // Optional: workflow execution toggles (e.g. dual blind subagents per phase)
   workflow: WorkflowConfigSchema.optional(),
 
-  // Optional: TCMS target for publish (provider, project code, base URL)
+  // Optional: user-managed TCMS defaults for publish (provider, project code,
+  // base URL). The per-change target in the change's .openspec.yaml wins;
+  // publish flows never write this block.
   tcms: TcmsConfigSchema.optional(),
 });
 

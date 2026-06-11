@@ -23,7 +23,7 @@ The workflow adapts to what you provide; the goal is always the same: align on *
 
 **Today:** `/qsx:publish` uploads approved cases to **[Qase](https://qase.io/)** only, via the Qase MCP server configured in your agent.
 
-**In progress:** a pluggable TCMS model (selectable at install time) and connectors for [TestRail](https://www.testrail.com/), [Xray](https://www.getxray.app/), and others. Until those land, publish workflows and reference scaffolds (`qase_test_case_rules.md`, `tcms` block in `qaspec/config.yaml`) are Qase-oriented.
+**In progress:** a pluggable TCMS model (selectable at install time) and connectors for [TestRail](https://www.testrail.com/), [Xray](https://www.getxray.app/), and others. Until those land, publish workflows and reference scaffolds (`qase_test_case_rules.md`, per-change `tcms` target set via `qaspec tcms set`) are Qase-oriented.
 
 **Collaborate:** if you use another TCMS or want to help shape the plugin API, open an [issue](https://github.com/GustavoCynch/QASpec/issues) or [pull request](https://github.com/GustavoCynch/QASpec/pulls) — contributions and design feedback are welcome.
 

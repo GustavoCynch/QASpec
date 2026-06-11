@@ -635,7 +635,18 @@ Verify publish preconditions and emit a gate token.
 qaspec publish-gate --change <name> [--head-sha <sha>] [--json]
 ```
 
-Checks: approval valid, cases validation passes, `tcms` block in config. On success prints `qaspec-gate:<8-hex>`.
+Checks: approval valid, cases validation passes, usable TCMS target for the change (change `.openspec.yaml` `tcms` block merged over config defaults). On success prints `qaspec-gate:<8-hex>` and the resolved target.
+
+### `qaspec tcms`
+
+Manage the per-change TCMS publish target stored in the change's `.openspec.yaml`.
+
+```
+qaspec tcms set --change <name> [--provider qase] [--project <CODE>] [--base-url <url>] [--json]
+qaspec tcms show --change <name> [--json]
+```
+
+`set` upserts the provided fields (at least one required) without touching others. `show` prints the resolved target with each field's source (`change` or `config`) and whether it is usable (provider + project present). The `tcms` block in `qaspec/config.yaml` acts only as user-managed defaults — no command or workflow writes it.
 
 **Examples:**
 

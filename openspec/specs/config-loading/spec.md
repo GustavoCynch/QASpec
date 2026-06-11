@@ -139,9 +139,9 @@ The system SHALL parse optional `workflow.multipleSubagents.review` and `workflo
 - **THEN** a warning is logged
 - **AND** that field is omitted from parsed config (phase falls back to default false)
 
-### Requirement: Parse tcms target block
+### Requirement: Parse tcms defaults block
 
-The system SHALL parse an optional `tcms` block (`provider`, `project`, `baseUrl` as strings) from project config using resilient field-by-field validation: an invalid field is warned about and omitted, and an invalid or missing block never fails config load.
+The system SHALL parse an optional `tcms` block (`provider`, `project`, `baseUrl` as strings) from project config using resilient field-by-field validation: an invalid field is warned about and omitted, and an invalid or missing block never fails config load. The block supplies user-managed defaults only; the per-change target in the change's `.openspec.yaml` takes precedence.
 
 #### Scenario: Valid tcms block
 
@@ -152,7 +152,7 @@ The system SHALL parse an optional `tcms` block (`provider`, `project`, `baseUrl
 
 - **WHEN** config lacks a `tcms` block
 - **THEN** config loads successfully
-- **AND** ProjectConfig reports no TCMS target (publish performs discovery)
+- **AND** ProjectConfig reports no TCMS defaults (the target resolves from change metadata or publish discovery)
 
 #### Scenario: Invalid tcms field type
 

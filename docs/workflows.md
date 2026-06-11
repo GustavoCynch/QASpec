@@ -39,7 +39,7 @@ The QA pipeline uses **CLI gates** so critical invariants are mechanically verif
 |------|----------|------|
 | After analyze halt | `qaspec approve analyze --change <name> [--head-sha <sha>]` | User approves the digest; records content hash + optional PR head SHA in `.openspec.yaml` |
 | Before cases halt | `qaspec validate cases --change <name>` | Every requirement has a covering case; every case has a `req` annotation; format lint passes |
-| Before publish upload | `qaspec publish-gate --change <name>` | Approval valid, cases validation passes, `tcms` block present; emits `qaspec-gate:<token>` |
+| Before publish upload | `qaspec publish-gate --change <name>` | Approval valid, cases validation passes, usable per-change TCMS target (`qaspec tcms set`); emits `qaspec-gate:<token>` |
 
 Check approval state anytime with `qaspec status --change <name> --json` — the `approval` block reports `valid`, `stale`, or `missing` for `qaspec-pr-review` changes.
 
@@ -47,7 +47,7 @@ Check approval state anytime with `qaspec status --change <name> --json` — the
 - **Cases → publish:** Every case requires `<!-- req: capability/slug -->`, `assumption:<id>`, or `gap`. Cases halts only after `qaspec validate cases` passes.
 - **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first Qase MCP call. Write `publish-log.md` rows as **pending** before upload; reconcile on retry.
 - **Legacy changes:** Changes created before the approval ledger have `approval: missing` — re-run analyze halt and `qaspec approve analyze` rather than failing hard.
-- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. Legacy `execution-context.md` is read once and offered for migration to config `tcms`.
+- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. Legacy `execution-context.md` values are surfaced as an alternative in the target halt and, once chosen, persisted per change via `qaspec tcms set`.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
 

@@ -2,24 +2,30 @@
 
 ## Purpose
 
-Verify publish preconditions (valid approval, passing cases validation, configured TCMS) and emit a gate token before TCMS upload.
+Verify publish preconditions (valid approval, passing cases validation, usable TCMS target) and emit a gate token before TCMS upload.
 ## Requirements
 ### Requirement: Publish gate verification
 
-The CLI SHALL provide `qaspec publish-gate --change <name>` that verifies, before any TCMS upload: the analyze approval state is `valid`, `qaspec validate cases` passes for the change, and the project config contains a usable `tcms` block. On success it SHALL print a gate token; on failure it SHALL exit non-zero listing every unmet precondition.
+The CLI SHALL provide `qaspec publish-gate --change <name>` that verifies, before any TCMS upload: the analyze approval state is `valid`, `qaspec validate cases` passes for the change, and the change resolves a usable TCMS target (provider + project) from its `.openspec.yaml` `tcms` block merged over project-config defaults. On success it SHALL print a gate token and the resolved target; on failure it SHALL exit non-zero listing every unmet precondition.
 
 #### Scenario: All preconditions met
 
-- **GIVEN** a change with valid approval, passing cases validation, and a configured `tcms` block
+- **GIVEN** a change with valid approval, passing cases validation, and a usable TCMS target in its `.openspec.yaml`
 - **WHEN** `qaspec publish-gate --change <name>` runs
 - **THEN** the command exits zero and prints a gate token
 
+#### Scenario: Project-config defaults satisfy the target
+
+- **GIVEN** a change without a `tcms` block in its `.openspec.yaml` and a project config whose `tcms` defaults include provider and project
+- **WHEN** the gate runs
+- **THEN** the TCMS precondition passes using the config defaults
+
 #### Scenario: Unmet preconditions are enumerated
 
-- **GIVEN** a change with a stale approval and no `tcms` block
+- **GIVEN** a change with a stale approval and no resolvable TCMS target
 - **WHEN** the gate runs
 - **THEN** the command exits non-zero
-- **AND** the output lists both failures with the command that resolves each (`qaspec approve`, config edit)
+- **AND** the output lists both failures with the command that resolves each (`qaspec approve`, `qaspec tcms set`)
 
 ### Requirement: Single-use change-scoped token
 

@@ -64,6 +64,8 @@ PRs are test targets, not ground truth.`,
       ],
       apply: [
         'Re-read qaspec/references/qase_test_case_rules.md before the first Qase MCP call',
+        'Resolve TCMS target per change (qaspec tcms show); when missing, propose creating a new TCMS project as the default and halt for the user choice — reuse an existing project only when the user explicitly selects it',
+        'Persist the chosen target with qaspec tcms set --change <name>; never write the tcms block in qaspec/config.yaml',
         'Run qaspec publish-gate --change <name> before publish summary; cite gate token with user confirmation before first MCP call',
         'Read Preconditions and Steps from each case block in testcases.md for Qase payloads — do not derive steps from title alone',
         'Omit-on-unmapped: send only Qase fields in the mapping table; never infer severity/priority/type',

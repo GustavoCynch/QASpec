@@ -83,6 +83,17 @@ export const ChangeMetadataSchema = z.object({
         .optional(),
     })
     .optional(),
+
+  // Per-change TCMS publish target (qaspec-pr-review). Targets are
+  // change-scoped because project code and base URL vary per PR/tenant;
+  // project config may only supply defaults.
+  tcms: z
+    .object({
+      provider: z.string().min(1).optional(),
+      project: z.string().min(1).optional(),
+      baseUrl: z.string().min(1).optional(),
+    })
+    .optional(),
 });
 
 export type ChangeMetadata = z.infer<typeof ChangeMetadataSchema>;

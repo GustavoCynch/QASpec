@@ -39,6 +39,16 @@ export async function publishGateCommand(options: PublishGateOptions): Promise<v
     } else if (result.passed && result.token) {
       console.log(chalk.green(`✓ Publish gate passed for "${changeName}"`));
       console.log(`Token: ${result.token}`);
+      if (result.tcms) {
+        const target = [
+          result.tcms.provider,
+          result.tcms.project,
+          result.tcms.baseUrl,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        console.log(`Target: ${target}`);
+      }
       if (result.casesSummary) {
         console.log(
           `Cases coverage: ${result.casesSummary.coveredRequirements}/${result.casesSummary.totalRequirements} requirements`

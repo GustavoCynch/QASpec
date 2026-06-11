@@ -12,6 +12,7 @@ import {
   writeApprovalRecord,
 } from '../../src/core/approval-ledger.js';
 import { writeChangeMetadata } from '../../src/utils/change-metadata.js';
+import { writeTcmsTarget } from '../../src/core/tcms-target.js';
 
 const CASE_BLOCK = `
   <!-- req: cap-a/my-req -->
@@ -59,12 +60,7 @@ describe('publish-gate', () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
 
-  async function seedGreenPath() {
-    await fs.writeFile(
-      path.join(testDir, 'qaspec/config.yaml'),
-      'schema: qaspec-pr-review\ntcms:\n  provider: qase\n  project: PR1\n',
-      'utf-8'
-    );
+  async function seedApproval() {
     const { hash } = computeAnalyzeContentHash(changeDir);
     writeApprovalRecord(changeDir, 'analyze', {
       approvedAt: '2026-06-10T12:00:00.000Z',
@@ -72,19 +68,52 @@ describe('publish-gate', () => {
     });
   }
 
+  async function seedGreenPath() {
+    writeTcmsTarget(changeDir, { provider: 'qase', project: 'PR1' }, projectRoot);
+    await seedApproval();
+  }
+
   it('issues token when all preconditions pass', async () => {
     await seedGreenPath();
     const result = runPublishGate(changeDir, projectRoot);
     expect(result.passed).toBe(true);
     expect(result.token).toMatch(/^qaspec-gate:[a-f0-9]{8}$/);
+    expect(result.tcms).toEqual({ provider: 'qase', project: 'PR1' });
     expect(readPublishGateToken(changeDir)).toBe(result.token);
+  });
+
+  it('passes when project-config defaults supply the target', async () => {
+    await fs.writeFile(
+      path.join(testDir, 'qaspec/config.yaml'),
+      'schema: qaspec-pr-review\ntcms:\n  provider: qase\n  project: MAIN\n',
+      'utf-8'
+    );
+    await seedApproval();
+    const result = runPublishGate(changeDir, projectRoot);
+    expect(result.passed).toBe(true);
+    expect(result.tcms).toEqual({ provider: 'qase', project: 'MAIN' });
+  });
+
+  it('change-level target wins over config defaults', async () => {
+    await fs.writeFile(
+      path.join(testDir, 'qaspec/config.yaml'),
+      'schema: qaspec-pr-review\ntcms:\n  provider: qase\n  project: MAIN\n',
+      'utf-8'
+    );
+    writeTcmsTarget(changeDir, { project: 'PR415' }, projectRoot);
+    await seedApproval();
+    const result = runPublishGate(changeDir, projectRoot);
+    expect(result.passed).toBe(true);
+    expect(result.tcms).toEqual({ provider: 'qase', project: 'PR415' });
   });
 
   it('enumerates failures when approval and tcms are missing', async () => {
     const result = runPublishGate(changeDir, projectRoot);
     expect(result.passed).toBe(false);
     expect(result.failures.some((f) => f.code === 'approval-missing')).toBe(true);
-    expect(result.failures.some((f) => f.code === 'tcms-missing')).toBe(true);
+    const tcmsFailure = result.failures.find((f) => f.code === 'tcms-missing');
+    expect(tcmsFailure).toBeDefined();
+    expect(tcmsFailure?.resolve).toContain('qaspec tcms set');
   });
 
   it('replaces token on re-run', async () => {

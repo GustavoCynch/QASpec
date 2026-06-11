@@ -61,6 +61,9 @@ describe('qa-config-seed', () => {
     expect(applyRules).toMatch(/confirmation halt/i);
     expect(applyRules).toMatch(/never upload in the same message/i);
     expect(applyRules).toMatch(/in-chat publish summary/i);
+    expect(applyRules).toMatch(/propose creating a new TCMS project/i);
+    expect(applyRules).toMatch(/qaspec tcms set/);
+    expect(applyRules).toMatch(/never write the tcms block in qaspec\/config\.yaml/i);
   });
 
   it('serializeConfig for qaspec-pr-review includes commented tcms example', () => {
@@ -70,7 +73,9 @@ describe('qa-config-seed', () => {
     expect(yaml).toContain('provider: qase');
     expect(yaml).toContain('YOUR_PROJECT_CODE');
     expect(yaml).toContain('https://app.qase.io');
-    expect(yaml).toMatch(/first run/i);
+    expect(yaml).toMatch(/user-managed defaults/i);
+    expect(yaml).toMatch(/qaspec tcms set/);
+    expect(yaml).toMatch(/publish never writes this block/i);
   });
 
   it('test-cases seed rules require approval check, req annotations, and validate gate', () => {
@@ -164,7 +169,13 @@ describe('qa-config-seed', () => {
 
     expect(content).toContain('tcms');
     expect(content).not.toMatch(/Write or update `publish-plan\.md`/);
-    expect(content).toMatch(/Do not write `execution-context\.md` or `publish-plan\.md`/);
+    expect(content).toMatch(
+      /Do not write `execution-context\.md`, `publish-plan\.md`, or the `tcms` block in `qaspec\/config\.yaml`/
+    );
+    expect(content).toMatch(/propose creating a new TCMS project/i);
+    expect(content).toMatch(/wait for the user's choice/i);
+    expect(content).toMatch(/qaspec tcms set/);
+    expect(content).toMatch(/Never write the `tcms` block in `qaspec\/config\.yaml`/);
     expect(content).toMatch(/confirmation halt/i);
     expect(content).toMatch(/Do not invoke Qase MCP/i);
     expect(content).toMatch(/Preconditions.*Steps/s);

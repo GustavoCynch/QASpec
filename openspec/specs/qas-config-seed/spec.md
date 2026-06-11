@@ -33,13 +33,13 @@ When init creates a new project config with schema `qaspec-pr-review`, the seed 
 
 ### Requirement: Seed documents the tcms target block
 
-When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include a commented `tcms` example block documenting `provider`, `project`, and `baseUrl`, explaining that publish fills or uses it as the project-wide TCMS target.
+When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include a commented `tcms` example block documenting `provider`, `project`, and `baseUrl`, explaining that the block holds optional user-managed defaults, that the publish target lives per change in the change's `.openspec.yaml` (set via `qaspec tcms set`), and that publish never writes this block.
 
 #### Scenario: Fresh init includes commented tcms example
 
 - **WHEN** init creates `qaspec/config.yaml` with `schema: qaspec-pr-review` and no prior config existed
 - **THEN** the file contains a commented `tcms` block showing `provider: qase`, a project code placeholder, and a base URL placeholder
-- **AND** a comment states that `/qsx:publish` proposes and persists this target on first publish when the block is absent
+- **AND** a comment states the block is user-managed defaults only and the per-change target is persisted via `qaspec tcms set`, never by publish writing this file
 
 #### Scenario: Existing config is not overwritten
 
@@ -56,7 +56,7 @@ When init creates a new project config with schema `qaspec-pr-review`, the CLI S
 - **AND** no prior config file existed
 - **THEN** the file contains a non-empty `context: |` block including QA role (read-only on application source), language declaration, and stack placeholders teams may edit
 - **AND** the file contains `rules.analyze`, `rules.test-cases`, `rules.specs`, and `rules.apply` each with at least one active rule line
-- **AND** `rules.apply` references the `tcms` config target and the single confirmation halt, not prepare files
+- **AND** `rules.apply` references the per-change TCMS target (`qaspec tcms set`/`show`), the propose-new-project default with a halt for the user choice, and the single confirmation halt, not prepare files or config-target writes
 - **AND** rules content is maintained in English in the fork seed module
 
 #### Scenario: Existing config is not overwritten

@@ -166,13 +166,17 @@ apply:
     - Confirm `testcases.md` is approved and checkbox-formatted
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
     - Read completed `specs/**/*.md` for context when files exist
-    - Resolve TCMS target (provider, project code, base URL) from `tcms` block in `qaspec/config.yaml`
-    - When config has no usable `tcms` block:
-      - If change contains legacy `execution-context.md`, read project code and base URL from it and offer persisting them to `qaspec/config.yaml` `tcms` block
-      - Otherwise discover Qase projects via MCP when a listing tool exists; present existing projects plus "create new" in **one** halt; on create-new use MCP creation tool when available, otherwise instruct user to create in Qase UI and provide code
-      - When MCP lacks list/create tools, ask for project code in the same single halt
-      - Persist chosen target to `qaspec/config.yaml` `tcms` block and announce the edit
-      - **Do not invoke Qase MCP for upload** in the same message as target selection or `tcms` persistence
+    - Resolve TCMS target for the change via `qaspec tcms show --change <name> --json` (change `.openspec.yaml` `tcms` block; project config `tcms` supplies user-managed defaults only)
+    - When the change has no usable target (provider + project):
+      - **Default: propose creating a new TCMS project** for this change — suggest a code derived from the change/PR (e.g. PR415)
+      - Discover existing projects via MCP listing tool only to present them as alternatives — never select one yourself
+      - Present create-new (recommended) plus existing-project alternatives in **one** halt and **wait for the user's choice**; reuse an existing project only when the user explicitly selects it
+      - If change contains legacy `execution-context.md`, surface its project code and base URL as one alternative
+      - On create-new use MCP creation tool when available, otherwise instruct user to create in Qase UI and provide code
+      - When MCP lacks list/create tools, ask for project code in the same single halt (still proposing create-new first)
+      - After the user chooses, persist with `qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]` and announce it
+      - **Never write the `tcms` block in `qaspec/config.yaml`**
+      - **Do not invoke Qase MCP for upload** in the same message as target selection or target persistence
     - Ignore legacy `publish-plan.md` if present
 
     **Publish gate:** Run `qaspec publish-gate --change <name>` before the publish summary. When it fails, report
@@ -195,4 +199,4 @@ apply:
 
     User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-run publish gate, re-present summary, ask again for confirm before MCP.
 
-    Do not write `execution-context.md` or `publish-plan.md`. Do not modify application source code under test. Stop on PII/secrets.
+    Do not write `execution-context.md`, `publish-plan.md`, or the `tcms` block in `qaspec/config.yaml`. Do not modify application source code under test. Stop on PII/secrets.

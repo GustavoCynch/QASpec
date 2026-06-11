@@ -38,6 +38,7 @@ import {
 import { approveCommand } from '../commands/approve.js';
 import { validateCasesCommand } from '../commands/validate-cases.js';
 import { publishGateCommand } from '../commands/publish-gate.js';
+import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
 
 const program = new Command();
@@ -537,7 +538,7 @@ newCmd
 // Publish gate — precondition check before TCMS upload
 program
   .command('publish-gate')
-  .description('Verify approval, cases validation, and tcms config before publish')
+  .description('Verify approval, cases validation, and TCMS target before publish')
   .requiredOption('--change <id>', 'Change name')
   .option('--head-sha <sha>', 'PR head SHA for approval verification')
   .option('--json', 'Output gate result as JSON')
@@ -547,6 +548,52 @@ program
       if (typeof process.exitCode === 'number' && process.exitCode !== 0) {
         process.exit(process.exitCode);
       }
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// TCMS target — per-change publish target stored in the change metadata
+const tcmsCmd = program
+  .command('tcms')
+  .description('Manage the per-change TCMS publish target');
+
+tcmsCmd
+  .command('set')
+  .description('Persist the TCMS target (provider, project, base URL) for a change')
+  .requiredOption('--change <id>', 'Change name')
+  .option('--provider <provider>', 'TCMS provider (v1: qase)')
+  .option('--project <code>', 'TCMS project code')
+  .option('--base-url <url>', 'Base URL for test navigation steps')
+  .option('--json', 'Output as JSON')
+  .action(
+    async (options: {
+      change: string;
+      provider?: string;
+      project?: string;
+      baseUrl?: string;
+      json?: boolean;
+    }) => {
+      try {
+        await tcmsSetCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    }
+  );
+
+tcmsCmd
+  .command('show')
+  .description('Show the resolved TCMS target for a change (change metadata over config defaults)')
+  .requiredOption('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change: string; json?: boolean }) => {
+    try {
+      await tcmsShowCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
