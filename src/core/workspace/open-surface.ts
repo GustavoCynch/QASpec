@@ -11,8 +11,8 @@ import {
 
 const fs = nodeFs.promises;
 
-export const WORKSPACE_GUIDANCE_START_MARKER = '<!-- OPENSPEC:WORKSPACE-GUIDANCE:START -->';
-export const WORKSPACE_GUIDANCE_END_MARKER = '<!-- OPENSPEC:WORKSPACE-GUIDANCE:END -->';
+export const WORKSPACE_GUIDANCE_START_MARKER = '<!-- QASPEC:WORKSPACE-GUIDANCE:START -->';
+export const WORKSPACE_GUIDANCE_END_MARKER = '<!-- QASPEC:WORKSPACE-GUIDANCE:END -->';
 
 export const WORKSPACE_GUIDANCE_BODY = `# QASpec Workspace Guidance
 
@@ -23,7 +23,7 @@ This directory is an QASpec workspace for planning across linked repos or folder
 - Repo or folder visibility supports exploration and planning.
 - Make implementation edits after the user explicitly asks for implementation work.
 - Treat linked repos and folders as the implementation homes for their owned code.
-- Use QASpec workspace commands instead of hand-editing \`.qaspec-workspace/*.yaml\` (legacy: \`.openspec-workspace/\`).`;
+- Use QASpec workspace commands instead of hand-editing \`.qaspec-workspace/*.yaml\`.`;
 
 export interface WorkspaceOpenLink {
   name: string;

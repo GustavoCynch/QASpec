@@ -262,7 +262,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_changes');
+      expect(script).toContain('_qaspec_complete_changes');
     });
 
     it('should handle positional arguments for spec-id', () => {
@@ -278,7 +278,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_specs');
+      expect(script).toContain('_qaspec_complete_specs');
     });
 
     it('should handle positional arguments for change-or-spec-id', () => {
@@ -294,7 +294,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_items');
+      expect(script).toContain('_qaspec_complete_items');
     });
 
     it('should handle positional arguments for shell', () => {
@@ -345,7 +345,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_schemas');
+      expect(script).toContain('_qaspec_complete_schemas');
       expect(script).toContain('qaspec __complete schemas 2>/dev/null');
     });
 
@@ -362,7 +362,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_changes() {');
+      expect(script).toContain('_qaspec_complete_changes() {');
       expect(script).toContain('qaspec __complete changes 2>/dev/null');
       expect(script).toContain('cut -f1');
       expect(script).toContain('COMPREPLY=');
@@ -381,7 +381,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_specs() {');
+      expect(script).toContain('_qaspec_complete_specs() {');
       expect(script).toContain('qaspec __complete specs 2>/dev/null');
       expect(script).toContain('cut -f1');
     });
@@ -399,7 +399,7 @@ describe('BashGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_complete_items() {');
+      expect(script).toContain('_qaspec_complete_items() {');
       expect(script).toContain('qaspec __complete changes 2>/dev/null');
       expect(script).toContain('qaspec __complete specs 2>/dev/null');
     });
@@ -437,7 +437,7 @@ describe('BashGenerator', () => {
       expect(script).toContain('validate');
       expect(script).toContain('--strict');
       expect(script).toContain('--json');
-      expect(script).toContain('_openspec_complete_specs');
+      expect(script).toContain('_qaspec_complete_specs');
     });
 
     it('should generate script that ends with complete registration', () => {

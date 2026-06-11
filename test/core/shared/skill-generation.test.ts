@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { CORE_WORKFLOWS } from '../../../src/core/profiles.js';
 import {
   getSkillTemplates,
-  getCoexistenceSkillTemplates,
   getCommandTemplates,
   getCommandContents,
   generateSkillContent,
@@ -76,18 +75,6 @@ describe('skill-generation', () => {
       );
       expect(filtered.filter((t) => t.workflowId === 'cases')).toHaveLength(1);
       expect(filtered.filter((t) => t.dirName === 'qaspec-cases')).toHaveLength(1);
-    });
-  });
-
-  describe('getCoexistenceSkillTemplates', () => {
-    it('returns full QASpec core skill set regardless of legacy profile ids', () => {
-      const merged = getCoexistenceSkillTemplates(['propose', 'explore', 'apply', 'archive']);
-      const dirNames = merged.map((t) => t.dirName);
-      expect(dirNames).toContain('qaspec-analyze');
-      expect(dirNames).toContain('qaspec-cases');
-      expect(dirNames).toContain('qaspec-publish');
-      expect(dirNames).toContain('qaspec-archive');
-      expect(merged).toHaveLength(4);
     });
   });
 

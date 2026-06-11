@@ -1,5 +1,4 @@
 import * as nodeFs from 'node:fs';
-import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
@@ -10,27 +9,6 @@ import { FileSystemUtils } from '../../utils/file-system.js';
 const fs = nodeFs.promises;
 
 export const WORKSPACE_METADATA_DIR_NAME = '.qaspec-workspace';
-export const LEGACY_WORKSPACE_METADATA_DIR_NAME = '.openspec-workspace';
-
-function resolveWorkspaceMetadataDirName(workspaceRoot: string): string {
-  const qaspecShared = path.join(
-    workspaceRoot,
-    WORKSPACE_METADATA_DIR_NAME,
-    WORKSPACE_SHARED_STATE_FILE_NAME
-  );
-  const legacyShared = path.join(
-    workspaceRoot,
-    LEGACY_WORKSPACE_METADATA_DIR_NAME,
-    WORKSPACE_SHARED_STATE_FILE_NAME
-  );
-  if (existsSync(qaspecShared)) {
-    return WORKSPACE_METADATA_DIR_NAME;
-  }
-  if (existsSync(legacyShared)) {
-    return LEGACY_WORKSPACE_METADATA_DIR_NAME;
-  }
-  return WORKSPACE_METADATA_DIR_NAME;
-}
 export const WORKSPACE_SHARED_STATE_FILE_NAME = 'workspace.yaml';
 export const WORKSPACE_LOCAL_STATE_FILE_NAME = 'local.yaml';
 export const WORKSPACE_CHANGES_DIR_NAME = 'changes';
@@ -110,7 +88,7 @@ function joinWorkspacePath(basePath: string, ...segments: string[]): string {
 }
 
 export function getWorkspaceMetadataDir(workspaceRoot: string): string {
-  return joinWorkspacePath(workspaceRoot, resolveWorkspaceMetadataDirName(workspaceRoot));
+  return joinWorkspacePath(workspaceRoot, WORKSPACE_METADATA_DIR_NAME);
 }
 
 export function getWorkspaceSharedStatePath(workspaceRoot: string): string {

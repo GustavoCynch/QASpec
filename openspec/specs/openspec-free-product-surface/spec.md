@@ -4,6 +4,32 @@
 
 Define requirements for a QASpec product surface free of OpenSpec branding in user-facing documentation, CLI binaries, and maintainer metadata.
 ## Requirements
+### Requirement: Product surface free of OpenSpec runtime artifacts
+
+The installed product SHALL expose only QASpec-named runtime artifacts: configuration is read from `qaspec/` and `~/.config/qaspec/` (XDG-resolved) only, per-change metadata is stored in `.qaspec.yaml` only, behavior is controlled by `QASPEC_*` environment variables only, and no network calls are made to OpenSpec-owned endpoints.
+
+#### Scenario: No OPENSPEC_* environment variables
+
+- **WHEN** a user sets any `OPENSPEC_*` environment variable
+- **THEN** QASpec behavior is unaffected
+- **AND** `--help` output and docs mention only `QASPEC_*` variables
+
+#### Scenario: No .openspec.yaml artifacts generated
+
+- **WHEN** any QASpec command creates or updates per-change metadata
+- **THEN** the file is named `.qaspec.yaml`
+- **AND** no command reads or writes a `.openspec.yaml` file
+
+#### Scenario: No upstream network endpoints
+
+- **WHEN** any QASpec command runs
+- **THEN** no request is sent to `openspec.dev` or any upstream-owned host
+
+#### Scenario: Cross-platform config locations
+
+- **WHEN** resolving user-level configuration on Unix, macOS, or Windows
+- **THEN** the directory leaf is `qaspec` (e.g. `~/.config/qaspec`, `%APPDATA%\qaspec`), built with platform path APIs
+
 ### Requirement: Single product CLI binary
 
 The published package SHALL expose only **`qaspec`** as an npm executable. The package SHALL NOT register an **`openspec`** binary in `package.json`.
@@ -74,7 +100,6 @@ The repository SHALL fail CI when new unallowlisted OpenSpec product strings or 
 
 - **WHEN** CI runs branding tests and a skill or command template body instructs running an `openspec <subcommand>` (e.g. `openspec feedback`)
 - **THEN** the build fails
-- **AND** allowlisted upstream-coexistence prose (e.g. "leave `openspec-*` skills untouched") does not trigger the failure
 
 #### Scenario: Allowlisted repo spec path
 

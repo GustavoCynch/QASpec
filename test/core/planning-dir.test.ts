@@ -7,7 +7,6 @@ import {
   getPlanningDir,
   hasPlanningHome,
   QASPEC_DIR_NAME,
-  OPENSPEC_DIR_NAME,
 } from '../../src/core/planning-dir.js';
 import { InitCommand } from '../../src/core/init.js';
 import { vi } from 'vitest';
@@ -36,17 +35,17 @@ describe('planning-dir resolver', () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
 
-  it('prefers qaspec when both qaspec and openspec exist', async () => {
+  it('always resolves qaspec as the planning home directory name', async () => {
     await fs.mkdir(path.join(testDir, QASPEC_DIR_NAME), { recursive: true });
-    await fs.mkdir(path.join(testDir, OPENSPEC_DIR_NAME), { recursive: true });
     expect(resolvePlanningDirName(testDir)).toBe(QASPEC_DIR_NAME);
     expect(getPlanningDir(testDir)).toBe(path.join(testDir, QASPEC_DIR_NAME));
   });
 
-  it('uses openspec when only legacy layout exists', async () => {
-    await fs.mkdir(path.join(testDir, OPENSPEC_DIR_NAME), { recursive: true });
-    expect(resolvePlanningDirName(testDir)).toBe(OPENSPEC_DIR_NAME);
-    expect(getPlanningDir(testDir)).toBe(path.join(testDir, OPENSPEC_DIR_NAME));
+  it('does not treat legacy openspec/ as the planning home', async () => {
+    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
+    expect(resolvePlanningDirName(testDir)).toBe(QASPEC_DIR_NAME);
+    expect(getPlanningDir(testDir)).toBe(path.join(testDir, QASPEC_DIR_NAME));
+    expect(hasPlanningHome(testDir)).toBe(false);
   });
 
   it('defaults to qaspec when neither directory exists', () => {
@@ -59,7 +58,6 @@ describe('planning-dir resolver', () => {
     const initCommand = new InitCommand({ tools: 'claude', force: true });
     await initCommand.execute(testDir);
     expect(await directoryExists(path.join(testDir, QASPEC_DIR_NAME))).toBe(true);
-    expect(await directoryExists(path.join(testDir, OPENSPEC_DIR_NAME))).toBe(false);
     expect(resolvePlanningDirName(testDir)).toBe(QASPEC_DIR_NAME);
   });
 });

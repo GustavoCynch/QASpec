@@ -283,10 +283,10 @@ describe('FileSystemUtils', () => {
 
     it('should join Linux home directory paths', () => {
       const result = FileSystemUtils.joinPath(
-        '/home/dev/workspace/openspec',
+        '/home/dev/workspace/qaspec',
         '.cursor/commands/install.md'
       );
-      expect(result).toBe('/home/dev/workspace/openspec/.cursor/commands/install.md');
+      expect(result).toBe('/home/dev/workspace/qaspec/.cursor/commands/install.md');
     });
 
     it('should join Windows drive-letter paths with backslashes', () => {

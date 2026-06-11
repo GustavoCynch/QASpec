@@ -17,7 +17,7 @@ export interface CreateChangeOptions {
   defaultSchema?: string;
   /** Directory that should contain the change directories */
   changesDir?: string;
-  /** Additional metadata to persist in the change's .openspec.yaml */
+  /** Additional metadata to persist in the change's .qaspec.yaml */
   metadata?: Partial<Pick<ChangeMetadata, 'goal' | 'affected_areas'>>;
 }
 
@@ -100,7 +100,7 @@ export function validateChangeName(name: string): ValidationResult {
 /**
  * Creates a new change directory with metadata file.
  *
- * @param projectRoot - The root directory of the project (where `openspec/` lives)
+ * @param projectRoot - The root directory of the project (where `qaspec/` lives)
  * @param name - The change name (must be valid kebab-case)
  * @param options - Optional settings for the change
  * @throws Error if the change name is invalid
@@ -110,12 +110,12 @@ export function validateChangeName(name: string): ValidationResult {
  * @returns Result containing the resolved schema name
  *
  * @example
- * // Creates openspec/changes/add-auth/ with default schema
+ * // Creates qaspec/changes/add-auth/ with default schema
  * const result = await createChange('/path/to/project', 'add-auth')
  * console.log(result.schema) // 'spec-driven' or value from config
  *
  * @example
- * // Creates openspec/changes/add-auth/ with custom schema
+ * // Creates qaspec/changes/add-auth/ with custom schema
  * const result = await createChange('/path/to/project', 'add-auth', { schema: 'my-workflow' })
  * console.log(result.schema) // 'my-workflow'
  */

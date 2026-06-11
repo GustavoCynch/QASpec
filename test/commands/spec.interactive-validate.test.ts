@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 describe('spec validate (interactive behavior)', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-spec-validate-tmp');
-  const specsDir = path.join(testDir, 'openspec', 'specs');
+  const specsDir = path.join(testDir, 'qaspec', 'specs');
   const bin = path.join(projectRoot, 'bin', 'qaspec.js');
 
 
@@ -26,7 +26,7 @@ describe('spec validate (interactive behavior)', () => {
     const originalEnv = { ...process.env };
     try {
       process.chdir(testDir);
-      process.env.OPEN_SPEC_INTERACTIVE = '0';
+      process.env.QASPEC_INTERACTIVE = '0';
       let err: any;
       try {
         execSync(`node ${bin} spec validate`, { encoding: 'utf-8' });

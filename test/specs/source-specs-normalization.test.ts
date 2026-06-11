@@ -7,12 +7,11 @@ import {
   findMainSpecStructureIssues,
   stripFencedCodeBlocksPreservingLines,
 } from '../../src/core/parsers/spec-structure.js';
-import { joinPlanningPath } from '../../src/core/planning-dir.js';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..', '..');
-const specsRoot = joinPlanningPath(projectRoot, 'specs');
+// This repo's contributor specs live under openspec/ (dev workflow), not product qaspec/.
+const specsRoot = path.join(projectRoot, 'openspec', 'specs');
 
 const PURPOSE_PLACEHOLDER_PATTERN = /TBD - created by archiving change .*?\. Update Purpose after archive\./;
 const REQUIREMENT_HEADER_PATTERN = /^###\s+Requirement:/gm;

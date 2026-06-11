@@ -1,7 +1,7 @@
 /**
  * Approve Command
  *
- * Records phase approval in the change's .openspec.yaml approval ledger.
+ * Records phase approval in the change's .qaspec.yaml approval ledger.
  */
 
 import chalk from 'chalk';

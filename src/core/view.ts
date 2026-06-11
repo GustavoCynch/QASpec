@@ -79,12 +79,12 @@ export class ViewCommand {
     console.log(chalk.dim(`\nUse ${chalk.white('qaspec list --changes')} or ${chalk.white('qaspec list --specs')} for detailed views`));
   }
 
-  private async getChangesData(openspecDir: string): Promise<{
+  private async getChangesData(planningDir: string): Promise<{
     draft: Array<{ name: string }>;
     active: Array<{ name: string; progress: { total: number; completed: number } }>;
     completed: Array<{ name: string }>;
   }> {
-    const changesDir = path.join(openspecDir, 'changes');
+    const changesDir = path.join(planningDir, 'changes');
 
     if (!fs.existsSync(changesDir)) {
       return { draft: [], active: [], completed: [] };
@@ -130,8 +130,8 @@ export class ViewCommand {
     return { draft, active, completed };
   }
 
-  private async getSpecsData(openspecDir: string): Promise<Array<{ name: string; requirementCount: number }>> {
-    const specsDir = path.join(openspecDir, 'specs');
+  private async getSpecsData(planningDir: string): Promise<Array<{ name: string; requirementCount: number }>> {
+    const specsDir = path.join(planningDir, 'specs');
     
     if (!fs.existsSync(specsDir)) {
       return [];

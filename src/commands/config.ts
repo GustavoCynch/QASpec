@@ -221,8 +221,8 @@ function maybeWarnProjectConfigDrift(
   state: ProfileState,
   colorize: (message: string) => string
 ): void {
-  const openspecDir = getPlanningDir(projectDir);
-  if (!fs.existsSync(openspecDir)) {
+  const planningDir = getPlanningDir(projectDir);
+  if (!fs.existsSync(planningDir)) {
     return;
   }
   if (!hasProjectConfigDrift(projectDir, state.workflows, state.delivery)) {
@@ -704,8 +704,8 @@ export function registerConfigCommand(program: Command): void {
 
         // Check if inside an QASpec project
         const projectDir = process.cwd();
-        const openspecDir = getPlanningDir(projectDir);
-        if (fs.existsSync(openspecDir)) {
+        const planningDir = getPlanningDir(projectDir);
+        if (fs.existsSync(planningDir)) {
           const applyNow = await confirm({
             message: 'Apply changes to this project now?',
             default: true,

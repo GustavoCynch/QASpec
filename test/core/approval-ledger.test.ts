@@ -19,7 +19,7 @@ describe('approval-ledger', () => {
 
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `qaspec-approval-${randomUUID()}`);
-    changeDir = path.join(testDir, 'openspec', 'changes', 'test-change');
+    changeDir = path.join(testDir, 'qaspec', 'changes', 'test-change');
     await fs.mkdir(path.join(changeDir, 'specs', 'cap-a'), { recursive: true });
     writeChangeMetadata(changeDir, { schema: 'qaspec-pr-review', created: '2026-06-10' });
   });

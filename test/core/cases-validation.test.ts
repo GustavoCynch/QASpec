@@ -23,7 +23,7 @@ describe('cases-validation', () => {
 
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `qaspec-cases-${randomUUID()}`);
-    changeDir = path.join(testDir, 'openspec', 'changes', 'pr-1');
+    changeDir = path.join(testDir, 'qaspec', 'changes', 'pr-1');
     await fs.mkdir(path.join(changeDir, 'specs', 'billing-export'), { recursive: true });
   });
 

@@ -31,7 +31,7 @@ The workflow adapts to what you provide; the goal is always the same: align on *
 
 This repository is in **early development** (QASpec fork). The primary CLI is **`qaspec`** (`@qaspec/cli`).
 
-QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `qaspec init`. Existing projects that still use an `openspec/` planning home continue to work without migration.
+QASpec installs `/qas:*` skills, `qaspec-pr-review` schema, and `qaspec/references/` scaffolds via `qaspec init`.
 
 Migration from the legacy pack is **complete**. Authoritative QA runtime is `qaspec init` → `/qas:*` + `qaspec-pr-review` schema. The original `.agents/skills/qa-pr-review/` directory is **retained as reference only** (Cynch/domain detail, not installed by init).
 

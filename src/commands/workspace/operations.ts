@@ -208,7 +208,7 @@ function localStateInvalidStatus(error: unknown): WorkspaceStatus {
     `Machine-local paths could not be read: ${asErrorMessage(error)}`,
     {
       target: 'workspace.local_state',
-      fix: 'Repair or remove .qaspec-workspace/local.yaml (or legacy .openspec-workspace/local.yaml), then run qaspec workspace relink <name> <path> for affected links.',
+      fix: 'Repair or remove .qaspec-workspace/local.yaml, then run qaspec workspace relink <name> <path> for affected links.',
     }
   );
 }
@@ -459,7 +459,7 @@ export async function loadWorkspaceForDoctor(
             `Workspace state could not be read: ${asErrorMessage(error)}`,
             {
               target: 'workspace.root',
-              fix: 'Repair .qaspec-workspace/workspace.yaml (or legacy .openspec-workspace/workspace.yaml) before using this workspace.',
+              fix: 'Repair .qaspec-workspace/workspace.yaml before using this workspace.',
             }
           ),
         ],

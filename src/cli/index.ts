@@ -39,32 +39,11 @@ import { approveCommand } from '../commands/approve.js';
 import { validateCasesCommand } from '../commands/validate-cases.js';
 import { publishGateCommand } from '../commands/publish-gate.js';
 import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
-import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
-
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
 
 const CLI_PROGRAM_NAME = 'qaspec';
-
-/**
- * Get the full command path for nested commands.
- * For example: 'change show' -> 'change:show'
- */
-function getCommandPath(command: Command): string {
-  const names: string[] = [];
-  let current: Command | null = command;
-
-  while (current) {
-    const name = current.name();
-    if (name && name !== CLI_PROGRAM_NAME) {
-      names.unshift(name);
-    }
-    current = current.parent;
-  }
-
-  return names.join(':') || CLI_PROGRAM_NAME;
-}
 
 program
   .name(CLI_PROGRAM_NAME)
@@ -74,27 +53,12 @@ program
 // Global options
 program.option('--no-color', 'Disable color output');
 
-// Apply global flags and telemetry before any command runs
-// Note: preAction receives (thisCommand, actionCommand) where:
-// - thisCommand: the command where hook was added (root program)
-// - actionCommand: the command actually being executed (subcommand)
-program.hook('preAction', async (thisCommand, actionCommand) => {
+// Apply global flags before any command runs
+program.hook('preAction', async (thisCommand) => {
   const opts = thisCommand.opts();
   if (opts.color === false) {
     process.env.NO_COLOR = '1';
   }
-
-  // Show first-run telemetry notice (if not seen)
-  await maybeShowTelemetryNotice();
-
-  // Track command execution (use actionCommand to get the actual subcommand)
-  const commandPath = getCommandPath(actionCommand);
-  await trackCommand(commandPath, version);
-});
-
-// Shutdown telemetry after command completes
-program.hook('postAction', async () => {
-  await shutdown();
 });
 
 const availableToolIds = AI_TOOLS.filter((tool) => tool.skillsDir).map((tool) => tool.value);
@@ -314,7 +278,7 @@ program
   .option('--type <type>', 'Specify item type when ambiguous: change|spec')
   .option('--strict', 'Enable strict validation mode')
   .option('--json', 'Output validation results as JSON')
-  .option('--concurrency <n>', 'Max concurrent validations (defaults to env OPENSPEC_CONCURRENCY or 6)')
+  .option('--concurrency <n>', 'Max concurrent validations (defaults to env QASPEC_CONCURRENCY or 6)')
   .option('--no-interactive', 'Disable interactive prompts')
   .action(async (itemName?: string, options?: { change?: string; all?: boolean; changes?: boolean; specs?: boolean; type?: string; strict?: boolean; json?: boolean; noInteractive?: boolean; concurrency?: string }) => {
     try {

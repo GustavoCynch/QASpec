@@ -8,12 +8,12 @@ Store and resolve the TCMS publish target per change, so project codes and base 
 
 ### Requirement: Per-change TCMS target storage
 
-The change metadata (`.openspec.yaml`) SHALL support an optional `tcms` block with string fields `provider`, `project`, and `baseUrl`. The CLI SHALL provide `qaspec tcms set --change <name>` with `--provider`, `--project`, and `--base-url` options that upserts provided fields into the block, preserving fields not provided, and SHALL error when no field is provided.
+The change metadata (`.qaspec.yaml`) SHALL support an optional `tcms` block with string fields `provider`, `project`, and `baseUrl`. The CLI SHALL provide `qaspec tcms set --change <name>` with `--provider`, `--project`, and `--base-url` options that upserts provided fields into the block, preserving fields not provided, and SHALL error when no field is provided.
 
 #### Scenario: Set persists target in change metadata
 
 - **WHEN** `qaspec tcms set --change pr-415 --provider qase --project PR415` runs
-- **THEN** the change's `.openspec.yaml` contains `tcms` with `provider: qase` and `project: PR415`
+- **THEN** the change's `.qaspec.yaml` contains `tcms` with `provider: qase` and `project: PR415`
 - **AND** other metadata (schema, approvals, publishGate) is preserved
 
 #### Scenario: Upsert preserves existing fields
@@ -46,7 +46,7 @@ The system SHALL resolve the effective TCMS target by merging the change-level `
 
 ### Requirement: Publish flows never write project-config TCMS
 
-Publish workflow instructions and the `qaspec tcms` command SHALL only persist targets to the change's `.openspec.yaml`. The project config `tcms` block SHALL be treated as user-managed defaults that no workflow or CLI command writes.
+Publish workflow instructions and the `qaspec tcms` command SHALL only persist targets to the change's `.qaspec.yaml`. The project config `tcms` block SHALL be treated as user-managed defaults that no workflow or CLI command writes.
 
 #### Scenario: Target persistence is change-scoped
 

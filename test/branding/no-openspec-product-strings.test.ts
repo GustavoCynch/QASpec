@@ -4,7 +4,6 @@ import path from 'path';
 import {
   OPENSPEC_PRODUCT_STRING_ALLOWLIST,
   findOpenspecCliInstructionViolations,
-  isAllowedOpenspecCliInstructionLine,
 } from '../../src/core/branding.js';
 import { getGeneratedTemplateBodiesForBrandingScan } from '../../src/core/shared/skill-generation.js';
 
@@ -61,7 +60,7 @@ describe('no mis-branded OpenSpec product strings', () => {
 
     for (const file of allFiles) {
       const rel = path.relative(REPO_ROOT, file).replace(/\\/g, '/');
-      if (rel === 'src/core/branding.ts' || rel === 'src/core/legacy-cleanup.ts') continue;
+      if (rel === 'src/core/branding.ts') continue;
 
       const content = await fs.readFile(file, 'utf8');
       const lines = content.split(/\r?\n/);
@@ -99,9 +98,4 @@ describe('no mis-branded OpenSpec product strings', () => {
     expect(findOpenspecCliInstructionViolations(fixture, 'fixture')).toHaveLength(1);
   });
 
-  it('allows upstream-coexistence prose in fixture bodies', () => {
-    const fixture = 'Leave `openspec-*` skills untouched when upstream is active.';
-    expect(isAllowedOpenspecCliInstructionLine(fixture)).toBe(true);
-    expect(findOpenspecCliInstructionViolations(fixture, 'fixture')).toEqual([]);
-  });
 });

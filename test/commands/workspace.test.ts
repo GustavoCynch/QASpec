@@ -39,8 +39,7 @@ describe('workspace command', () => {
     env = {
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      QASPEC_INTERACTIVE: '0',
     };
   });
 
@@ -131,7 +130,7 @@ describe('workspace command', () => {
   }
 
   function writeGlobalConfig(config: Record<string, unknown>): void {
-    const configDir = path.join(configHome, 'openspec');
+    const configDir = path.join(configHome, 'qaspec');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify(config, null, 2)}\n`);
   }
@@ -144,7 +143,7 @@ describe('workspace command', () => {
 
   it('sets up a workspace with required links, records local state, and lists it through ls', async () => {
     const api = mkdir('repos/api');
-    mkdir('repos/api/openspec/specs');
+    mkdir('repos/api/qaspec/specs');
     const checkout = mkdir('repos/platform/apps/checkout');
     const expectedApi = expectedExistingPath(api);
     const expectedCheckout = expectedExistingPath(checkout);
@@ -159,7 +158,7 @@ describe('workspace command', () => {
       expect.objectContaining({
         name: 'api',
         path: expectedApi,
-        repo_specs_path: path.join(expectedApi, 'openspec', 'specs'),
+        repo_specs_path: path.join(expectedApi, 'qaspec', 'specs'),
         status: [],
       }),
       expect.objectContaining({
@@ -178,7 +177,7 @@ describe('workspace command', () => {
     );
     const registry = parseWorkspaceRegistryState(
       fs.readFileSync(
-        getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') }),
+        getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') }),
         'utf-8'
       )
     );
@@ -883,7 +882,7 @@ describe('workspace command', () => {
         fix: expect.stringContaining('--link api-alt='),
       })
     );
-    expect(fs.existsSync(getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') }))).toBe(false);
+    expect(fs.existsSync(getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') }))).toBe(false);
   });
 
   it('removes a partially created workspace when setup fails after creating the root', async () => {
@@ -909,7 +908,7 @@ describe('workspace command', () => {
       }
     }
 
-    const globalDataDir = path.join(dataHome, 'openspec');
+    const globalDataDir = path.join(dataHome, 'qaspec');
     expect(fs.existsSync(getManagedWorkspaceRoot('platform', { globalDataDir }))).toBe(false);
     expect(fs.existsSync(getWorkspaceRegistryPath({ globalDataDir }))).toBe(false);
   });
@@ -1139,7 +1138,7 @@ describe('workspace command', () => {
     );
     expect(fs.readFileSync(sentinelPath, 'utf-8')).toBe('{"name":"checkout"}\n');
     expect(fs.readdirSync(packageDir).sort()).toEqual(entriesBefore);
-    expect(fs.existsSync(path.join(packageDir, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(packageDir, 'qaspec'))).toBe(false);
     expect(fs.existsSync(path.join(packageDir, WORKSPACE_METADATA_DIR_NAME))).toBe(false);
   });
 
@@ -1185,7 +1184,7 @@ describe('workspace command', () => {
   it('reports stale registry entries without rewriting the registry', async () => {
     const api = mkdir('repos/api');
     const setup = await setupWorkspace('platform', [`api=${api}`]);
-    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') });
+    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') });
     const registryBefore = fs.readFileSync(registryPath, 'utf-8');
 
     fs.rmSync(setup.workspace.root, { recursive: true, force: true });
@@ -1215,7 +1214,7 @@ describe('workspace command', () => {
     const api = mkdir('repos/api');
     const setup = await setupWorkspace('doctor-local-invalid', [`api=${api}`]);
     const localPath = getWorkspaceLocalStatePath(setup.workspace.root);
-    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') });
+    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') });
     const malformedLocalState = 'version: 1\npaths: []\n';
     const registryBefore = fs.readFileSync(registryPath, 'utf-8');
     fs.writeFileSync(localPath, malformedLocalState);
@@ -1261,7 +1260,7 @@ describe('workspace command', () => {
     const localOnly = mkdir('repos/local-only');
     const setup = await setupWorkspace('platform', [`api=${api}`]);
     const workspaceRoot = setup.workspace.root;
-    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') });
+    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') });
     const missingApiPath = path.join(tempDir, 'repos', 'missing-api');
     const sharedDrift = `version: 1
 name: platform
@@ -1345,7 +1344,7 @@ paths:
       'version: 1\npaths: {}\n'
     );
 
-    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'openspec') });
+    const registryPath = getWorkspaceRegistryPath({ globalDataDir: path.join(dataHome, 'qaspec') });
     const doctor = await runCLI(['workspace', 'doctor', '--json'], { cwd: nested, env });
     expect(doctor.exitCode).toBe(0);
     expect(parseJson(doctor).status[0]).toEqual(

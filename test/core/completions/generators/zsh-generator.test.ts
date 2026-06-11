@@ -78,8 +78,8 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_init() {');
-      expect(script).toContain('_openspec_validate() {');
+      expect(script).toContain('_qaspec_init() {');
+      expect(script).toContain('_qaspec_validate() {');
     });
 
     it('should handle commands with flags', () => {
@@ -200,8 +200,8 @@ describe('ZshGenerator', () => {
 
       expect(script).toContain("'show:Show a change'");
       expect(script).toContain("'list:List changes'");
-      expect(script).toContain('_openspec_change_show() {');
-      expect(script).toContain('_openspec_change_list() {');
+      expect(script).toContain('_qaspec_change_show() {');
+      expect(script).toContain('_qaspec_change_list() {');
     });
 
     it('should handle positional arguments for change-id', () => {
@@ -217,7 +217,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("'*: :_openspec_complete_changes'");
+      expect(script).toContain("'*: :_qaspec_complete_changes'");
     });
 
     it('should handle positional arguments for spec-id', () => {
@@ -233,7 +233,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("'*: :_openspec_complete_specs'");
+      expect(script).toContain("'*: :_qaspec_complete_specs'");
     });
 
     it('should handle positional arguments for change-or-spec-id', () => {
@@ -249,7 +249,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("'*: :_openspec_complete_items'");
+      expect(script).toContain("'*: :_qaspec_complete_items'");
     });
 
     it('should handle positional arguments for paths', () => {
@@ -281,8 +281,8 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain("'*: :_openspec_complete_schemas'");
-      expect(script).toContain('_openspec_complete_schemas()');
+      expect(script).toContain("'*: :_qaspec_complete_schemas'");
+      expect(script).toContain('_qaspec_complete_schemas()');
     });
 
     it('should emit optional indexed positional arguments with double-colon syntax', () => {
@@ -345,7 +345,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_my_command() {');
+      expect(script).toContain('_qaspec_my_command() {');
     });
 
     it('should handle complex nested subcommands with flags', () => {
@@ -377,11 +377,11 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_spec() {');
-      expect(script).toContain('_openspec_spec_validate() {');
+      expect(script).toContain('_qaspec_spec() {');
+      expect(script).toContain('_qaspec_spec_validate() {');
       expect(script).toContain('--strict');
       expect(script).toContain('--json');
-      expect(script).toContain("'*: :_openspec_complete_specs'");
+      expect(script).toContain("'*: :_qaspec_complete_specs'");
     });
 
     it('should generate script that ends with compdef registration', () => {
@@ -418,7 +418,7 @@ describe('ZshGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('_openspec_view() {');
+      expect(script).toContain('_qaspec_view() {');
       expect(script).toContain('_arguments');
     });
   });

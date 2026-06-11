@@ -28,34 +28,18 @@ import {
   CommandAdapterRegistry,
 } from './command-generation/index.js';
 import {
-  detectLegacyArtifacts,
-  cleanupLegacyArtifacts,
-  formatCleanupSummary,
-  formatDetectionSummary,
-  hasActiveUpstreamOpenSpec,
-  type LegacyDetectionResult,
-} from './legacy-cleanup.js';
-import {
-  shouldSkipUpstreamSkillWrite,
-  shouldSkipUpstreamCommandWrite,
-  formatUpstreamCoexistenceSummary,
-  isUpstreamOpenspecSkillDir,
-  isUpstreamLegacyWorkflow,
-  removeLegacyQaspecSkillDirs,
-  removeLegacyQaspecCommandFiles,
   removeRetiredQaspecSkillDirs,
   removeRetiredQaspecCommandFiles,
   removeRenamedQaspecSkillDirs,
   removeRenamedQaspecCommandFiles,
   removeDeselectedQasSubdirCommands,
-} from './upstream-coexistence.js';
+} from './workflow-artifact-cleanup.js';
 import {
   SKILL_NAMES,
   getToolsWithSkillsDir,
   getToolSkillStatus,
   getToolStates,
   getSkillTemplates,
-  getCoexistenceSkillTemplates,
   getCommandContents,
   generateSkillContent,
   type ToolSkillStatus,
@@ -63,20 +47,18 @@ import {
 import { getGlobalConfig, type Delivery, type Profile } from './global-config.js';
 import {
   getProfileWorkflows,
-  CORE_WORKFLOWS,
   ALL_WORKFLOWS,
   getRetiredWorkflowNotices,
   getRenamedWorkflowNotices,
   type CoreWorkflowId,
 } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
-import { migrateIfNeeded, migrateLegacyCoreProfileIfNeeded } from './migration.js';
 import { scaffoldQaspecReferences } from './reference-scaffold.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import { WORKFLOW_TO_SKILL_DIR } from './profile-sync-drift.js';
 
 const require = createRequire(import.meta.url);
-const { version: OPENSPEC_VERSION } = require('../../package.json');
+const { version: QASPEC_VERSION } = require('../../package.json');
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -120,24 +102,13 @@ export class InitCommand {
   async execute(targetPath: string): Promise<void> {
     const projectPath = path.resolve(targetPath);
     const planningDirName = QASPEC_DIR_NAME;
-    const openspecPath = path.join(projectPath, planningDirName);
+    const planningPath = path.join(projectPath, planningDirName);
 
     // Validation happens silently in the background
-    const extendMode = await this.validate(projectPath, openspecPath);
-
-    // Upgrade stale global custom profiles before reading workflows for generation
-    migrateLegacyCoreProfileIfNeeded();
-
-    // Check for legacy artifacts and handle cleanup
-    await this.handleLegacyCleanup(projectPath, extendMode);
+    const extendMode = await this.validate(projectPath, planningPath);
 
     // Detect available tools in the project (task 7.1)
     const detectedTools = getAvailableTools(projectPath);
-
-    // Migration check: migrate existing projects to profile system (task 7.3)
-    if (extendMode) {
-      migrateIfNeeded(projectPath, detectedTools);
-    }
 
     // Show animated welcome screen (interactive mode only)
     const canPrompt = this.canPromptInteractively();
@@ -160,14 +131,14 @@ export class InitCommand {
     const validatedTools = this.validateTools(selectedToolIds, toolStates);
 
     // Create directory structure and config
-    await this.createDirectoryStructure(openspecPath, extendMode);
+    await this.createDirectoryStructure(planningPath, extendMode);
     await scaffoldQaspecReferences(projectPath);
 
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
 
     // Create config.yaml if needed
-    const configStatus = await this.createConfig(openspecPath, extendMode);
+    const configStatus = await this.createConfig(planningPath, extendMode);
 
     // Display success message
     this.displaySuccessMessage(projectPath, validatedTools, results, configStatus);
@@ -179,9 +150,9 @@ export class InitCommand {
 
   private async validate(
     projectPath: string,
-    openspecPath: string
+    planningPath: string
   ): Promise<boolean> {
-    const extendMode = await FileSystemUtils.directoryExists(openspecPath);
+    const extendMode = await FileSystemUtils.directoryExists(planningPath);
 
     // Check write permissions
     if (!(await FileSystemUtils.ensureWritePermissions(projectPath))) {
@@ -206,65 +177,6 @@ export class InitCommand {
     }
 
     throw new Error(`Invalid profile "${this.profileOverride}". Available profiles: core, custom`);
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // LEGACY CLEANUP
-  // ═══════════════════════════════════════════════════════════
-
-  private async handleLegacyCleanup(projectPath: string, extendMode: boolean): Promise<void> {
-    // Detect legacy artifacts
-    const detection = await detectLegacyArtifacts(projectPath);
-
-    if (!detection.hasLegacyArtifacts) {
-      return; // No legacy artifacts found
-    }
-
-    // Show what was detected
-    console.log();
-    console.log(formatDetectionSummary(detection));
-    console.log();
-
-    const canPrompt = this.canPromptInteractively();
-
-    if (this.force || !canPrompt) {
-      // --force flag or non-interactive mode: proceed with cleanup automatically.
-      // Legacy slash commands are 100% QASpec-managed, and config file cleanup
-      // only removes markers (never deletes files), so auto-cleanup is safe.
-      await this.performLegacyCleanup(projectPath, detection);
-      return;
-    }
-
-    // Interactive mode: prompt for confirmation
-    const { confirm } = await import('@inquirer/prompts');
-    const shouldCleanup = await confirm({
-      message: 'Clean up old QASpec files and continue setup?',
-      default: true,
-    });
-
-    if (!shouldCleanup) {
-      console.log(chalk.dim('Initialization cancelled.'));
-      console.log(chalk.dim('Run with --force to skip this prompt, or manually remove legacy files.'));
-      process.exit(0);
-    }
-
-    await this.performLegacyCleanup(projectPath, detection);
-  }
-
-  private async performLegacyCleanup(projectPath: string, detection: LegacyDetectionResult): Promise<void> {
-    const spinner = ora('Cleaning up legacy files...').start();
-
-    const result = await cleanupLegacyArtifacts(projectPath, detection);
-
-    spinner.succeed('Legacy files cleaned up');
-
-    const summary = formatCleanupSummary(result);
-    if (summary) {
-      console.log();
-      console.log(summary);
-    }
-
-    console.log();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -471,14 +383,14 @@ export class InitCommand {
   // DIRECTORY STRUCTURE
   // ═══════════════════════════════════════════════════════════
 
-  private async createDirectoryStructure(openspecPath: string, extendMode: boolean): Promise<void> {
+  private async createDirectoryStructure(planningPath: string, extendMode: boolean): Promise<void> {
     if (extendMode) {
       // In extend mode, just ensure directories exist without spinner
       const directories = [
-        openspecPath,
-        path.join(openspecPath, 'specs'),
-        path.join(openspecPath, 'changes'),
-        path.join(openspecPath, 'changes', 'archive'),
+        planningPath,
+        path.join(planningPath, 'specs'),
+        path.join(planningPath, 'changes'),
+        path.join(planningPath, 'changes', 'archive'),
       ];
 
       for (const dir of directories) {
@@ -490,10 +402,10 @@ export class InitCommand {
     const spinner = this.startSpinner('Creating QASpec structure...');
 
     const directories = [
-      openspecPath,
-      path.join(openspecPath, 'specs'),
-      path.join(openspecPath, 'changes'),
-      path.join(openspecPath, 'changes', 'archive'),
+      planningPath,
+      path.join(planningPath, 'specs'),
+      path.join(planningPath, 'changes'),
+      path.join(planningPath, 'changes', 'archive'),
     ];
 
     for (const dir of directories) {
@@ -552,15 +464,8 @@ export class InitCommand {
     // Get skill and command templates filtered by profile workflows
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const upstreamOpenSpecActive = await hasActiveUpstreamOpenSpec(projectPath);
-    const skillTemplates = shouldGenerateSkills
-      ? upstreamOpenSpecActive
-        ? getCoexistenceSkillTemplates(workflows)
-        : getSkillTemplates(workflows)
-      : [];
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows) : [];
     const commandContents = shouldGenerateCommands ? getCommandContents(workflows) : [];
-    let preservedUpstreamSkills = 0;
-    let preservedUpstreamCommands = 0;
 
     // Process each tool
     for (const tool of tools) {
@@ -577,23 +482,18 @@ export class InitCommand {
             const skillDir = path.join(skillsDir, dirName);
             const skillFile = path.join(skillDir, 'SKILL.md');
 
-            if (await shouldSkipUpstreamSkillWrite(skillFile, dirName, upstreamOpenSpecActive)) {
-              preservedUpstreamSkills++;
-              continue;
-            }
-
             // Generate SKILL.md content with YAML frontmatter including generatedBy
             // Use hyphen-based command references for tools where filename = command name
             const transformer = (tool.value === 'opencode' || tool.value === 'pi') ? transformToHyphenCommands : undefined;
-            const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
+            const skillContent = generateSkillContent(template, QASPEC_VERSION, transformer);
 
             // Write the skill file
             await FileSystemUtils.writeFile(skillFile, skillContent);
           }
         }
-        if (!shouldGenerateSkills && !upstreamOpenSpecActive) {
+        if (!shouldGenerateSkills) {
           const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
-          removedSkillCount += await this.removeSkillDirs(skillsDir, false);
+          removedSkillCount += await this.removeSkillDirs(skillsDir);
         }
 
         // Generate commands if delivery includes commands
@@ -606,10 +506,6 @@ export class InitCommand {
                 ? generated.path
                 : path.join(projectPath, generated.path);
 
-              if (await shouldSkipUpstreamCommandWrite(commandFile, content.id, upstreamOpenSpecActive)) {
-                preservedUpstreamCommands++;
-                continue;
-              }
               await FileSystemUtils.writeFile(commandFile, generated.fileContent);
             }
           } else {
@@ -617,38 +513,24 @@ export class InitCommand {
           }
         }
         if (!shouldGenerateCommands) {
-          removedCommandCount += await this.removeCommandFiles(
-            projectPath,
-            tool.value,
-            upstreamOpenSpecActive
-          );
+          removedCommandCount += await this.removeCommandFiles(projectPath, tool.value);
         }
 
         if (shouldGenerateSkills) {
           const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
-          removedSkillCount += await this.removeUnselectedSkillDirs(
-            skillsDir,
-            upstreamOpenSpecActive ? CORE_WORKFLOWS : desiredWorkflows,
-            upstreamOpenSpecActive
-          );
+          removedSkillCount += await this.removeUnselectedSkillDirs(skillsDir, desiredWorkflows);
           removedSkillCount += await removeRetiredQaspecSkillDirs(skillsDir);
           removedSkillCount += await removeRenamedQaspecSkillDirs(skillsDir);
-          removedSkillCount += await removeLegacyQaspecSkillDirs(skillsDir, upstreamOpenSpecActive);
         }
 
         if (shouldGenerateCommands) {
           removedCommandCount += await this.removeUnselectedCommandFiles(
             projectPath,
             tool.value,
-            desiredWorkflows,
-            upstreamOpenSpecActive
+            desiredWorkflows
           );
           removedCommandCount += await removeRetiredQaspecCommandFiles(projectPath, tool.value);
           removedCommandCount += await removeRenamedQaspecCommandFiles(projectPath, tool.value);
-          removedCommandCount += await removeLegacyQaspecCommandFiles(
-            projectPath,
-            upstreamOpenSpecActive
-          );
           removedCommandCount += await removeDeselectedQasSubdirCommands(projectPath, desiredWorkflows);
         }
 
@@ -665,14 +547,6 @@ export class InitCommand {
       }
     }
 
-    const coexistenceSummary = formatUpstreamCoexistenceSummary(
-      preservedUpstreamSkills,
-      preservedUpstreamCommands
-    );
-    if (coexistenceSummary) {
-      console.log(chalk.dim(coexistenceSummary));
-    }
-
     return {
       createdTools,
       refreshedTools,
@@ -687,9 +561,9 @@ export class InitCommand {
   // CONFIG FILE
   // ═══════════════════════════════════════════════════════════
 
-  private async createConfig(openspecPath: string, extendMode: boolean): Promise<'created' | 'exists' | 'skipped'> {
-    const configPath = path.join(openspecPath, 'config.yaml');
-    const configYmlPath = path.join(openspecPath, 'config.yml');
+  private async createConfig(planningPath: string, extendMode: boolean): Promise<'created' | 'exists' | 'skipped'> {
+    const configPath = path.join(planningPath, 'config.yaml');
+    const configYmlPath = path.join(planningPath, 'config.yml');
     const configYamlExists = fs.existsSync(configPath);
     const configYmlExists = fs.existsSync(configYmlPath);
 
@@ -829,8 +703,7 @@ export class InitCommand {
 
   private async removeUnselectedSkillDirs(
     skillsDir: string,
-    desiredWorkflows: readonly CoreWorkflowId[],
-    upstreamOpenSpecActive = false
+    desiredWorkflows: readonly CoreWorkflowId[]
   ): Promise<number> {
     const desiredSet = new Set(desiredWorkflows);
     let removed = 0;
@@ -839,7 +712,6 @@ export class InitCommand {
       if (desiredSet.has(workflow)) continue;
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
-      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
 
       const skillDir = path.join(skillsDir, dirName);
       try {
@@ -858,8 +730,7 @@ export class InitCommand {
   private async removeUnselectedCommandFiles(
     projectPath: string,
     toolId: string,
-    desiredWorkflows: readonly CoreWorkflowId[],
-    upstreamOpenSpecActive = false
+    desiredWorkflows: readonly CoreWorkflowId[]
   ): Promise<number> {
     let removed = 0;
     const adapter = CommandAdapterRegistry.get(toolId);
@@ -869,7 +740,6 @@ export class InitCommand {
 
     for (const workflow of ALL_WORKFLOWS) {
       if (desiredSet.has(workflow)) continue;
-      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 
@@ -886,13 +756,12 @@ export class InitCommand {
     return removed;
   }
 
-  private async removeSkillDirs(skillsDir: string, upstreamOpenSpecActive = false): Promise<number> {
+  private async removeSkillDirs(skillsDir: string): Promise<number> {
     let removed = 0;
 
     for (const workflow of ALL_WORKFLOWS) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
-      if (upstreamOpenSpecActive && isUpstreamOpenspecSkillDir(dirName)) continue;
 
       const skillDir = path.join(skillsDir, dirName);
       try {
@@ -908,17 +777,12 @@ export class InitCommand {
     return removed;
   }
 
-  private async removeCommandFiles(
-    projectPath: string,
-    toolId: string,
-    upstreamOpenSpecActive = false
-  ): Promise<number> {
+  private async removeCommandFiles(projectPath: string, toolId: string): Promise<number> {
     let removed = 0;
     const adapter = CommandAdapterRegistry.get(toolId);
     if (!adapter) return 0;
 
     for (const workflow of ALL_WORKFLOWS) {
-      if (upstreamOpenSpecActive && isUpstreamLegacyWorkflow(workflow)) continue;
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 

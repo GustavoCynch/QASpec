@@ -9,7 +9,7 @@ import { execSync } from 'child_process';
 describe('change validate (interactive behavior)', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-change-validate-tmp');
-  const changesDir = path.join(testDir, 'openspec', 'changes');
+  const changesDir = path.join(testDir, 'qaspec', 'changes');
   const bin = path.join(projectRoot, 'bin', 'qaspec.js');
 
 
@@ -29,7 +29,7 @@ describe('change validate (interactive behavior)', () => {
     const originalEnv = { ...process.env };
     try {
       process.chdir(testDir);
-      process.env.OPEN_SPEC_INTERACTIVE = '0';
+      process.env.QASPEC_INTERACTIVE = '0';
       let err: any;
       try {
         execSync(`node ${bin} change validate`, { encoding: 'utf-8' });

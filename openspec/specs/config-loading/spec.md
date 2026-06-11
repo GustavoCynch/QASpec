@@ -1,40 +1,44 @@
 # config-loading Specification
 
 ## Purpose
-Define how `openspec/config.yaml` is discovered, parsed, validated, and exposed to callers with safe fallbacks.
+Define how `qaspec/config.yaml` is discovered, parsed, validated, and exposed to callers with safe fallbacks.
 
 ## Requirements
-### Requirement: Load project config from openspec/config.yaml
+### Requirement: Load project config from qaspec/config.yaml
 
-The system SHALL read and parse the project configuration file located at `openspec/config.yaml` relative to the project root.
+The system SHALL read and parse the project configuration file located at `qaspec/config.yaml` relative to the project root. No other planning-home directory is consulted.
 
 #### Scenario: Valid config file exists
-- **WHEN** `openspec/config.yaml` exists with valid YAML content
+- **WHEN** `qaspec/config.yaml` exists with valid YAML content
 - **THEN** system parses the file and returns a ProjectConfig object
 
 #### Scenario: Config file does not exist
-- **WHEN** `openspec/config.yaml` does not exist
+- **WHEN** `qaspec/config.yaml` does not exist
 - **THEN** system returns null without error
 
 #### Scenario: Config file has invalid YAML syntax
-- **WHEN** `openspec/config.yaml` contains malformed YAML
+- **WHEN** `qaspec/config.yaml` contains malformed YAML
 - **THEN** system logs a warning message and returns null
 
 #### Scenario: Config file has valid YAML but invalid schema
-- **WHEN** `openspec/config.yaml` contains valid YAML that fails Zod schema validation
+- **WHEN** `qaspec/config.yaml` contains valid YAML that fails Zod schema validation
 - **THEN** system logs a warning message with validation details and returns null
+
+#### Scenario: Legacy openspec directory is ignored
+- **WHEN** a project contains `openspec/config.yaml` but no `qaspec/config.yaml`
+- **THEN** system returns null without reading the `openspec/` directory
 
 ### Requirement: Support .yml file extension alias
 
 The system SHALL accept both `.yaml` and `.yml` file extensions for the config file.
 
 #### Scenario: Config file uses .yml extension
-- **WHEN** `openspec/config.yml` exists and `openspec/config.yaml` does not exist
-- **THEN** system reads from `openspec/config.yml`
+- **WHEN** `qaspec/config.yml` exists and `qaspec/config.yaml` does not exist
+- **THEN** system reads from `qaspec/config.yml`
 
 #### Scenario: Both .yaml and .yml exist
-- **WHEN** both `openspec/config.yaml` and `openspec/config.yml` exist
-- **THEN** system prefers `openspec/config.yaml`
+- **WHEN** both `qaspec/config.yaml` and `qaspec/config.yml` exist
+- **THEN** system prefers `qaspec/config.yaml`
 
 ### Requirement: Use resilient field-by-field parsing
 
@@ -141,7 +145,7 @@ The system SHALL parse optional `workflow.multipleSubagents.review` and `workflo
 
 ### Requirement: Parse tcms defaults block
 
-The system SHALL parse an optional `tcms` block (`provider`, `project`, `baseUrl` as strings) from project config using resilient field-by-field validation: an invalid field is warned about and omitted, and an invalid or missing block never fails config load. The block supplies user-managed defaults only; the per-change target in the change's `.openspec.yaml` takes precedence.
+The system SHALL parse an optional `tcms` block (`provider`, `project`, `baseUrl` as strings) from project config using resilient field-by-field validation: an invalid field is warned about and omitted, and an invalid or missing block never fails config load. The block supplies user-managed defaults only; the per-change target in the change's `.qaspec.yaml` takes precedence.
 
 #### Scenario: Valid tcms block
 

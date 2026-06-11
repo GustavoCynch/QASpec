@@ -162,6 +162,7 @@ Where `Issue` follows the existing per-item validation report shape `{ level: "E
 
 - **WHEN** validating multiple items
 - **THEN** run validations with a bounded concurrency (e.g., 4–8 in parallel)
+- **AND** allow overriding the limit via the `--concurrency <n>` option or the `QASPEC_CONCURRENCY` environment variable
 - **AND** ensure progress indicators remain responsive
 
 ### Requirement: Item type detection and ambiguity handling

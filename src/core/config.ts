@@ -1,6 +1,5 @@
 export {
   QASPEC_DIR_NAME,
-  OPENSPEC_DIR_NAME,
   getPlanningDir,
   joinPlanningPath,
   resolvePlanningDirName,
@@ -8,12 +7,12 @@ export {
   hasPlanningHome,
 } from './planning-dir.js';
 
-export const OPENSPEC_MARKERS = {
-  start: '<!-- OPENSPEC:START -->',
-  end: '<!-- OPENSPEC:END -->'
+export const QASPEC_MARKERS = {
+  start: '<!-- QASPEC:START -->',
+  end: '<!-- QASPEC:END -->'
 };
 
-export interface OpenSpecConfig {
+export interface QASpecInitConfig {
   aiTools: string[];
 }
 

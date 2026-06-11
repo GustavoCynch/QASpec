@@ -15,8 +15,8 @@ export class PowerShellInstaller {
    * Markers for PowerShell profile configuration management
    */
   private readonly PROFILE_MARKERS = {
-    start: '# OPENSPEC:START',
-    end: '# OPENSPEC:END',
+    start: '# QASPEC:START',
+    end: '# QASPEC:END',
   };
 
   constructor(homeDir: string = os.homedir()) {
@@ -200,15 +200,15 @@ export class PowerShellInstaller {
         }
 
         // Add QASpec completion configuration with markers
-        const openspecBlock = [
+        const qaspecBlock = [
           '',
-          '# OPENSPEC:START - QASpec completion (managed block, do not edit manually)',
+          '# QASPEC:START - QASpec completion (managed block, do not edit manually)',
           scriptLine,
-          '# OPENSPEC:END',
+          '# QASPEC:END',
           '',
         ].join('\n');
 
-        const newContent = profileContent + openspecBlock;
+        const newContent = profileContent + qaspecBlock;
         await this.writeProfileFile(profilePath, newContent, fileEncoding, fileBom);
         anyConfigured = true;
       } catch (error) {
@@ -249,9 +249,9 @@ export class PowerShellInstaller {
           continue;
         }
 
-        // Remove OPENSPEC:START -> OPENSPEC:END block
-        const startMarker = '# OPENSPEC:START';
-        const endMarker = '# OPENSPEC:END';
+        // Remove QASPEC:START -> QASPEC:END block
+        const startMarker = '# QASPEC:START';
+        const endMarker = '# QASPEC:END';
         const startIndex = profileContent.indexOf(startMarker);
 
         if (startIndex === -1) {

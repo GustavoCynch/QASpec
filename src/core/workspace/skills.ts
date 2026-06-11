@@ -16,7 +16,7 @@ import {
 import type { WorkspaceLocalState, WorkspaceSkillState } from './foundation.js';
 
 const require = createRequire(import.meta.url);
-const { version: OPENSPEC_VERSION } = require('../../../package.json');
+const { version: QASPEC_VERSION } = require('../../../package.json');
 const fs = nodeFs.promises;
 
 export interface WorkspaceSkillAgentResult {
@@ -358,7 +358,7 @@ export async function generateWorkspaceAgentSkills(
 
       for (const { template, dirName } of skillTemplates) {
         const skillFile = FileSystemUtils.joinPath(skillsDir, dirName, 'SKILL.md');
-        const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
+        const skillContent = generateSkillContent(template, QASPEC_VERSION, transformer);
         await FileSystemUtils.writeFile(skillFile, skillContent);
       }
 
@@ -470,7 +470,7 @@ export async function updateWorkspaceAgentSkills(
 
       for (const { template, dirName } of skillTemplates) {
         const skillFile = FileSystemUtils.joinPath(skillsDir, dirName, 'SKILL.md');
-        const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
+        const skillContent = generateSkillContent(template, QASPEC_VERSION, transformer);
         await FileSystemUtils.writeFile(skillFile, skillContent);
       }
 

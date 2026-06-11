@@ -34,11 +34,11 @@ qaspec/
     └── archive/
 ```
 
-#### Scenario: Legacy openspec directory preserved
+#### Scenario: qaspec is the only planning home
 
-- **WHEN** a project already has `openspec/` with `config.yaml` and no `qaspec/`
-- **THEN** init and other commands resolve the legacy layout without requiring rename in that session
-- **AND** re-init does not delete or move `openspec/` automatically
+- **WHEN** a project contains an `openspec/` directory but no `qaspec/`
+- **THEN** `qaspec init` creates `qaspec/` as the planning home
+- **AND** QASpec commands resolve only `qaspec/`, leaving any `openspec/` directory untouched and unread
 
 ### Requirement: QASpec reference scaffolding on init
 
@@ -50,32 +50,14 @@ The `qaspec init` command SHALL scaffold `qaspec/references/historical_bugs.md` 
 - **THEN** both reference files exist under `qaspec/references/`
 - **AND** existing reference files are unchanged on re-init
 
-### Requirement: Legacy global profile migration before init
-
-Before resolving workflows for skill and command generation, `qaspec init` SHALL upgrade a global `custom` profile whose workflows exactly match the legacy OpenSpec core set (`propose`, `explore`, `apply`, `archive`) to the QASpec `core` profile.
-
-#### Scenario: Fresh init with stale global config
-
-- **WHEN** global config has `profile: custom` and workflows `propose`, `explore`, `apply`, `archive` only
-- **AND** the user runs `qaspec init` on a new project with `--tools cursor` (or another supported tool)
-- **THEN** global config is saved with `profile: core` (and core workflows)
-- **AND** init generates `qaspec-publish` under the tool skills directory
-- **AND** init generates a `publish` slash command (e.g. `.cursor/commands/qsx-publish.md` with `/qsx:publish` in frontmatter)
-
-#### Scenario: Intentional custom mix is preserved
-
-- **WHEN** global config has `profile: custom` with workflows that are not exactly the legacy four-id set
-- **THEN** init does not auto-change the profile
-- **AND** generation follows the user-selected workflow list
-
 ### Requirement: QASpec core workflow messaging
 
 Upon successful init with the QASpec core profile—or any active profile whose workflows include QASpec QA ids (`analyze`, `cases`, or `publish`)—success output SHALL mention `/qsx:analyze`, `/qsx:cases`, and `/qsx:publish` as primary next steps instead of `/opsx:propose` and `/opsx:apply`, and SHALL reference `qaspec` CLI commands (not `openspec`) in next-step hints.
 
-#### Scenario: Post-init guidance after legacy migration
+#### Scenario: Post-init guidance
 
 - **WHEN** init finishes configuring at least one AI tool
-- **AND** the effective profile is `core` (including after legacy global-config migration)
+- **AND** the effective profile is `core`
 - **THEN** the CLI prints next-step hints using `/qsx:*` command names including `/qsx:publish`
 - **AND** the first suggested step is `/qsx:analyze`
 - **AND** printed examples use `qaspec` as the CLI name

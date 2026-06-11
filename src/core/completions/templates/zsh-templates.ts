@@ -6,7 +6,7 @@
 export const ZSH_DYNAMIC_HELPERS = `# Dynamic completion helpers
 
 # Use qaspec __complete to get available changes
-_openspec_complete_changes() {
+_qaspec_complete_changes() {
   local -a changes
   while IFS=$'\\t' read -r id desc; do
     changes+=("$id:$desc")
@@ -15,7 +15,7 @@ _openspec_complete_changes() {
 }
 
 # Use qaspec __complete to get available specs
-_openspec_complete_specs() {
+_qaspec_complete_specs() {
   local -a specs
   while IFS=$'\\t' read -r id desc; do
     specs+=("$id:$desc")
@@ -24,7 +24,7 @@ _openspec_complete_specs() {
 }
 
 # Get both changes and specs
-_openspec_complete_items() {
+_qaspec_complete_items() {
   local -a items
   while IFS=$'\\t' read -r id desc; do
     items+=("$id:$desc")
@@ -36,7 +36,7 @@ _openspec_complete_items() {
 }
 
 # Use qaspec __complete to get available schemas
-_openspec_complete_schemas() {
+_qaspec_complete_schemas() {
   local -a schemas
   while IFS=$'\\t' read -r id desc; do
     schemas+=("$id:$desc")

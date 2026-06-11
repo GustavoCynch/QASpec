@@ -37,7 +37,7 @@ The QA pipeline uses **CLI gates** so critical invariants are mechanically verif
 
 | Step | CLI gate | When |
 |------|----------|------|
-| After analyze halt | `qaspec approve analyze --change <name> [--head-sha <sha>]` | User approves the digest; records content hash + optional PR head SHA in `.openspec.yaml` |
+| After analyze halt | `qaspec approve analyze --change <name> [--head-sha <sha>]` | User approves the digest; records content hash + optional PR head SHA in `.qaspec.yaml` |
 | Before cases halt | `qaspec validate cases --change <name>` | Every requirement has a covering case; every case has a `req` annotation; format lint passes |
 | Before publish upload | `qaspec publish-gate --change <name>` | Approval valid, cases validation passes, usable per-change TCMS target (`qaspec tcms set`); emits `qaspec-gate:<token>` |
 

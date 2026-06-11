@@ -154,55 +154,6 @@ describe('InitCommand', () => {
       }
     });
 
-    it('migrates legacy global custom profile and installs qaspec-publish', async () => {
-      saveGlobalConfig({
-        featureFlags: {},
-        profile: 'custom',
-        delivery: 'both',
-        workflows: ['propose', 'explore', 'apply', 'archive'],
-      });
-
-      const initCommand = new InitCommand({ tools: 'cursor', force: true });
-      await initCommand.execute(testDir);
-
-      expect(getGlobalConfig().profile).toBe('core');
-
-      const publishSkill = path.join(testDir, '.cursor', 'skills', 'qaspec-publish', 'SKILL.md');
-      const publishCommand = path.join(testDir, '.cursor', 'commands', 'qsx-publish.md');
-      expect(await fileExists(publishSkill)).toBe(true);
-      expect(await fileExists(publishCommand)).toBe(true);
-
-      const logCalls = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls
-        .flat()
-        .map(String);
-      expect(logCalls.some((entry) => entry.includes('/qsx:publish'))).toBe(true);
-    });
-
-    it('migrates legacy four-workflow config to core and generates exactly four skills/commands', async () => {
-      saveGlobalConfig({
-        featureFlags: {},
-        profile: 'custom',
-        delivery: 'both',
-        workflows: ['propose', 'explore', 'apply', 'archive'],
-      });
-
-      const initCommand = new InitCommand({ tools: 'claude', force: true });
-      await initCommand.execute(testDir);
-
-      expect(getGlobalConfig().profile).toBe('core');
-
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
-
-      for (const name of ['analyze', 'cases', 'publish', 'archive']) {
-        expect(await fileExists(path.join(skillsDir, `qaspec-${name}`, 'SKILL.md'))).toBe(true);
-        expect(await fileExists(path.join(commandsDir, `${name}.md`))).toBe(true);
-      }
-
-      expect(await fileExists(path.join(skillsDir, 'qaspec-explore', 'SKILL.md'))).toBe(false);
-      expect(await fileExists(path.join(commandsDir, 'explore.md'))).toBe(false);
-    });
-
     it('should not generate opsx-propose command for Cursor on fresh init', async () => {
       const initCommand = new InitCommand({ tools: 'cursor', force: true });
       await initCommand.execute(testDir);
@@ -473,7 +424,7 @@ describe('InitCommand', () => {
         async (filePath: any, ...args: any[]) => {
           if (
             typeof filePath === 'string' &&
-            filePath.includes('.openspec-test-')
+            filePath.includes('.qaspec-test-')
           ) {
             throw new Error('EACCES: permission denied');
           }
@@ -616,127 +567,6 @@ describe('InitCommand - profile and detection features', () => {
     expect(await fileExists(skillFile)).toBe(true);
   });
 
-  it('should auto-cleanup legacy artifacts in non-interactive mode without --force', async () => {
-    // Create legacy OpenCode command files (singular 'command' path, pre-skill openspec-* format)
-    const legacyDir = path.join(testDir, '.opencode', 'command');
-    await fs.mkdir(legacyDir, { recursive: true });
-    await fs.writeFile(path.join(legacyDir, 'openspec-propose.md'), 'legacy content');
-
-    // Run init in non-interactive mode without --force
-    const initCommand = new InitCommand({ tools: 'opencode' });
-    await initCommand.execute(testDir);
-
-    // Legacy files should be cleaned up automatically
-    expect(await fileExists(path.join(legacyDir, 'openspec-propose.md'))).toBe(false);
-
-    // New commands should be at the correct plural path
-    const newCommandsDir = path.join(testDir, '.opencode', 'commands');
-    expect(await directoryExists(newCommandsDir)).toBe(true);
-  });
-
-  it('should not cleanup upstream OpenSpec when openspec is already installed', async () => {
-    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
-    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
-    await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), '# OpenSpec agents\n');
-
-    const cursorCommandsDir = path.join(testDir, '.cursor', 'commands');
-    await fs.mkdir(cursorCommandsDir, { recursive: true });
-    const opsxFiles = ['opsx-propose.md', 'opsx-apply.md', 'opsx-archive.md', 'opsx-explore.md'];
-    for (const fileName of opsxFiles) {
-      await fs.writeFile(path.join(cursorCommandsDir, fileName), 'upstream openspec');
-    }
-
-    const consoleLogSpy = vi.spyOn(console, 'log');
-    const initCommand = new InitCommand({ tools: 'cursor' });
-    await initCommand.execute(testDir);
-
-    for (const fileName of opsxFiles) {
-      expect(await fileExists(path.join(cursorCommandsDir, fileName))).toBe(true);
-    }
-    expect(await fileExists(path.join(testDir, 'openspec', 'AGENTS.md'))).toBe(true);
-
-    const logCalls = consoleLogSpy.mock.calls.map((call) => String(call[0] ?? ''));
-    expect(logCalls.some((line) => line.includes('Upgrading to the new QASpec'))).toBe(false);
-    expect(logCalls.some((line) => line.includes('Cleaning up old QASpec setup'))).toBe(false);
-    expect(confirmMock).not.toHaveBeenCalled();
-
-    expect(await directoryExists(path.join(testDir, 'qaspec'))).toBe(true);
-  });
-
-  it('should not overwrite upstream openspec-propose and openspec-apply-change skills', async () => {
-    const upstreamMarker = 'UPSTREAM_OPENSPEC_SKILL_CONTENT_DO_NOT_REPLACE';
-
-    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
-    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
-
-    const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
-    for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
-      const skillDir = path.join(cursorSkillsDir, skillName);
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, 'SKILL.md'),
-        `---\nname: ${skillName}\nmetadata:\n  author: openspec\n---\n\n${upstreamMarker}\n`
-      );
-    }
-
-    saveGlobalConfig({
-      featureFlags: {},
-      profile: 'custom',
-      delivery: 'both',
-      workflows: ['analyze', 'propose', 'apply'],
-    });
-
-    const initCommand = new InitCommand({ tools: 'cursor', force: true });
-    await initCommand.execute(testDir);
-
-    for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
-      const content = await fs.readFile(
-        path.join(cursorSkillsDir, skillName, 'SKILL.md'),
-        'utf-8'
-      );
-      expect(content).toContain(upstreamMarker);
-      expect(content).not.toContain('generatedBy:');
-    }
-
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-cases', 'SKILL.md'))).toBe(true);
-  });
-
-  it('should create missing upstream openspec skills without overwriting existing ones', async () => {
-    const existingMarker = 'EXISTING_OPENSPEC_PROPOSE_SKILL';
-    const missingMarkerCheck = 'generatedBy:';
-
-    await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
-    await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
-
-    const cursorSkillsDir = path.join(testDir, '.cursor', 'skills');
-    const proposeDir = path.join(cursorSkillsDir, 'openspec-propose');
-    await fs.mkdir(proposeDir, { recursive: true });
-    await fs.writeFile(
-      path.join(proposeDir, 'SKILL.md'),
-      `---\nname: openspec-propose\n---\n\n${existingMarker}\n`
-    );
-
-    saveGlobalConfig({
-      featureFlags: {},
-      profile: 'custom',
-      delivery: 'both',
-      workflows: ['analyze', 'propose', 'apply'],
-    });
-
-    const initCommand = new InitCommand({ tools: 'cursor', force: true });
-    await initCommand.execute(testDir);
-
-    const proposeContent = await fs.readFile(path.join(proposeDir, 'SKILL.md'), 'utf-8');
-    expect(proposeContent).toContain(existingMarker);
-    expect(proposeContent).not.toContain(missingMarkerCheck);
-
-    const applyFile = path.join(cursorSkillsDir, 'openspec-apply-change', 'SKILL.md');
-    expect(await fileExists(applyFile)).toBe(false);
-
-    expect(await fileExists(path.join(cursorSkillsDir, 'qaspec-analyze', 'SKILL.md'))).toBe(true);
-  });
-
   it('should preselect configured tools but not directory-detected tools in extend mode', async () => {
     // Simulate existing OpenSpec project (extend mode).
     await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
@@ -856,29 +686,6 @@ describe('InitCommand - profile and detection features', () => {
       .flat()
       .map(String);
     expect(logCalls.some((entry) => entry.includes('Skipped retired workflow id "explore"'))).toBe(true);
-  });
-
-  it('should migrate commands-only extend mode without injecting extra workflows', async () => {
-    await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
-    await fs.mkdir(path.join(testDir, '.claude', 'commands', 'qsx'), { recursive: true });
-    await fs.writeFile(path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md'), '# explore\n');
-
-    const initCommand = new InitCommand({ tools: 'claude', force: true });
-    await initCommand.execute(testDir);
-
-    const config = getGlobalConfig();
-    expect(config.delivery).toBe('commands');
-    expect(config.workflows).toEqual(['explore']);
-
-    const exploreCommand = path.join(testDir, '.claude', 'commands', 'qsx', 'explore.md');
-    const proposeCommand = path.join(testDir, '.claude', 'commands', 'qsx', 'propose.md');
-    expect(await fileExists(exploreCommand)).toBe(false);
-    expect(await fileExists(proposeCommand)).toBe(false);
-
-    const exploreSkill = path.join(testDir, '.claude', 'skills', 'qaspec-explore', 'SKILL.md');
-    const proposeSkill = path.join(testDir, '.claude', 'skills', 'openspec-propose', 'SKILL.md');
-    expect(await fileExists(exploreSkill)).toBe(false);
-    expect(await fileExists(proposeSkill)).toBe(false);
   });
 
   it('should not prompt for confirmation when applying custom profile in interactive init', async () => {

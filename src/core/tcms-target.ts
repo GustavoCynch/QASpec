@@ -26,7 +26,7 @@ const TCMS_FIELDS: (keyof TcmsTarget)[] = ['provider', 'project', 'baseUrl'];
 /**
  * Resolves the TCMS publish target for a change.
  *
- * The change's `.openspec.yaml` `tcms` block is authoritative; the project
+ * The change's `.qaspec.yaml` `tcms` block is authoritative; the project
  * config `tcms` block only fills missing fields (user-managed defaults for
  * teams with a fixed target). Publish flows must never write the project
  * config block — per-change persistence goes through writeTcmsTarget.
@@ -64,7 +64,7 @@ export function resolveTcmsTarget(
 }
 
 /**
- * Persists (upserts) the TCMS target into the change's `.openspec.yaml`.
+ * Persists (upserts) the TCMS target into the change's `.qaspec.yaml`.
  * Fields not provided keep their existing change-level values.
  */
 export function writeTcmsTarget(

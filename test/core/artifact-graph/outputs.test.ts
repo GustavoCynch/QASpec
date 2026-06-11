@@ -20,15 +20,15 @@ describe('artifact outputs legacy fallback', () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-outputs-'));
-    changeDir = path.join(tempDir, 'openspec', 'changes', 'qa-change');
+    changeDir = path.join(tempDir, 'qaspec', 'changes', 'qa-change');
     fs.mkdirSync(changeDir, { recursive: true });
     fs.writeFileSync(
-      path.join(changeDir, '.openspec.yaml'),
+      path.join(changeDir, '.qaspec.yaml'),
       'schema: qaspec-pr-review\n'
     );
-    fs.mkdirSync(path.join(tempDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, 'qaspec'), { recursive: true });
     fs.writeFileSync(
-      path.join(tempDir, 'openspec', 'config.yaml'),
+      path.join(tempDir, 'qaspec', 'config.yaml'),
       'schema: qaspec-pr-review\n'
     );
   });

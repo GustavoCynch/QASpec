@@ -176,16 +176,16 @@ complete -F _qaspec_completion qaspec
 
     switch (positionalType) {
       case 'change-id':
-        lines.push(`${indent}_openspec_complete_changes`);
+        lines.push(`${indent}_qaspec_complete_changes`);
         break;
       case 'spec-id':
-        lines.push(`${indent}_openspec_complete_specs`);
+        lines.push(`${indent}_qaspec_complete_specs`);
         break;
       case 'change-or-spec-id':
-        lines.push(`${indent}_openspec_complete_items`);
+        lines.push(`${indent}_qaspec_complete_items`);
         break;
       case 'schema-name':
-        lines.push(`${indent}_openspec_complete_schemas`);
+        lines.push(`${indent}_qaspec_complete_schemas`);
         break;
       case 'shell':
         lines.push(`${indent}local shells="zsh bash fish powershell"`);

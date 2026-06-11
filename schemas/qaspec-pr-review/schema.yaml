@@ -166,7 +166,7 @@ apply:
     - Confirm `testcases.md` is approved and checkbox-formatted
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
     - Read completed `specs/**/*.md` for context when files exist
-    - Resolve TCMS target for the change via `qaspec tcms show --change <name> --json` (change `.openspec.yaml` `tcms` block; project config `tcms` supplies user-managed defaults only)
+    - Resolve TCMS target for the change via `qaspec tcms show --change <name> --json` (change `.qaspec.yaml` `tcms` block; project config `tcms` supplies user-managed defaults only)
     - When the change has no usable target (provider + project):
       - **Default: propose creating a new TCMS project** for this change — suggest a code derived from the change/PR (e.g. PR415)
       - Discover existing projects via MCP listing tool only to present them as alternatives — never select one yourself

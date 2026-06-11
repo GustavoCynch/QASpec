@@ -11,6 +11,7 @@ import {
   readChangeMetadata,
   writeChangeMetadata,
   ChangeMetadataError,
+  METADATA_FILENAME,
 } from '../utils/change-metadata.js';
 
 export interface PublishGateFailure {
@@ -87,7 +88,7 @@ export function runPublishGate(
     failures.push({
       code: 'tcms-missing',
       message:
-        'Change has no usable TCMS target (provider + project) in .openspec.yaml or config defaults',
+        'Change has no usable TCMS target (provider + project) in .qaspec.yaml or config defaults',
       resolve:
         'qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]',
     });
@@ -127,7 +128,7 @@ function persistPublishGate(
   gate: NonNullable<ChangeMetadata['publishGate']>,
   projectRoot?: string
 ): void {
-  const metaPath = path.join(changeDir, '.openspec.yaml');
+  const metaPath = path.join(changeDir, METADATA_FILENAME);
   const existing = readChangeMetadata(changeDir, projectRoot);
   if (!existing) {
     throw new ChangeMetadataError(

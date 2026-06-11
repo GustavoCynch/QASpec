@@ -8,21 +8,21 @@ describe('interactive utilities', () => {
 
   beforeEach(() => {
     // Save original environment
-    originalOpenSpecInteractive = process.env.OPEN_SPEC_INTERACTIVE;
+    originalOpenSpecInteractive = process.env.QASPEC_INTERACTIVE;
     originalCI = process.env.CI;
     originalStdinIsTTY = process.stdin.isTTY;
 
     // Clear environment for clean testing
-    delete process.env.OPEN_SPEC_INTERACTIVE;
+    delete process.env.QASPEC_INTERACTIVE;
     delete process.env.CI;
   });
 
   afterEach(() => {
     // Restore original environment
     if (originalOpenSpecInteractive !== undefined) {
-      process.env.OPEN_SPEC_INTERACTIVE = originalOpenSpecInteractive;
+      process.env.QASPEC_INTERACTIVE = originalOpenSpecInteractive;
     } else {
-      delete process.env.OPEN_SPEC_INTERACTIVE;
+      delete process.env.QASPEC_INTERACTIVE;
     }
     if (originalCI !== undefined) {
       process.env.CI = originalCI;
@@ -88,8 +88,8 @@ describe('interactive utilities', () => {
       expect(isInteractive({ interactive: false })).toBe(false);
     });
 
-    it('should return false when OPEN_SPEC_INTERACTIVE env var is 0', () => {
-      process.env.OPEN_SPEC_INTERACTIVE = '0';
+    it('should return false when QASPEC_INTERACTIVE env var is 0', () => {
+      process.env.QASPEC_INTERACTIVE = '0';
       Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true, configurable: true });
       expect(isInteractive({})).toBe(false);
     });

@@ -6,12 +6,12 @@ Record and verify human approval of analyze-phase artifacts so later workflow ph
 ## Requirements
 ### Requirement: Phase approval recording
 
-The CLI SHALL provide `qaspec approve analyze --change <name>` that records the user's approval of the analyze-phase artifacts in the change's `.openspec.yaml` under `approvals.analyze`, including the approval timestamp and a content hash covering `analysis.md` and all change `specs/**/*.md` files. When the agent supplies `--head-sha <sha>`, the record SHALL also store the analyzed PR head SHA.
+The CLI SHALL provide `qaspec approve analyze --change <name>` that records the user's approval of the analyze-phase artifacts in the change's `.qaspec.yaml` under `approvals.analyze`, including the approval timestamp and a content hash covering `analysis.md` and all change `specs/**/*.md` files. When the agent supplies `--head-sha <sha>`, the record SHALL also store the analyzed PR head SHA.
 
 #### Scenario: Approval recorded after the analyze halt
 
 - **WHEN** the user approves the analyze digest and the agent runs `qaspec approve analyze --change <name> --head-sha <sha>`
-- **THEN** `.openspec.yaml` in the change directory contains an `approvals.analyze` record with timestamp, content hash, and head SHA
+- **THEN** `.qaspec.yaml` in the change directory contains an `approvals.analyze` record with timestamp, content hash, and head SHA
 - **AND** the command output confirms which artifacts the hash covers
 
 #### Scenario: Cross-platform deterministic hash

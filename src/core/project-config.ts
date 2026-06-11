@@ -59,7 +59,7 @@ export const ProjectConfigSchema = z.object({
   workflow: WorkflowConfigSchema.optional(),
 
   // Optional: user-managed TCMS defaults for publish (provider, project code,
-  // base URL). The per-change target in the change's .openspec.yaml wins;
+  // base URL). The per-change target in the change's .qaspec.yaml wins;
   // publish flows never write this block.
   tcms: TcmsConfigSchema.optional(),
 });
@@ -69,7 +69,7 @@ export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit
 
 /**
- * Read and parse openspec/config.yaml from project root.
+ * Read and parse qaspec/config.yaml from project root.
  * Uses resilient parsing - validates each field independently using Zod safeParse.
  * Returns null if file doesn't exist.
  * Returns partial config if some fields are invalid (with warnings).
@@ -84,7 +84,7 @@ const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit
  * invalidation logic) for negligible benefit. Direct reads also ensure config
  * changes are reflected immediately without stale cache issues.
  *
- * @param projectRoot - The root directory of the project (where `openspec/` lives)
+ * @param projectRoot - The root directory of the project (where `qaspec/` lives)
  * @returns Parsed config or null if file doesn't exist
  */
 export function readProjectConfig(projectRoot: string): ProjectConfig | null {

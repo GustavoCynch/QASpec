@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 // Constants
-export const GLOBAL_CONFIG_DIR_NAME = 'openspec';
+export const GLOBAL_CONFIG_DIR_NAME = 'qaspec';
 export const GLOBAL_CONFIG_FILE_NAME = 'config.json';
-export const GLOBAL_DATA_DIR_NAME = 'openspec';
+export const GLOBAL_DATA_DIR_NAME = 'qaspec';
 
 // TypeScript types
 export type Profile = 'core' | 'custom';
@@ -28,9 +28,9 @@ const DEFAULT_CONFIG: GlobalConfig = {
 /**
  * Gets the global configuration directory path following XDG Base Directory Specification.
  *
- * - All platforms: $XDG_CONFIG_HOME/openspec/ if XDG_CONFIG_HOME is set
- * - Unix/macOS fallback: ~/.config/openspec/
- * - Windows fallback: %APPDATA%/openspec/
+ * - All platforms: $XDG_CONFIG_HOME/qaspec/ if XDG_CONFIG_HOME is set
+ * - Unix/macOS fallback: ~/.config/qaspec/
+ * - Windows fallback: %APPDATA%/qaspec/
  */
 export function getGlobalConfigDir(): string {
   // XDG_CONFIG_HOME takes precedence on all platforms when explicitly set
@@ -59,9 +59,9 @@ export function getGlobalConfigDir(): string {
  * Gets the global data directory path following XDG Base Directory Specification.
  * Used for user data like schema overrides.
  *
- * - All platforms: $XDG_DATA_HOME/openspec/ if XDG_DATA_HOME is set
- * - Unix/macOS fallback: ~/.local/share/openspec/
- * - Windows fallback: %LOCALAPPDATA%/openspec/
+ * - All platforms: $XDG_DATA_HOME/qaspec/ if XDG_DATA_HOME is set
+ * - Unix/macOS fallback: ~/.local/share/qaspec/
+ * - Windows fallback: %LOCALAPPDATA%/qaspec/
  */
 export interface GlobalDataDirOptions {
   env?: NodeJS.ProcessEnv;

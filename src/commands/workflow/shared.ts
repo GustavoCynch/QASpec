@@ -94,7 +94,7 @@ export function getStatusIndicator(status: 'done' | 'ready' | 'blocked'): string
 }
 
 /**
- * Returns the list of available change directory names under openspec/changes/.
+ * Returns the list of available change directory names under qaspec/changes/.
  * Excludes the archive directory and hidden directories.
  */
 export async function getAvailableChanges(

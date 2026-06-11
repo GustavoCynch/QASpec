@@ -23,7 +23,7 @@ async function runConfigCommand(args: string[]): Promise<void> {
   const { registerConfigCommand } = await import('../../src/commands/config.js');
   const program = new Command();
   registerConfigCommand(program);
-  await program.parseAsync(['node', 'openspec', 'config', ...args]);
+  await program.parseAsync(['node', 'qaspec', 'config', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -94,14 +94,14 @@ describe('config profile interactive flow', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   function setupDriftedProjectArtifacts(projectDir: string): void {
-    fs.mkdirSync(path.join(projectDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, 'qaspec'), { recursive: true });
     const analyzeSkillPath = path.join(projectDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
     fs.mkdirSync(path.dirname(analyzeSkillPath), { recursive: true });
     fs.writeFileSync(analyzeSkillPath, 'name: qaspec-analyze\n', 'utf-8');
   }
 
   function setupSyncedCoreBothArtifacts(projectDir: string): void {
-    fs.mkdirSync(path.join(projectDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, 'qaspec'), { recursive: true });
     const coreSkillDirs = [
       'qaspec-analyze',
       'qaspec-cases',
@@ -136,7 +136,7 @@ describe('config profile interactive flow', () => {
     workspaceRoot: string,
     options: { driftedSkills?: boolean } = {}
   ): void {
-    const metadataDir = path.join(workspaceRoot, '.openspec-workspace');
+    const metadataDir = path.join(workspaceRoot, '.qaspec-workspace');
     fs.mkdirSync(metadataDir, { recursive: true });
     fs.writeFileSync(
       path.join(metadataDir, 'workspace.yaml'),
@@ -329,7 +329,7 @@ describe('config profile interactive flow', () => {
     const configPath = getGlobalConfigPath();
     const beforeContent = fs.readFileSync(configPath, 'utf-8');
 
-    fs.mkdirSync(path.join(tempDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, 'qaspec'), { recursive: true });
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('both');
 
@@ -404,7 +404,7 @@ describe('config profile interactive flow', () => {
     const { select, confirm } = await getPromptMocks();
 
     saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['analyze', 'cases', 'publish', 'archive'] });
-    fs.mkdirSync(path.join(tempDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, 'qaspec'), { recursive: true });
 
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('skills');
@@ -446,7 +446,7 @@ describe('config profile interactive flow', () => {
     const { select, confirm } = await getPromptMocks();
 
     setupWorkspaceState(tempDir);
-    fs.mkdirSync(path.join(tempDir, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, 'qaspec'), { recursive: true });
     saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['analyze', 'cases', 'publish', 'archive'] });
 
     select.mockResolvedValueOnce('delivery');

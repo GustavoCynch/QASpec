@@ -8,6 +8,7 @@ import {
   readChangeMetadata,
   writeChangeMetadata,
   ChangeMetadataError,
+  METADATA_FILENAME,
 } from '../utils/change-metadata.js';
 
 export type ApprovalPhase = 'analyze';
@@ -127,7 +128,7 @@ export function writeApprovalRecord(
   record: ApprovalRecord,
   projectRoot?: string
 ): void {
-  const metaPath = path.join(changeDir, '.openspec.yaml');
+  const metaPath = path.join(changeDir, METADATA_FILENAME);
   const existing = readChangeMetadata(changeDir, projectRoot);
   if (!existing) {
     throw new ChangeMetadataError(

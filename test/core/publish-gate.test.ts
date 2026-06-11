@@ -34,7 +34,7 @@ describe('publish-gate', () => {
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `qaspec-gate-${randomUUID()}`);
     projectRoot = testDir;
-    changeDir = path.join(testDir, 'openspec', 'changes', 'pr-gate');
+    changeDir = path.join(testDir, 'qaspec', 'changes', 'pr-gate');
     await fs.mkdir(path.join(changeDir, 'specs', 'cap-a'), { recursive: true });
     await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
 

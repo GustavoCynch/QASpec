@@ -32,7 +32,7 @@ describe('FishGenerator', () => {
       const script = generator.generate(commands);
 
       expect(script).toContain('# Fish completion script for QASpec CLI');
-      expect(script).toContain('function __fish_openspec');
+      expect(script).toContain('function __fish_qaspec');
     });
 
     it('should generate helper functions for Fish', () => {
@@ -46,8 +46,8 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('function __fish_openspec_using_subcommand');
-      expect(script).toContain('function __fish_openspec_no_subcommand');
+      expect(script).toContain('function __fish_qaspec_using_subcommand');
+      expect(script).toContain('function __fish_qaspec_no_subcommand');
       expect(script).toContain('commandline -opc');
     });
 
@@ -224,7 +224,7 @@ describe('FishGenerator', () => {
       expect(script).toContain("'change'");
       expect(script).toContain("'show'");
       expect(script).toContain("'list'");
-      expect(script).toContain("__fish_openspec_using_subcommand change");
+      expect(script).toContain("__fish_qaspec_using_subcommand change");
     });
 
     it('should handle positional arguments for change-id', () => {
@@ -240,7 +240,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('__fish_openspec_changes');
+      expect(script).toContain('__fish_qaspec_changes');
     });
 
     it('should handle positional arguments for spec-id', () => {
@@ -256,7 +256,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('__fish_openspec_specs');
+      expect(script).toContain('__fish_qaspec_specs');
     });
 
     it('should handle positional arguments for change-or-spec-id', () => {
@@ -272,7 +272,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('__fish_openspec_items');
+      expect(script).toContain('__fish_qaspec_items');
     });
 
     it('should handle positional arguments for shell with inline values', () => {
@@ -307,7 +307,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('__fish_openspec_schemas');
+      expect(script).toContain('__fish_qaspec_schemas');
       expect(script).toContain('qaspec __complete schemas 2>/dev/null');
     });
 
@@ -324,7 +324,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('function __fish_openspec_changes');
+      expect(script).toContain('function __fish_qaspec_changes');
       expect(script).toContain('qaspec __complete changes 2>/dev/null');
       expect(script).toContain('while read -l id desc');
       expect(script).toContain('printf');
@@ -343,7 +343,7 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('function __fish_openspec_specs');
+      expect(script).toContain('function __fish_qaspec_specs');
       expect(script).toContain('qaspec __complete specs 2>/dev/null');
     });
 
@@ -360,9 +360,9 @@ describe('FishGenerator', () => {
 
       const script = generator.generate(commands);
 
-      expect(script).toContain('function __fish_openspec_items');
-      expect(script).toContain('__fish_openspec_changes');
-      expect(script).toContain('__fish_openspec_specs');
+      expect(script).toContain('function __fish_qaspec_items');
+      expect(script).toContain('__fish_qaspec_changes');
+      expect(script).toContain('__fish_qaspec_specs');
     });
 
     it('should escape single quotes in descriptions', () => {
@@ -417,7 +417,7 @@ describe('FishGenerator', () => {
       expect(script).toContain("'validate'");
       expect(script).toContain("-l strict");
       expect(script).toContain("-l json");
-      expect(script).toContain('__fish_openspec_specs');
+      expect(script).toContain('__fish_qaspec_specs');
     });
 
     it('should handle empty command list', () => {
@@ -426,7 +426,7 @@ describe('FishGenerator', () => {
       const script = generator.generate(commands);
 
       expect(script).toContain('# Fish completion script');
-      expect(script).toContain('function __fish_openspec');
+      expect(script).toContain('function __fish_qaspec');
     });
 
     it('should handle commands with no flags', () => {

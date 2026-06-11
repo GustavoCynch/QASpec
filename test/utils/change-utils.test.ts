@@ -129,19 +129,19 @@ describe('createChange', () => {
       expect(stats.isDirectory()).toBe(true);
     });
 
-    it('should create .openspec.yaml metadata file with default schema', async () => {
+    it('should create .qaspec.yaml metadata file with default schema', async () => {
       await createChange(testDir, 'add-auth');
 
-      const metaPath = path.join(testDir, 'qaspec', 'changes', 'add-auth', '.openspec.yaml');
+      const metaPath = path.join(testDir, 'qaspec', 'changes', 'add-auth', '.qaspec.yaml');
       const content = await fs.readFile(metaPath, 'utf-8');
       expect(content).toContain('schema: spec-driven');
       expect(content).toMatch(/created: \d{4}-\d{2}-\d{2}/);
     });
 
-    it('should create .openspec.yaml with custom schema', async () => {
+    it('should create .qaspec.yaml with custom schema', async () => {
       await createChange(testDir, 'add-auth', { schema: 'spec-driven' });
 
-      const metaPath = path.join(testDir, 'qaspec', 'changes', 'add-auth', '.openspec.yaml');
+      const metaPath = path.join(testDir, 'qaspec', 'changes', 'add-auth', '.qaspec.yaml');
       const content = await fs.readFile(metaPath, 'utf-8');
       expect(content).toContain('schema: spec-driven');
     });

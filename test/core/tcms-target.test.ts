@@ -20,7 +20,7 @@ describe('tcms-target', () => {
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `qaspec-tcms-${randomUUID()}`);
     projectRoot = testDir;
-    changeDir = path.join(testDir, 'openspec', 'changes', 'pr-target');
+    changeDir = path.join(testDir, 'qaspec', 'changes', 'pr-target');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
     writeChangeMetadata(changeDir, { schema: 'qaspec-pr-review', created: '2026-06-10' });
@@ -54,7 +54,7 @@ describe('tcms-target', () => {
     });
 
     it('throws when change metadata is missing', async () => {
-      const orphanDir = path.join(testDir, 'openspec', 'changes', 'no-meta');
+      const orphanDir = path.join(testDir, 'qaspec', 'changes', 'no-meta');
       await fs.mkdir(orphanDir, { recursive: true });
       expect(() =>
         writeTcmsTarget(orphanDir, { project: 'X1' }, projectRoot)

@@ -2,7 +2,7 @@
  * TCMS Target Command
  *
  * Persists and inspects the per-change TCMS publish target stored in the
- * change's .openspec.yaml. Project config `tcms` only supplies defaults and
+ * change's .qaspec.yaml. Project config `tcms` only supplies defaults and
  * is never written by this command.
  */
 

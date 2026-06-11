@@ -24,7 +24,6 @@ export {
   type SkillTemplateEntry,
   type CommandTemplateEntry,
   getSkillTemplates,
-  getCoexistenceSkillTemplates,
   getCommandTemplates,
   getCommandContents,
   generateSkillContent,

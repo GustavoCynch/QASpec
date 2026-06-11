@@ -1,7 +1,7 @@
 /**
  * QASpec naming for generated agent skills and slash commands.
  *
- * Skills use the product prefix (`qaspec-*`, like upstream `openspec-*`).
+ * Skills use the product prefix (`qaspec-*`).
  * Commands use a short slash prefix (`qsx-*`, `/qsx:*`, like upstream `opsx`).
  */
 
@@ -19,8 +19,6 @@ export const LEGACY_QAS_SKILL_DIR_NAMES = [
   'qas-publish',
   'qas-archive',
 ] as const;
-
-export { LEGACY_OPENSPEC_COMMAND_CATEGORY } from './branding.js';
 
 export function qaspecSkillDirName(workflowId: string): string {
   return `${QASPEC_SKILL_PREFIX}-${workflowId}`;

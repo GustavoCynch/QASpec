@@ -8,7 +8,7 @@ import { ZSH_DYNAMIC_HELPERS } from '../templates/zsh-templates.js';
 
 /**
  * Generates Zsh completion scripts for the QASpec CLI.
- * Follows Zsh completion system conventions using the _openspec function.
+ * Follows Zsh completion system conventions using the _qaspec function.
  */
 export class ZshGenerator implements CompletionGenerator {
   readonly shell = 'zsh' as const;
@@ -32,7 +32,7 @@ export class ZshGenerator implements CompletionGenerator {
     const commandCaseLines: string[] = [];
     for (const cmd of commands) {
       commandCaseLines.push(`        ${cmd.name})`);
-      commandCaseLines.push(`          _openspec_${this.sanitizeFunctionName(cmd.name)}`);
+      commandCaseLines.push(`          _qaspec_${this.sanitizeFunctionName(cmd.name)}`);
       commandCaseLines.push('          ;;');
     }
     const commandCases = commandCaseLines.join('\n');
@@ -89,7 +89,7 @@ compdef _qaspec qaspec
    * Generate completion function for a specific command
    */
   private generateCommandFunction(cmd: CommandDefinition): string[] {
-    const funcName = `_openspec_${this.sanitizeFunctionName(cmd.name)}`;
+    const funcName = `_qaspec_${this.sanitizeFunctionName(cmd.name)}`;
     const lines: string[] = [];
 
     lines.push(`${funcName}() {`);
@@ -128,7 +128,7 @@ compdef _qaspec qaspec
 
       for (const subcmd of cmd.subcommands) {
         lines.push(`        ${subcmd.name})`);
-        lines.push(`          _openspec_${this.sanitizeFunctionName(cmd.name)}_${this.sanitizeFunctionName(subcmd.name)}`);
+        lines.push(`          _qaspec_${this.sanitizeFunctionName(cmd.name)}_${this.sanitizeFunctionName(subcmd.name)}`);
         lines.push('          ;;');
       }
 
@@ -164,7 +164,7 @@ compdef _qaspec qaspec
    * Generate completion function for a subcommand
    */
   private generateSubcommandFunction(parentName: string, subcmd: CommandDefinition): string[] {
-    const funcName = `_openspec_${this.sanitizeFunctionName(parentName)}_${this.sanitizeFunctionName(subcmd.name)}`;
+    const funcName = `_qaspec_${this.sanitizeFunctionName(parentName)}_${this.sanitizeFunctionName(subcmd.name)}`;
     const lines: string[] = [];
 
     lines.push(`${funcName}() {`);
@@ -223,13 +223,13 @@ compdef _qaspec qaspec
   private generatePositionalSpec(positionalType?: string): string {
     switch (positionalType) {
       case 'change-id':
-        return "'*: :_openspec_complete_changes'";
+        return "'*: :_qaspec_complete_changes'";
       case 'spec-id':
-        return "'*: :_openspec_complete_specs'";
+        return "'*: :_qaspec_complete_specs'";
       case 'change-or-spec-id':
-        return "'*: :_openspec_complete_items'";
+        return "'*: :_qaspec_complete_items'";
       case 'schema-name':
-        return "'*: :_openspec_complete_schemas'";
+        return "'*: :_qaspec_complete_schemas'";
       case 'path':
         return "'*:path:_files'";
       case 'shell':
@@ -278,13 +278,13 @@ compdef _qaspec qaspec
 
     switch (positional.type) {
       case 'change-id':
-        return `'${index}${separator}${name}:_openspec_complete_changes'`;
+        return `'${index}${separator}${name}:_qaspec_complete_changes'`;
       case 'spec-id':
-        return `'${index}${separator}${name}:_openspec_complete_specs'`;
+        return `'${index}${separator}${name}:_qaspec_complete_specs'`;
       case 'change-or-spec-id':
-        return `'${index}${separator}${name}:_openspec_complete_items'`;
+        return `'${index}${separator}${name}:_qaspec_complete_items'`;
       case 'schema-name':
-        return `'${index}${separator}${name}:_openspec_complete_schemas'`;
+        return `'${index}${separator}${name}:_qaspec_complete_schemas'`;
       case 'path':
         return `'${index}${separator}${name}:_files'`;
       case 'shell':

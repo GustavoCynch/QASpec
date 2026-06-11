@@ -160,7 +160,7 @@ qaspec update [path] [options]
 
 ```bash
 # Update instruction files after npm upgrade
-npm update @fission-ai/qaspec qaspec update
+npm update @qaspec/cli && qaspec update
 ```
 
 ---
@@ -467,7 +467,7 @@ qaspec validate [item-name] [options]
 | `--type <type>` | Specify type when name is ambiguous: `change` or `spec` |
 | `--strict` | Enable strict validation mode |
 | `--json` | Output as JSON |
-| `--concurrency <n>` | Max parallel validations (default: 6, or `OPENSPEC_CONCURRENCY` env) |
+| `--concurrency <n>` | Max parallel validations (default: 6, or `QASPEC_CONCURRENCY` env) |
 | `--no-interactive` | Disable prompts |
 
 **Examples:**
@@ -615,7 +615,7 @@ Record user approval of analyze-phase artifacts after the digest halt.
 qaspec approve analyze --change <name> [--head-sha <sha>] [--json]
 ```
 
-Writes `approvals.analyze` to the change `.openspec.yaml` with content hash over `analysis.md` + `specs/**/*.md`.
+Writes `approvals.analyze` to the change `.qaspec.yaml` with content hash over `analysis.md` + `specs/**/*.md`.
 
 ### `qaspec validate cases`
 
@@ -635,11 +635,11 @@ Verify publish preconditions and emit a gate token.
 qaspec publish-gate --change <name> [--head-sha <sha>] [--json]
 ```
 
-Checks: approval valid, cases validation passes, usable TCMS target for the change (change `.openspec.yaml` `tcms` block merged over config defaults). On success prints `qaspec-gate:<8-hex>` and the resolved target.
+Checks: approval valid, cases validation passes, usable TCMS target for the change (change `.qaspec.yaml` `tcms` block merged over config defaults). On success prints `qaspec-gate:<8-hex>` and the resolved target.
 
 ### `qaspec tcms`
 
-Manage the per-change TCMS publish target stored in the change's `.openspec.yaml`.
+Manage the per-change TCMS publish target stored in the change's `.qaspec.yaml`.
 
 ```
 qaspec tcms set --change <name> [--provider qase] [--project <CODE>] [--base-url <url>] [--json]
@@ -1018,10 +1018,7 @@ qaspec config path
 qaspec config list
 
 # Get a specific value
-qaspec config get telemetry.enabled
-
-# Set a value
-qaspec config set telemetry.enabled false
+qaspec config get profile
 
 # Set a string value explicitly
 qaspec config set user.name "My Name" --string
@@ -1151,9 +1148,7 @@ qaspec completion uninstall
 
 | Variable | Description |
 |----------|-------------|
-| `OPENSPEC_TELEMETRY` | Set to `0` to disable telemetry |
-| `DO_NOT_TRACK` | Set to `1` to disable telemetry (standard DNT signal) |
-| `OPENSPEC_CONCURRENCY` | Default concurrency for bulk validation (default: 6) |
+| `QASPEC_CONCURRENCY` | Default concurrency for bulk validation (default: 6) |
 | `EDITOR` or `VISUAL` | Editor for `qaspec config edit` |
 | `NO_COLOR` | Disable color output when set |
 

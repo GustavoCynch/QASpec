@@ -117,7 +117,7 @@ paths: {}
       );
     });
 
-    it('resolves legacy .openspec-workspace metadata when present', () => {
+    it('ignores a stray .openspec-workspace directory and resolves .qaspec-workspace', () => {
       const workspaceRoot = path.join(tempDir, 'legacy-platform');
       fs.mkdirSync(path.join(workspaceRoot, '.openspec-workspace'), { recursive: true });
       fs.writeFileSync(
@@ -129,10 +129,10 @@ links: {}
       );
 
       expect(getWorkspaceMetadataDir(workspaceRoot)).toBe(
-        path.join(workspaceRoot, '.openspec-workspace')
+        path.join(workspaceRoot, '.qaspec-workspace')
       );
       expect(getWorkspaceSharedStatePath(workspaceRoot)).toBe(
-        path.join(workspaceRoot, '.openspec-workspace', WORKSPACE_SHARED_STATE_FILE_NAME)
+        path.join(workspaceRoot, '.qaspec-workspace', WORKSPACE_SHARED_STATE_FILE_NAME)
       );
     });
 
@@ -150,12 +150,12 @@ links: {}
     it('uses getGlobalDataDir for managed workspace and registry locations', () => {
       process.env.XDG_DATA_HOME = tempDir;
 
-      expect(getManagedWorkspacesDir()).toBe(path.join(tempDir, 'openspec', 'workspaces'));
+      expect(getManagedWorkspacesDir()).toBe(path.join(tempDir, 'qaspec', 'workspaces'));
       expect(getManagedWorkspaceRoot('platform')).toBe(
-        path.join(tempDir, 'openspec', 'workspaces', 'platform')
+        path.join(tempDir, 'qaspec', 'workspaces', 'platform')
       );
       expect(getWorkspaceRegistryPath()).toBe(
-        path.join(tempDir, 'openspec', 'workspaces', 'registry.yaml')
+        path.join(tempDir, 'qaspec', 'workspaces', 'registry.yaml')
       );
     });
 
@@ -167,7 +167,7 @@ links: {}
       });
 
       expect(getManagedWorkspacesDir({ globalDataDir: dataDir })).toBe(
-        '/home/tabish/.local/share/openspec/workspaces'
+        '/home/tabish/.local/share/qaspec/workspaces'
       );
     });
 
@@ -179,7 +179,7 @@ links: {}
       });
 
       expect(getManagedWorkspacesDir({ globalDataDir: dataDir })).toBe(
-        'C:\\Users\\Tabish\\AppData\\Local\\openspec\\workspaces'
+        'C:\\Users\\Tabish\\AppData\\Local\\qaspec\\workspaces'
       );
     });
 
@@ -252,12 +252,12 @@ links: {}
 
     it('does not mistake repo-local openspec projects for coordination workspaces', async () => {
       const repoRoot = path.join(tempDir, 'repo');
-      fs.mkdirSync(path.join(repoRoot, 'openspec', 'changes', 'add-feature'), {
+      fs.mkdirSync(path.join(repoRoot, 'qaspec', 'changes', 'add-feature'), {
         recursive: true,
       });
-      fs.mkdirSync(path.join(repoRoot, 'openspec', 'specs'), { recursive: true });
+      fs.mkdirSync(path.join(repoRoot, 'qaspec', 'specs'), { recursive: true });
 
-      await expect(findWorkspaceRoot(path.join(repoRoot, 'openspec', 'changes'))).resolves.toBe(
+      await expect(findWorkspaceRoot(path.join(repoRoot, 'qaspec', 'changes'))).resolves.toBe(
         null
       );
     });
@@ -482,9 +482,9 @@ After block.
       expect(refreshed).toContain('# Team Notes');
       expect(refreshed).toContain('Keep this.');
       expect(refreshed).toContain('After block.');
-      expect(refreshed.match(/OPENSPEC:WORKSPACE-GUIDANCE:START/gu)).toHaveLength(1);
+      expect(refreshed.match(/QASPEC:WORKSPACE-GUIDANCE:START/gu)).toHaveLength(1);
       expect(applyWorkspaceGuidanceBlock('# Team Notes\n')).toContain(
-        '<!-- OPENSPEC:WORKSPACE-GUIDANCE:START -->'
+        '<!-- QASPEC:WORKSPACE-GUIDANCE:START -->'
       );
     });
 
@@ -620,7 +620,7 @@ workspaces:
     });
 
     it('reads the local registry from the standard registry path', async () => {
-      const globalDataDir = path.join(tempDir, 'data', 'openspec');
+      const globalDataDir = path.join(tempDir, 'data', 'qaspec');
       const registryPath = getWorkspaceRegistryPath({ globalDataDir });
       fs.mkdirSync(path.dirname(registryPath), { recursive: true });
       fs.writeFileSync(
@@ -640,7 +640,7 @@ workspaces:
     });
 
     it('writes the local registry to the standard registry path', async () => {
-      const globalDataDir = path.join(tempDir, 'data', 'openspec');
+      const globalDataDir = path.join(tempDir, 'data', 'qaspec');
       const registry = {
         version: 1 as const,
         workspaces: {

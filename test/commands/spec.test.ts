@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 describe('spec command', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-spec-command-tmp');
-  const specsDir = path.join(testDir, 'openspec', 'specs');
+  const specsDir = path.join(testDir, 'qaspec', 'specs');
   const openspecBin = path.join(projectRoot, 'bin', 'qaspec.js');
   
   
@@ -84,7 +84,7 @@ The system SHALL process credit card payments securely`;
         expect(json.title).toBe('auth');
         expect(json.overview).toContain('test specification');
         expect(json.requirements).toHaveLength(2);
-        expect(json.metadata.format).toBe('openspec');
+        expect(json.metadata.format).toBe('qaspec');
       } finally {
         process.chdir(originalCwd);
       }

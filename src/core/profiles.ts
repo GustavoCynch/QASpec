@@ -17,13 +17,13 @@ export const CORE_WORKFLOWS = ['analyze', 'cases', 'publish', 'archive'] as cons
 export const RENAMED_QAS_WORKFLOW_IDS: Record<string, string> = { matrix: 'cases' };
 
 /**
- * Legacy OpenSpec core workflow set (pre-QASpec). Global configs still on this
+ * Legacy upstream core workflow set (pre-QASpec). Global configs still on this
  * custom profile should auto-migrate to {@link CORE_WORKFLOWS}.
  */
 export const OLD_CORE_WORKFLOWS = ['propose', 'explore', 'apply', 'archive'] as const;
 
 /**
- * Returns true when workflows are exactly the legacy OpenSpec core set (order-independent).
+ * Returns true when workflows are exactly the legacy upstream core set (order-independent).
  */
 export function isLegacyCoreWorkflowSet(workflows: readonly string[] | undefined): boolean {
   if (!workflows || workflows.length !== OLD_CORE_WORKFLOWS.length) {

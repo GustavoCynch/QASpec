@@ -16,21 +16,6 @@ describe('resolveEffectiveDelivery', () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
 
-  it('upgrades commands-only to both when upstream opsx commands exist', async () => {
-    const commandsDir = path.join(testDir, '.cursor', 'commands');
-    await fs.mkdir(commandsDir, { recursive: true });
-    await fs.writeFile(path.join(commandsDir, 'opsx-explore.md'), 'upstream');
-
-    const delivery = await resolveEffectiveDelivery(
-      testDir,
-      'commands',
-      ['explore', 'analyze', 'cases', 'publish', 'archive'],
-      ['cursor']
-    );
-
-    expect(delivery).toBe('both');
-  });
-
   it('keeps commands-only when no upstream signals are present', async () => {
     const delivery = await resolveEffectiveDelivery(
       testDir,

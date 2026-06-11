@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UpdateCommand, scanInstalledWorkflows } from '../../src/core/update.js';
 import { InitCommand } from '../../src/core/init.js';
 import { FileSystemUtils } from '../../src/utils/file-system.js';
-import { OPENSPEC_MARKERS } from '../../src/core/config.js';
+import { QASPEC_MARKERS } from '../../src/core/config.js';
 import type { GlobalConfig } from '../../src/core/global-config.js';
 import path from 'path';
 import fs from 'fs/promises';
@@ -50,7 +50,7 @@ describe('UpdateCommand', () => {
     await fs.mkdir(testDir, { recursive: true });
 
     // Create openspec directory
-    const openspecDir = path.join(testDir, 'openspec');
+    const openspecDir = path.join(testDir, 'qaspec');
     await fs.mkdir(openspecDir, { recursive: true });
 
     updateCommand = new UpdateCommand();
@@ -73,7 +73,7 @@ describe('UpdateCommand', () => {
   describe('basic validation', () => {
     it('should throw error if openspec directory does not exist', async () => {
       // Remove openspec directory
-      await fs.rm(path.join(testDir, 'openspec'), {
+      await fs.rm(path.join(testDir, 'qaspec'), {
         recursive: true,
         force: true,
       });
@@ -192,79 +192,6 @@ Old instructions content
       }
     });
 
-    it('should not overwrite upstream openspec-propose and openspec-apply-change on update', async () => {
-      const upstreamMarker = 'UPSTREAM_OPENSPEC_SKILL_CONTENT_DO_NOT_REPLACE';
-
-      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
-
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        '---\nname: qaspec-analyze\nmetadata:\n  author: qaspec\n  generatedBy: "0.0.1"\n---\n\nold qas content\n'
-      );
-
-      for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
-        const skillDir = path.join(skillsDir, skillName);
-        await fs.mkdir(skillDir, { recursive: true });
-        await fs.writeFile(
-          path.join(skillDir, 'SKILL.md'),
-          `---\nname: ${skillName}\nmetadata:\n  author: openspec\n---\n\n${upstreamMarker}\n`
-        );
-      }
-
-      setMockConfig({
-        featureFlags: {},
-        profile: 'custom',
-        delivery: 'both',
-        workflows: ['analyze', 'propose', 'apply'],
-      });
-
-      const forceUpdate = new UpdateCommand({ force: true });
-      await forceUpdate.execute(testDir);
-
-      for (const skillName of ['openspec-propose', 'openspec-apply-change'] as const) {
-        const content = await fs.readFile(path.join(skillsDir, skillName, 'SKILL.md'), 'utf-8');
-        expect(content).toContain(upstreamMarker);
-      }
-
-      const exploreContent = await fs.readFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(exploreContent).not.toContain('old qas content');
-    });
-
-    it('should create missing upstream skills on update without overwriting existing', async () => {
-      await fs.writeFile(path.join(testDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
-
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), '---\nname: qaspec-analyze\n---\n');
-
-      const existingMarker = 'EXISTING_SYNC_SKILL';
-      await fs.mkdir(path.join(skillsDir, 'openspec-sync-specs'), { recursive: true });
-      await fs.writeFile(
-        path.join(skillsDir, 'openspec-sync-specs', 'SKILL.md'),
-        `---\nname: openspec-sync-specs\n---\n\n${existingMarker}\n`
-      );
-
-      setMockConfig({
-        featureFlags: {},
-        profile: 'custom',
-        delivery: 'both',
-        workflows: ['explore', 'sync', 'propose', 'apply'],
-      });
-
-      const forceUpdate = new UpdateCommand({ force: true });
-      await forceUpdate.execute(testDir);
-
-      expect(await fs.readFile(path.join(skillsDir, 'openspec-sync-specs', 'SKILL.md'), 'utf-8')).toContain(
-        existingMarker
-      );
-      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-propose', 'SKILL.md'))).toBe(false);
-      expect(await FileSystemUtils.fileExists(path.join(skillsDir, 'openspec-apply-change', 'SKILL.md'))).toBe(false);
-    });
   });
 
   describe('command updates', () => {
@@ -928,434 +855,7 @@ metadata:
     });
   });
 
-  describe('legacy cleanup', () => {
-    it('should detect and auto-cleanup legacy files with --force flag', async () => {
-      // Set up a configured tool
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      // Create legacy CLAUDE.md with OpenSpec markers
-      const legacyContent = `${OPENSPEC_MARKERS.start}
-# OpenSpec Instructions
-
-These instructions are for AI assistants.
-${OPENSPEC_MARKERS.end}
-`;
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), legacyContent);
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should show v1 upgrade message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Cleaning up old QASpec setup')
-      );
-
-      // Should show marker removal message (config files are never deleted, only have markers removed)
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed OpenSpec markers from CLAUDE.md')
-      );
-
-      // Config file should still exist (never deleted)
-      const legacyExists = await FileSystemUtils.fileExists(
-        path.join(testDir, 'CLAUDE.md')
-      );
-      expect(legacyExists).toBe(true);
-
-      // File should have markers removed
-      const content = await fs.readFile(path.join(testDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).not.toContain(OPENSPEC_MARKERS.start);
-      expect(content).not.toContain(OPENSPEC_MARKERS.end);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should warn but continue with update when legacy files found in non-interactive mode', async () => {
-      // Set up a configured tool
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      // Create legacy CLAUDE.md with OpenSpec markers
-      const legacyContent = `${OPENSPEC_MARKERS.start}
-# OpenSpec Instructions
-${OPENSPEC_MARKERS.end}
-`;
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), legacyContent);
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Run without --force in non-interactive mode (CI environment)
-      await updateCommand.execute(testDir);
-
-      // Should show v1 upgrade message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Cleaning up old QASpec setup')
-      );
-
-      // Should show warning about --force
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Run with --force to auto-cleanup')
-      );
-
-      // Should continue with update
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Updated: Claude Code')
-      );
-
-      // Legacy file should still exist (not cleaned up)
-      const legacyExists = await FileSystemUtils.fileExists(
-        path.join(testDir, 'CLAUDE.md')
-      );
-      expect(legacyExists).toBe(true);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should cleanup legacy slash command directories with --force', async () => {
-      // Set up a configured tool
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      // Create legacy slash command directory
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
-      await fs.mkdir(legacyCommandDir, { recursive: true });
-      await fs.writeFile(
-        path.join(legacyCommandDir, 'old-command.md'),
-        'old command'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should show cleanup message for directory
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed .claude/commands/openspec/')
-      );
-
-      // Legacy directory should be deleted
-      const legacyDirExists = await FileSystemUtils.directoryExists(legacyCommandDir);
-      expect(legacyDirExists).toBe(false);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should cleanup legacy openspec/AGENTS.md with --force', async () => {
-      // Set up a configured tool
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      // Create legacy openspec/AGENTS.md
-      await fs.writeFile(
-        path.join(testDir, 'openspec', 'AGENTS.md'),
-        '# Old AGENTS.md content'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should show cleanup message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed openspec/AGENTS.md')
-      );
-
-      // Legacy file should be deleted
-      const legacyExists = await FileSystemUtils.fileExists(
-        path.join(testDir, 'openspec', 'AGENTS.md')
-      );
-      expect(legacyExists).toBe(false);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should not show legacy cleanup messages when no legacy files exist', async () => {
-      // Set up a configured tool with no legacy files
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      await updateCommand.execute(testDir);
-
-      // Should not show v1 upgrade message (no legacy files)
-      const calls = consoleSpy.mock.calls.map(call =>
-        call.map(arg => String(arg)).join(' ')
-      );
-      const hasLegacyMessage = calls.some(call =>
-        call.includes('Cleaning up old QASpec setup')
-      );
-      expect(hasLegacyMessage).toBe(false);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should remove OpenSpec marker block from mixed content files', async () => {
-      // Set up a configured tool
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), {
-        recursive: true,
-      });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'old'
-      );
-
-      // Create CLAUDE.md with mixed content (user content + OpenSpec markers)
-      const mixedContent = `# My Project
-
-Some user-defined instructions here.
-
-${OPENSPEC_MARKERS.start}
-# OpenSpec Instructions
-
-These instructions are for AI assistants.
-${OPENSPEC_MARKERS.end}
-
-More user content after markers.
-`;
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), mixedContent);
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should show marker removal message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed OpenSpec markers from CLAUDE.md')
-      );
-
-      // File should still exist
-      const fileExists = await FileSystemUtils.fileExists(
-        path.join(testDir, 'CLAUDE.md')
-      );
-      expect(fileExists).toBe(true);
-
-      // File should have markers removed but preserve user content
-      const updatedContent = await fs.readFile(
-        path.join(testDir, 'CLAUDE.md'),
-        'utf-8'
-      );
-      expect(updatedContent).toContain('# My Project');
-      expect(updatedContent).toContain('Some user-defined instructions here');
-      expect(updatedContent).toContain('More user content after markers');
-      expect(updatedContent).not.toContain(OPENSPEC_MARKERS.start);
-      expect(updatedContent).not.toContain(OPENSPEC_MARKERS.end);
-
-      consoleSpy.mockRestore();
-    });
-  });
-
   describe('legacy tool upgrade', () => {
-    it('should upgrade legacy tools to new skills with --force', async () => {
-      // Create legacy slash command directory (no skills exist yet)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
-      await fs.mkdir(legacyCommandDir, { recursive: true });
-      await fs.writeFile(
-        path.join(legacyCommandDir, 'proposal.md'),
-        'old command content'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should show detected tools message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Tools detected from legacy artifacts')
-      );
-
-      // Should show Claude Code being set up
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Claude Code')
-      );
-
-      // Should show getting started message for newly configured tools
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Getting started')
-      );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/qsx:analyze')
-      );
-
-      // Skills should be created
-      const skillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
-      const skillExists = await FileSystemUtils.fileExists(skillFile);
-      expect(skillExists).toBe(true);
-
-      // Legacy directory should be deleted
-      const legacyDirExists = await FileSystemUtils.directoryExists(legacyCommandDir);
-      expect(legacyDirExists).toBe(false);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should upgrade multiple legacy tools with --force', async () => {
-      // Create legacy command directories for Claude and Cursor
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
-        'content'
-      );
-
-      await fs.mkdir(path.join(testDir, '.cursor', 'commands'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.cursor', 'commands', 'openspec-proposal.md'),
-        'content'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should detect both tools
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Tools detected from legacy artifacts')
-      );
-
-      // Both tools should have skills created
-      const claudeSkillFile = path.join(testDir, '.claude', 'skills', 'qaspec-analyze', 'SKILL.md');
-      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
-
-      expect(await FileSystemUtils.fileExists(claudeSkillFile)).toBe(true);
-      expect(await FileSystemUtils.fileExists(cursorSkillFile)).toBe(true);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should not upgrade legacy tools already configured', async () => {
-      // Set up a configured Claude tool with skills
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
-      await fs.writeFile(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'existing skill'
-      );
-
-      // Also create legacy directory (simulating partial upgrade)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
-      await fs.mkdir(legacyCommandDir, { recursive: true });
-      await fs.writeFile(
-        path.join(legacyCommandDir, 'proposal.md'),
-        'old command'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Legacy cleanup should happen
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed .claude/commands/openspec/')
-      );
-
-      // Should NOT show "Tools detected from legacy artifacts" because claude is already configured
-      const calls = consoleSpy.mock.calls.map(call =>
-        call.map(arg => String(arg)).join(' ')
-      );
-      const hasDetectedMessage = calls.some(call =>
-        call.includes('Tools detected from legacy artifacts')
-      );
-      expect(hasDetectedMessage).toBe(false);
-
-      // Should update existing skills (not "Getting started" for newly configured)
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Updated: Claude Code')
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should upgrade only unconfigured legacy tools when mixed', async () => {
-      // Set up configured Claude tool with skills
-      const claudeSkillsDir = path.join(testDir, '.claude', 'skills');
-      await fs.mkdir(path.join(claudeSkillsDir, 'qaspec-analyze'), { recursive: true });
-      await fs.writeFile(
-        path.join(claudeSkillsDir, 'qaspec-analyze', 'SKILL.md'),
-        'existing skill'
-      );
-
-      // Create legacy commands for both Claude (configured) and Cursor (not configured)
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
-        'content'
-      );
-
-      await fs.mkdir(path.join(testDir, '.cursor', 'commands'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.cursor', 'commands', 'openspec-proposal.md'),
-        'content'
-      );
-
-      const consoleSpy = vi.spyOn(console, 'log');
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Should detect Cursor as a legacy tool to upgrade (but not Claude)
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Tools detected from legacy artifacts')
-      );
-
-      // Cursor skills should be created
-      const cursorSkillFile = path.join(testDir, '.cursor', 'skills', 'qaspec-analyze', 'SKILL.md');
-      expect(await FileSystemUtils.fileExists(cursorSkillFile)).toBe(true);
-
-      // Should show "Getting started" for newly configured Cursor
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Getting started')
-      );
-
-      consoleSpy.mockRestore();
-    });
-
     it('should not show getting started message when no new tools configured', async () => {
       // Set up a configured tool (no legacy artifacts)
       const skillsDir = path.join(testDir, '.claude', 'skills');
@@ -1379,91 +879,6 @@ More user content after markers.
       expect(hasGettingStarted).toBe(false);
 
       consoleSpy.mockRestore();
-    });
-
-    it('should create only effective profile skills when upgrading legacy tools', async () => {
-      // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
-        'content'
-      );
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // Default profile is core, so only core workflows should be generated.
-      const skillNames = [
-        'qaspec-analyze',
-        'qaspec-analyze',
-        'qaspec-cases',
-        'qaspec-publish',
-        'qaspec-archive',
-      ];
-
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      for (const skillName of skillNames) {
-        const skillFile = path.join(skillsDir, skillName, 'SKILL.md');
-        const exists = await FileSystemUtils.fileExists(skillFile);
-        expect(exists).toBe(true);
-      }
-
-      const nonCoreSkill = path.join(skillsDir, 'openspec-new-change', 'SKILL.md');
-      expect(await FileSystemUtils.fileExists(nonCoreSkill)).toBe(false);
-    });
-
-    it('should create commands when upgrading legacy tools', async () => {
-      // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
-        'content'
-      );
-
-      // Create update command with force option
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      // New qas commands should be created
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
-      const analyzeCmd = path.join(commandsDir, 'analyze.md');
-      const exists = await FileSystemUtils.fileExists(analyzeCmd);
-      expect(exists).toBe(true);
-    });
-
-    it('should not inject non-profile workflows when upgrading legacy tools', async () => {
-      setMockConfig({
-        featureFlags: {},
-        profile: 'custom',
-        delivery: 'both',
-        workflows: ['analyze'],
-      });
-
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
-        'content'
-      );
-
-      const forceUpdateCommand = new UpdateCommand({ force: true });
-      await forceUpdateCommand.execute(testDir);
-
-      const skillsDir = path.join(testDir, '.claude', 'skills');
-      expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-analyze', 'SKILL.md')
-      )).toBe(true);
-      expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'qaspec-cases', 'SKILL.md')
-      )).toBe(false);
-
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
-      expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'analyze.md')
-      )).toBe(true);
-      expect(await FileSystemUtils.fileExists(
-        path.join(commandsDir, 'propose.md')
-      )).toBe(false);
     });
   });
 
@@ -1587,7 +1002,7 @@ More user content after markers.
     });
 
     it('should migrate legacy four-workflow custom profile to core on init', async () => {
-      await fs.rm(path.join(testDir, 'openspec'), { recursive: true, force: true });
+      await fs.rm(path.join(testDir, 'qaspec'), { recursive: true, force: true });
       await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
 
       setMockConfig({
@@ -1750,7 +1165,7 @@ content
     });
 
     it('should remove workflows outside profile during update sync', async () => {
-      await fs.rm(path.join(testDir, 'openspec'), { recursive: true, force: true });
+      await fs.rm(path.join(testDir, 'qaspec'), { recursive: true, force: true });
       await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
 
       setMockConfig({
@@ -1763,9 +1178,6 @@ content
       await fs.mkdir(path.join(skillsDir, 'qaspec-analyze'), { recursive: true });
       await fs.writeFile(path.join(skillsDir, 'qaspec-analyze', 'SKILL.md'), 'old');
 
-      // Add a non-core workflow
-      await fs.mkdir(path.join(skillsDir, 'openspec-new-change'), { recursive: true });
-      await fs.writeFile(path.join(skillsDir, 'openspec-new-change', 'SKILL.md'), 'old');
       const extraCommandFile = path.join(testDir, '.claude', 'commands', 'qsx', 'stale-workflow.md');
       await fs.mkdir(path.dirname(extraCommandFile), { recursive: true });
       await fs.writeFile(extraCommandFile, 'old');
@@ -1775,10 +1187,7 @@ content
       const forceUpdate = new UpdateCommand({ force: true });
       await forceUpdate.execute(testDir);
 
-      // Deselected workflow artifacts should be removed for both delivery surfaces.
-      expect(await FileSystemUtils.fileExists(
-        path.join(skillsDir, 'openspec-new-change', 'SKILL.md')
-      )).toBe(false);
+      // Deselected qsx subdir commands should be removed during update sync.
       expect(await FileSystemUtils.fileExists(extraCommandFile)).toBe(false);
 
       // Should report deselected workflow cleanup.

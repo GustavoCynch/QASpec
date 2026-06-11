@@ -74,13 +74,6 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
 }
 
 /**
- * When upstream OpenSpec is active, install the full QASpec core skill set alongside upstream.
- */
-export function getCoexistenceSkillTemplates(_profileWorkflows: readonly string[]): SkillTemplateEntry[] {
-  return getSkillTemplates([...CORE_WORKFLOWS]);
-}
-
-/**
  * Gets command templates with their IDs, optionally filtered by workflow IDs.
  */
 export function getCommandTemplates(workflowFilter?: readonly string[]): CommandTemplateEntry[] {

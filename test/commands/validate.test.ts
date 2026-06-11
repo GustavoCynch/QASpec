@@ -6,8 +6,8 @@ import { runCLI } from '../helpers/run-cli.js';
 describe('top-level validate command', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-validate-command-tmp');
-  const changesDir = path.join(testDir, 'openspec', 'changes');
-  const specsDir = path.join(testDir, 'openspec', 'specs');
+  const changesDir = path.join(testDir, 'qaspec', 'changes');
+  const specsDir = path.join(testDir, 'qaspec', 'specs');
 
   beforeEach(async () => {
     await fs.mkdir(changesDir, { recursive: true });
@@ -137,8 +137,8 @@ describe('top-level validate command', () => {
     // (not options.noInteractive = true) due to Commander.js convention.
     const result = await runCLI(['validate', '--specs', '--no-interactive'], {
       cwd: testDir,
-      // Don't set OPEN_SPEC_INTERACTIVE to ensure we're testing the flag itself
-      env: { ...process.env, OPEN_SPEC_INTERACTIVE: undefined },
+      // Don't set QASPEC_INTERACTIVE to ensure we're testing the flag itself
+      env: { ...process.env, QASPEC_INTERACTIVE: undefined },
     });
     expect(result.exitCode).toBe(0);
     // Should complete without hanging and without prompts

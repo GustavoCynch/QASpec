@@ -88,12 +88,12 @@ Prepare and upload **approved** test cases from `testcases.md` to **Qase** via M
 
 **What it does:**
 
-1. Resolves the TCMS target for the change (`qaspec tcms show`): the `tcms` block in the change's `.openspec.yaml`, with `qaspec/config.yaml` `tcms` as optional user-managed defaults.
+1. Resolves the TCMS target for the change (`qaspec tcms show`): the `tcms` block in the change's `.qaspec.yaml`, with `qaspec/config.yaml` `tcms` as optional user-managed defaults.
 2. When no usable target exists, proposes **creating a new TCMS project** for the change (recommended), lists existing projects only as alternatives, and halts for your choice — an existing project is reused only when you explicitly pick it. Your choice is persisted per change with `qaspec tcms set`; the agent never writes `tcms` into `qaspec/config.yaml`.
 3. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no Qase upload in that message**.
 4. After you confirm, uploads via MCP, writes `publish-log.md`, and marks published rows `- [x]` in `testcases.md`.
 
-**Per-change TCMS target** (change `.openspec.yaml`, written by `qaspec tcms set`):
+**Per-change TCMS target** (change `.qaspec.yaml`, written by `qaspec tcms set`):
 
 ```yaml
 tcms:

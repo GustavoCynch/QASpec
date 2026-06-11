@@ -1,6 +1,6 @@
-# OpenSpec Scripts
+# QASpec Scripts
 
-Utility scripts for OpenSpec maintenance and development.
+Utility scripts for QASpec maintenance and development.
 
 ## update-flake.sh
 

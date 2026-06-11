@@ -6,8 +6,8 @@ import { execSync } from 'child_process';
 describe('top-level show command', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-show-command-tmp');
-  const changesDir = path.join(testDir, 'openspec', 'changes');
-  const specsDir = path.join(testDir, 'openspec', 'specs');
+  const changesDir = path.join(testDir, 'qaspec', 'changes');
+  const specsDir = path.join(testDir, 'qaspec', 'specs');
   const openspecBin = path.join(projectRoot, 'bin', 'qaspec.js');
 
 
@@ -33,7 +33,7 @@ describe('top-level show command', () => {
     const originalEnv = { ...process.env };
     try {
       process.chdir(testDir);
-      process.env.OPEN_SPEC_INTERACTIVE = '0';
+      process.env.QASPEC_INTERACTIVE = '0';
       let err: any;
       try {
         execSync(`node ${openspecBin} show`, { encoding: 'utf-8' });
