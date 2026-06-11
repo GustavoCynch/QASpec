@@ -43,6 +43,20 @@ const ENGLISH_QASE_RULES = `# Qase test case rules (MCP)
 Rules for creating suites and cases in Qase via MCP (\`create_suite\`, \`create_case\`).
 Read before \`/qsx:cases\` and again before \`/qsx:publish\`.
 
+## Field mapping (closed set)
+
+**Omit-on-unmapped:** Any Qase field not listed below MUST be omitted from MCP payloads or sent with the documented default — never inferred.
+
+| Qase field | Source in testcases.md | Default | Allowed values |
+|------------|-------------------------|---------|----------------|
+| title | Checkbox line text (after \`- [ ] N.N\`) | — | Plain-language, tester-observable |
+| description | **Preconditions** block (numbered list) | empty | Project language |
+| steps | **Steps** table (Action column) | — | One step per row |
+| expected | **Steps** table (Expected column) | empty for transition steps | Observable outcomes |
+| suite | \`## Suite:\` heading above the case | — | Plain language module/feature name |
+
+Do not send severity, priority, or type unless your team extends this table with explicit mapping rules.
+
 ## Suites
 
 - One suite per logical module or feature (\`## Suite:\` group in \`testcases.md\`).
@@ -54,11 +68,13 @@ Read before \`/qsx:cases\` and again before \`/qsx:publish\`.
 - No code identifiers (camelCase fields, selectors, file paths) in Qase-bound text unless shown in the UI.
 - One checkbox in \`testcases.md\` maps to one Qase case after publish.
 - Under each checkbox line, cases phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for \`create_case\` — do not re-generate from the title alone.
+- Mandatory traceability: \`<!-- req: capability/requirement-slug -->\`, \`<!-- req: assumption:<id> -->\`, or \`<!-- req: gap -->\` on every case.
 
 ## Test case structure
 
 \`\`\`markdown
 - [ ] 1.1 Observable title
+  <!-- req: capability/requirement-slug -->
 
   **Preconditions:**
   1. Environment access
@@ -81,7 +97,7 @@ Build steps from \`analysis.md\`, diff, requirements, and specs — not invented
 
 ## Customize
 
-Replace this file with your team's Qase field codes, severity/priority mapping, and step format rules.
+Replace this file with your team's Qase field codes and extend the mapping table with explicit source/default/allowed values for additional fields.
 `;
 
 export async function scaffoldQaspecReferences(projectRoot: string): Promise<string[]> {

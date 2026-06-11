@@ -4,17 +4,23 @@
 
 ## Affected capabilities
 
-<!-- Kebab-case capability names for delta specs in cases phase (e.g. billing-export, user-auth) -->
-<!-- Do not write specs/**/*.md in the analyze step -->
+<!-- Kebab-case capability names for delta specs (e.g. billing-export, user-auth) -->
 
 ## Functional intent vs implementation
 
 <!-- Dual source of truth: intended behavior (notes, description) vs what the diff implements -->
+<!-- When PR description and developer notes are missing or non-substantive, write: Functional intent: ABSENT — no independent intent source. Do not reconstruct intent from the diff alone. -->
 
 ## Validated clarifications
 
-<!-- User-approved facts after analyze halt: defects vs expected behavior, scope cuts, env assumptions -->
+<!-- Facts the user explicitly addressed after the analyze halt — not assumptions or inferred intent -->
 <!-- Cases phase treats this section as binding — update here before /qsx:cases if chat clarifies anything -->
+
+## Unvalidated assumptions
+
+<!-- Risk-ordered list of assumptions still pending user confirmation (highest risk first) -->
+<!-- Label each with confidence (high/medium/low) and source (diff inference, partial notes, etc.) -->
+<!-- Cases derived from assumptions use <!-- req: assumption:<id> --> in testcases.md -->
 
 ## Functional impact by area
 
@@ -56,6 +62,8 @@
 
 <!-- Agreed / Single-analyst / Contradiction from dual analysts -->
 
-## Open question
+## Approval digest
 
-<!-- Exactly one halt question for the user -->
+<!-- Compact summary for halt: requirement headings one-liners + Unvalidated assumptions list -->
+<!-- End with zero to three targeted questions; if none exist, state no blocking question and request digest approval -->
+<!-- After user approval, run: qaspec approve analyze --change <name> [--head-sha <sha>] -->

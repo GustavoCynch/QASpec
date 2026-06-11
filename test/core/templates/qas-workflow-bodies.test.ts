@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   getQasAnalyzeSkillTemplate,
   getQasAnalyzeCommandTemplate,
@@ -8,45 +10,78 @@ import {
   getQasCasesCommandTemplate,
 } from '../../../src/core/templates/workflows/cases.js';
 import { getQasPublishSkillTemplate } from '../../../src/core/templates/workflows/publish.js';
+import { resolveSchema } from '../../../src/core/artifact-graph/resolver.js';
 
-describe('qas workflow bodies (spec-first analyze)', () => {
-  it('analyze body co-produces delta specs and reads capability baselines', () => {
+describe('qas workflow bodies (hardened pipeline)', () => {
+  it('analyze body includes digest halt, approve command, and ABSENT-intent guard', () => {
     const body = getQasAnalyzeSkillTemplate().instructions;
 
     expect(body).toContain('qaspec instructions analyze --change');
     expect(body).toContain('qaspec instructions specs --change');
-    expect(body).toMatch(/read `qaspec\/specs\/<capability>\/spec\.md` when present/i);
-    expect(body).toMatch(/Draft delta specs/);
-    expect(body).toMatch(/halt question covering both `analysis\.md` and the delta specs/);
-    expect(body).toMatch(/\*\*and\*\* affected `specs\/\*\*\/\*\.md`/);
+    expect(body).toMatch(/Unvalidated assumptions/i);
+    expect(body).toMatch(/approval digest/i);
+    expect(body).toMatch(/qaspec approve analyze --change/);
+    expect(body).toMatch(/ABSENT-intent guard/i);
+    expect(body).toMatch(/zero to three/i);
     expect(body).toContain('Do NOT write `testcases.md`');
-    expect(body).not.toMatch(/Do NOT write `testcases\.md`, `specs/);
+    expect(getQasAnalyzeSkillTemplate().metadata?.version).toBe('1.5');
   });
 
   it('analyze skill and command share the same body', () => {
     expect(getQasAnalyzeCommandTemplate().content).toBe(getQasAnalyzeSkillTemplate().instructions);
   });
 
-  it('cases body consumes approved specs and never writes them', () => {
+  it('cases body checks approval, requires req annotations, and validates before halt', () => {
     const body = getQasCasesSkillTemplate().instructions;
 
     expect(body).toContain('qaspec instructions test-cases --change');
-    expect(body).not.toContain('qaspec instructions specs --change');
-    expect(body).toMatch(/Read the change `specs\/\*\*\/\*\.md` files in full/);
-    expect(body).toMatch(/every requirement scenario in the change delta specs covered by at least one case/i);
+    expect(body).toMatch(/approval\.analyze/);
+    expect(body).toMatch(/qaspec validate cases --change/);
+    expect(body).toMatch(/Mandatory traceability/);
     expect(body).toMatch(/Do NOT create or update `specs\/\*\*\/\*\.md` in this step/);
-    expect(body).not.toMatch(/Format specs/);
-    expect(body).not.toMatch(/co-produced change delta specs/);
+    expect(getQasCasesSkillTemplate().metadata?.version).toBe('1.5');
   });
 
   it('cases skill and command share the same body', () => {
     expect(getQasCasesCommandTemplate().content).toBe(getQasCasesSkillTemplate().instructions);
   });
 
-  it('publish body directs missing specs to analyze, not cases', () => {
+  it('publish body runs publish-gate, write-ahead log, and omit-on-unmapped', () => {
     const body = getQasPublishSkillTemplate().instructions;
 
+    expect(body).toMatch(/qaspec publish-gate --change/);
+    expect(body).toMatch(/gate token/i);
+    expect(body).toMatch(/pending.*before the first MCP call/i);
+    expect(body).toMatch(/omit-on-unmapped/i);
+    expect(body).toMatch(/representative case/i);
     expect(body).toMatch(/direct user to complete `\/qsx:analyze`/);
-    expect(body).not.toMatch(/direct user to complete `\/qsx:cases`/);
+  });
+
+  it('schema instructions include digest halt, validate gate, and publish gate', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../../..');
+    const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
+    const content = fs.readFileSync(schemaPath, 'utf-8');
+
+    expect(content).toMatch(/Approval digest halt/i);
+    expect(content).toMatch(/qaspec approve analyze/);
+    expect(content).toMatch(/qaspec validate cases/);
+    expect(content).toMatch(/Publish gate/i);
+    expect(content).toMatch(/Unvalidated assumptions/i);
+  });
+
+  it('templates contain Unvalidated assumptions section and publish-log Status column', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../../..');
+    const templatesDir = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'templates');
+
+    const analysis = fs.readFileSync(path.join(templatesDir, 'analysis.md'), 'utf-8');
+    expect(analysis).toMatch(/## Unvalidated assumptions/);
+    expect(analysis).not.toMatch(/Do not write specs/);
+
+    const testcases = fs.readFileSync(path.join(templatesDir, 'testcases.md'), 'utf-8');
+    expect(testcases).toMatch(/<!-- req:/);
+
+    const publishLog = fs.readFileSync(path.join(templatesDir, 'publish-log.md'), 'utf-8');
+    expect(publishLog).toMatch(/\| Status \|/);
+    expect(publishLog).toMatch(/pending/);
   });
 });

@@ -1,7 +1,7 @@
 ## Suite: <!-- module or feature name -->
 
 - [ ] 1.1 <!-- Observable case title — tester-facing language -->
-  <!-- Optional traceability: req: capability/requirement-slug -->
+  <!-- req: capability/requirement-slug — mandatory on every case (or assumption:<id> / gap) -->
 
   **Preconditions:**
   1. <!-- Environment access (e.g. development/staging) -->

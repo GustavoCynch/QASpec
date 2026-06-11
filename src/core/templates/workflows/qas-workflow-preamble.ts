@@ -52,11 +52,19 @@ export function getQasOrchestratorOnlyProtocol(phase: 'analyze' | 'cases'): stri
 export function getQasDualAnalystProtocol(): string {
   return `## Dual blind analysts (when workflow flag is true)
 
-- Launch **two** parallel **Task** subagents with the **same** analyst brief; do not tell either that a peer exists.
-- Each analyst MUST fetch the change set themselves (\`gh pr diff\` / \`gh pr view\` for GitHub PRs, or \`git diff\` / patch per brief).
+**Analyze (heterogeneous briefs):**
+- Analyst A (intent-first): PR description, developer notes, linked issues, baseline \`qaspec/specs\` — **no diff**.
+- Analyst B (implementation-first): diff/code only — **no description**.
+- Synthesis: structural comparison of predicted vs reconstructed behavior; each divergence is an intent-vs-implementation candidate; unique findings trigger targeted verification instead of automatic confidence downgrade.
+
+**Cases (keyed merge):**
+- Both analysts receive the same binding \`analysis.md\` and delta specs.
+- Each returns draft cases **grouped by requirement slug** (\`capability/requirement-slug\`).
+- Merge as keyed union: keep one case per slug key; record discards when analysts disagree — not semantic dedup by title alone.
+
+**Shared:**
+- Launch **two** parallel **Task** subagents; do not tell either that a peer exists.
 - Read \`qaspec/references/historical_bugs.md\` before drafting (mandatory every run).
-- Optional: inject \`## Project Standards (auto-resolved)\` from \`.atl/skill-registry.md\` into both prompts when the file exists.
-- After **both** return: synthesize once — **Agreed** (keep stronger wording), **Single-analyst** (include with lower confidence), **Contradiction** (call out; prefer conservative test impact).
 - If Task is unavailable while the flag is **true**, stop and ask the user to set the flag **false** or retry when Task exists — do not fall back to a single subagent.`;
 }
 
@@ -78,52 +86,63 @@ ${getQasDualAnalystProtocol()}`;
 }
 
 export function getQasAnalystPromptBlock(phase: 'analyze' | 'cases'): string {
+  if (phase === 'analyze') {
+    return `## Analyst Task prompts (use only when workflow.multipleSubagents.review is true)
+
+**Analyst A — intent-first (no diff):**
+\`\`\`
+You are QA analyst A (intent-first). Repository write ban — read-only gh/git for notes only, no diff.
+Read: PR description, developer notes, linked issues, qaspec/specs for affected capabilities, historical_bugs.md.
+Do NOT read the PR diff or changed source files.
+Produce predicted behavior per schema template sections and proposed delta spec requirements.
+Return only your draft. No halt question.
+\`\`\`
+
+**Analyst B — implementation-first (no description):**
+\`\`\`
+You are QA analyst B (implementation-first). Repository write ban — read-only.
+Read: gh pr diff / git diff, changed source files, historical_bugs.md.
+Do NOT read PR description, developer notes, or linked issues.
+Produce reconstructed behavior from the diff and proposed delta spec requirements.
+Return only your draft. No halt question.
+\`\`\`
+
+Orchestrator synthesizes predicted vs reconstructed behavior after both return.`;
+  }
+
   const phaseTask =
-    phase === 'analyze'
-      ? 'Produce structured PR/change analysis per schema template sections, plus proposed delta spec requirements (ADDED/MODIFIED/REMOVED/RENAMED per affected capability). Do NOT add the final user halt question.'
-      : 'Produce draft test cases in Markdown (suites, checkbox lines, types). Do NOT add approval halt. Do NOT publish to Qase.';
+    'Produce draft test cases grouped by requirement slug (capability/requirement-slug headers). Each case: suite, checkbox line, mandatory <!-- req: ... --> annotation, Preconditions, Steps. Do NOT add approval halt. Do NOT publish to Qase.';
 
-  const extraRef =
-    phase === 'cases'
-      ? '\n- Also read `qaspec/references/qase_test_case_rules.md`'
-      : '';
-
-  const casesAuthority =
-    phase === 'cases'
-      ? `
-## Validated analysis and specs (binding — orchestrator pastes full analysis.md and change delta specs)
-{FULL analysis.md BODY plus change specs/**/*.md content — mandatory; overrides PR/diff when they conflict}
-
-## Conflict rule (cases only)
-- analysis.md and the delta specs win over gh/git diff and over current implementation
-- Cover every requirement scenario in the delta specs with at least one case
-- Defects in analysis → draft cases for corrected behavior, not for accepting the bug
-`
-      : '';
-
-  return `## Analyst Task prompt (use only when ${phase === 'analyze' ? 'workflow.multipleSubagents.review' : 'workflow.multipleSubagents.cases'} is true — copy identically to both parallel Task runs)
+  return `## Analyst Task prompt (use only when workflow.multipleSubagents.cases is true — copy to both parallel Task runs)
 
 \`\`\`
-You are a QA analyst executing one pass of the QASpec workflow.
+You are a QA analyst executing one pass of the QASpec cases workflow.
 
 **Repository write ban:** Do NOT create, modify, or delete repository files. Shell only for read-only gh/git.
 
 ## Mandatory references
-- qaspec/references/historical_bugs.md${extraRef}
+- qaspec/references/historical_bugs.md
+- qaspec/references/qase_test_case_rules.md
 - Apply rules from the orchestrator brief (project config)
-${casesAuthority}
+
+## Validated analysis and specs (binding — orchestrator pastes full analysis.md and change delta specs)
+{FULL analysis.md BODY plus change specs/**/*.md content — mandatory; overrides PR/diff when they conflict}
+
+## Conflict rule
+- analysis.md and the delta specs win over gh/git diff and over current implementation
+- Cover every requirement with at least one case; group output by requirement slug
+
 ## Obtain the change set yourself
 - GitHub PR: run gh pr diff and gh pr view (--repo if specified in brief)
 - Otherwise: run git diff or read the patch path from the brief
-- Read changed source files with read/search after you have the patch
-${phase === 'cases' ? '- Use the diff only where analysis.md and the delta specs do not already decide expected vs defective behavior' : ''}
+- Use the diff only where analysis.md and the delta specs do not already decide expected vs defective behavior
 
-## PR / change identity (orchestrator fills — identical for both analysts)
-{PR number, URL, gh flags, developer notes, or non-GH fallback}
+## PR / change identity (orchestrator fills)
+{PR number, URL, gh flags, or non-GH fallback}
 
 ## Task
 ${phaseTask}
 
-Return only your draft. End with: Skill Resolution: {injected|fallback-registry|fallback-path|none}
+Return drafts grouped by requirement slug. End with: Skill Resolution: {injected|fallback-registry|fallback-path|none}
 \`\`\``;
 }

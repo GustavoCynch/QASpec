@@ -12,6 +12,7 @@ import {
   formatChangeStatus,
   type ChangeStatus,
 } from '../../core/artifact-graph/index.js';
+import { evaluateAnalyzeApproval } from '../../core/approval-ledger.js';
 import {
   validateChangeExists,
   validateSchemaExists,
@@ -27,6 +28,7 @@ import {
 export interface StatusOptions {
   change?: string;
   schema?: string;
+  headSha?: string;
   json?: boolean;
 }
 
@@ -78,6 +80,17 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
       planningHome,
     });
     const status = formatChangeStatus(context);
+
+    if (context.schemaName === 'qaspec-pr-review') {
+      const approval = evaluateAnalyzeApproval(context.changeDir, {
+        headSha: options.headSha,
+        projectRoot,
+      });
+      status.approval = {
+        analyze: approval.state,
+        ...(approval.reason ? { reason: approval.reason } : {}),
+      };
+    }
 
     spinner?.stop();
 

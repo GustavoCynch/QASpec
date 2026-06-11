@@ -51,13 +51,13 @@ describe('qa-config-seed', () => {
     expect(parsed.rules.apply.length).toBeGreaterThan(0);
   });
 
-  it('apply seed rules require tcms target and confirmation before MCP', () => {
+  it('apply seed rules require publish gate and confirmation before MCP', () => {
     const seed = getQaspecPrReviewConfigSeed();
     const applyRules = seed.rules!.apply.join('\n');
 
-    expect(applyRules).toContain('tcms');
+    expect(applyRules).toMatch(/publish-gate/i);
+    expect(applyRules).toMatch(/omit-on-unmapped/i);
     expect(applyRules).not.toMatch(/write.*publish-plan\.md/i);
-    expect(applyRules).not.toMatch(/persist to execution-context\.md/i);
     expect(applyRules).toMatch(/confirmation halt/i);
     expect(applyRules).toMatch(/never upload in the same message/i);
     expect(applyRules).toMatch(/in-chat publish summary/i);
@@ -73,34 +73,33 @@ describe('qa-config-seed', () => {
     expect(yaml).toMatch(/first run/i);
   });
 
-  it('test-cases seed rules require enriched case bodies', () => {
+  it('test-cases seed rules require approval check, req annotations, and validate gate', () => {
     const seed = getQaspecPrReviewConfigSeed();
-    const matrixRules = seed.rules!['test-cases'].join('\n');
+    const casesRules = seed.rules!['test-cases'].join('\n');
 
-    expect(matrixRules).toMatch(/Preconditions/i);
-    expect(matrixRules).toMatch(/Steps/i);
-    expect(matrixRules).toMatch(/do not invent vague flows/i);
+    expect(casesRules).toMatch(/approval\.analyze/i);
+    expect(casesRules).toMatch(/req:/i);
+    expect(casesRules).toMatch(/validate cases/i);
+    expect(casesRules).toMatch(/Preconditions/i);
+    expect(casesRules).toMatch(/Steps/i);
   });
 
-  it('seed rules are spec-first: analyze co-produces specs, cases consumes them', () => {
+  it('seed rules encode hardened pipeline: analyze approve, cases validate, apply gate', () => {
     const seed = getQaspecPrReviewConfigSeed();
 
     const analyzeRules = seed.rules!.analyze.join('\n');
     expect(analyzeRules).toMatch(/co-produce specs\/<capability>\/spec\.md deltas with analysis\.md/i);
-    expect(analyzeRules).toMatch(/read existing qaspec\/specs\/<capability>\/spec\.md/i);
-    expect(analyzeRules).toMatch(/covering both analysis\.md and the delta specs/i);
-    expect(analyzeRules).toMatch(/update affected specs\/\*\*\/\*\.md/i);
-    expect(analyzeRules).not.toMatch(/do not write specs/i);
+    expect(analyzeRules).toMatch(/qaspec approve analyze/i);
+    expect(analyzeRules).toMatch(/approval digest/i);
+    expect(analyzeRules).toMatch(/ABSENT-intent/i);
 
     const casesRules = seed.rules!['test-cases'].join('\n');
-    expect(casesRules).toMatch(/do not create or update specs\/\*\*\/\*\.md in this phase/i);
-    expect(casesRules).toMatch(/every requirement scenario in the delta specs covered by at least one case/i);
+    expect(casesRules).toMatch(/do not create or update specs/i);
+    expect(casesRules).toMatch(/validate cases/i);
     expect(casesRules).not.toMatch(/co-produce/i);
 
     const specsRules = seed.rules!.specs.join('\n');
     expect(specsRules).toMatch(/co-produced with analysis\.md in the analyze phase/i);
-    expect(specsRules).toMatch(/covered by at least one case in testcases\.md/i);
-    expect(specsRules).not.toMatch(/aligned with testcases\.md cases/i);
   });
 
   it('testmatrix template includes Preconditions and Steps blocks', () => {
@@ -138,7 +137,7 @@ describe('qa-config-seed', () => {
     expect(content).toMatch(/Build from sources/i);
   });
 
-  it('qaspec-pr-review schema is spec-first: analyze co-produces specs, test-cases requires them', () => {
+  it('qaspec-pr-review schema encodes hardened pipeline instructions', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../..');
     const schema = resolveSchema('qaspec-pr-review', repoRoot);
 
@@ -151,12 +150,11 @@ describe('qa-config-seed', () => {
     const content = fs.readFileSync(schemaPath, 'utf-8');
 
     expect(content).toMatch(/Co-produce delta specs in the same phase/);
-    expect(content).toMatch(/Do NOT write `testcases\.md` in this step/);
-    expect(content).toMatch(/covering both `analysis\.md`\n? *and the delta specs/);
-    expect(content).toMatch(/Cover the approved specs/);
-    expect(content).toMatch(/Co-produced with `analysis\.md` in the analyze phase/);
-    expect(content).not.toMatch(/no delta spec files in this step/);
-    expect(content).not.toMatch(/covering \*\*both\*\* the case list and the delta specs/);
+    expect(content).toMatch(/qaspec approve analyze/);
+    expect(content).toMatch(/qaspec validate cases/);
+    expect(content).toMatch(/Publish gate/i);
+    expect(content).toMatch(/Mandatory traceability/);
+    expect(content).toMatch(/Unvalidated assumptions/i);
   });
 
   it('qaspec-pr-review schema apply instruction requires tcms target and confirm before MCP', () => {

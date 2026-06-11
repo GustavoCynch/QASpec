@@ -51,8 +51,7 @@ export function getSubagentModeInstructionAppendix(
 **${SUBAGENT_MODE_DUAL_ANALYST_MARKER}**
 
 - \`${configKey}\` is **true**.
-- Launch **two** parallel blind **Task** subagents with the **same** analyst brief; do not tell either that a peer exists.
-- Each analyst MUST fetch the change set (\`gh pr diff\` / \`gh pr view\` for GitHub PRs, or \`git diff\` / patch per brief).
-- After **both** return: synthesize once — **Agreed**, **Single-analyst** (lower confidence), **Contradiction** in **Synthesis notes** (analyze) or merge drafts (cases).
+- **Analyze:** launch two parallel blind Task subagents with **heterogeneous** briefs — intent-first (no diff) and implementation-first (no description); synthesize predicted vs reconstructed behavior.
+- **Cases:** both analysts receive binding \`analysis.md\` and delta specs; each returns drafts **grouped by requirement slug**; merge as keyed union with recorded discards.
 - If the Task tool is unavailable, stop and ask the user to set \`${configKey}: false\` or retry when Task is available — do not fall back to a single subagent or solo output without both drafts.`;
 }

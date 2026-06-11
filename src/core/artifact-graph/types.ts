@@ -55,6 +55,34 @@ export const ChangeMetadataSchema = z.object({
   // artifacts as the source of planning detail.
   goal: z.string().min(1).optional(),
   affected_areas: z.array(z.string().min(1)).optional(),
+
+  // Phase approval ledger (qaspec-pr-review)
+  approvals: z
+    .object({
+      analyze: z
+        .object({
+          approvedAt: z.string().min(1),
+          contentHash: z
+            .string()
+            .regex(/^sha256:[a-f0-9]{64}$/, {
+              message: 'contentHash must be sha256:<64-hex>',
+            }),
+          headSha: z.string().min(1).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+
+  // Publish gate nonce (qaspec-pr-review)
+  publishGate: z
+    .object({
+      nonce: z.string().min(1),
+      contentHash: z
+        .string()
+        .regex(/^sha256:[a-f0-9]{64}$/)
+        .optional(),
+    })
+    .optional(),
 });
 
 export type ChangeMetadata = z.infer<typeof ChangeMetadataSchema>;

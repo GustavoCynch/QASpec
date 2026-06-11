@@ -24,22 +24,32 @@ artifacts:
       Fill every section in the template, using N/A when not applicable:
       - Summary, **Affected capabilities** (kebab-case)
       - Functional intent vs implementation, **Validated clarifications** (N/A until user responds to halt)
+      - **Unvalidated assumptions** (risk-ordered, confidence-marked; empty when none)
       - Functional impact, framework/UI, backend/API, settings/flags
       - Regression signals, responsive/usability, localization, security/data handling
-      - Risks for cases phase, synthesis notes, exactly **one** open question (halt)
+      - Risks for cases phase, synthesis notes, **Approval digest**
+
+      **ABSENT-intent guard:** When PR description and developer notes are missing or non-substantive, write
+      `Functional intent: ABSENT — no independent intent source` in **Functional intent vs implementation**,
+      do not reconstruct intent from the diff alone, and make obtaining intent the first halt question.
 
       **Co-produce delta specs in the same phase:** Create or update `specs/<capability>/spec.md` under this
       change for testable behavior introduced or changed, using the `specs` artifact instructions and
       `templates/spec.md` delta format. Copy the full requirement block from `qaspec/specs/<capability>/spec.md`
       before editing MODIFIED blocks. Encode agreed intent — never document a known defect as accepted SHALL/MUST behavior.
 
-      After the user answers the halt (or requests edits), persist every clarification in **Validated clarifications**,
-      adjust **Functional intent vs implementation** when intent differs from the diff, and update affected
+      After the user answers the halt (or requests edits), persist facts the user **explicitly addressed** in
+      **Validated clarifications** only; keep unconfirmed inferences in **Unvalidated assumptions**. Adjust
+      **Functional intent vs implementation** when intent differs from the diff, and update affected
       `specs/**/*.md` so requirements reflect the clarified intent. Do not leave approvals only in chat —
       `/qsx:cases` reads `analysis.md` and the delta specs as the approved source of truth.
 
-      Do NOT write `testcases.md` in this step. End with exactly **one** halt question covering both `analysis.md`
-      and the delta specs; do not continue to cases in the same message.
+      **Approval digest halt:** End with a compact digest (requirement headings one-liners + **Unvalidated assumptions**)
+      and **zero to three** targeted questions. Do not fabricate a question when none exists — state that no blocking
+      question exists and request digest approval. After user approval, run
+      `qaspec approve analyze --change <name> [--head-sha <sha>]`.
+
+      Do NOT write `testcases.md` in this step. Do not continue to cases in the same message.
     requires: []
 
   - id: test-cases
@@ -61,6 +71,7 @@ artifacts:
       get cases that fail today and pass after fix.
 
       Before writing:
+      - Run `qaspec status --change "<name>" --json` and check `approval.analyze`. When `stale` or `missing`, halt and ask the user to re-approve via `/qsx:analyze` — do not draft `testcases.md` in that message.
       - Load instructions for the `test-cases` artifact (`qaspec instructions` JSON).
       - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
       - Read `analysis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
@@ -71,10 +82,13 @@ artifacts:
       - Use the PR diff only to derive how to observe/test agreed behavior — not to override validated analysis or specs.
       - Merge analyst drafts by intent; dedupe only when behavior and boundaries match.
 
-      **Cover the approved specs:** Every requirement scenario in the change delta specs MUST map to at least one
-      case in `testcases.md` (self-audit before halt). Do not create or update `specs/**/*.md` in this step; when a
+      **Cover the approved specs:** Every requirement in the change delta specs MUST map to at least one
+      case in `testcases.md`. Do not create or update `specs/**/*.md` in this step; when a
       user clarification during this conversation changes agreed behavior, update `analysis.md` and the affected
       delta specs first, then the case list.
+
+      **Mandatory traceability:** Every case MUST carry `<!-- req: capability/requirement-slug -->`,
+      `<!-- req: assumption:<id> -->`, or `<!-- req: gap -->` on the case line or immediately below.
 
       **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]` only on checkbox lines; enriched case detail lives **below** each checkbox line.
 
@@ -87,12 +101,15 @@ artifacts:
       Guidelines:
       - Group under `## Suite: <name>` headings
       - One case = one checkbox: `- [ ] 1.1 Observable case title`, then Preconditions and Steps blocks
-      - Optional traceability: `<!-- req: capability/requirement-slug -->` on a case line
+      - Mandatory traceability: `<!-- req: capability/requirement-slug -->` (or `assumption:<id>` / `gap`)
       - Use plain-language titles (tester-observable); no code identifiers in preconditions, steps, or expected results
       - Include explicit BVA, negative, regression, and resilience cases per `analysis.md`, the delta specs, and config rules
-      - Self-audit before halt: every requirement scenario covered by at least one case, and every step traceable to a source unless marked as a documented gap
 
-      End with exactly **one** approval question covering the case list (halt). Do not publish to Qase in this step.
+      **Validation gate:** Before the approval halt, run `qaspec validate cases --change <name>` (use `--json` when helpful).
+      Fix all reported errors and re-run after edits. Include the validator coverage summary in the halt message.
+      The halt is forbidden until validation passes.
+
+      End with an approval question covering the case list (halt). Do not publish to Qase in this step.
     requires:
       - analyze
       - specs
@@ -158,18 +175,24 @@ apply:
       - **Do not invoke Qase MCP for upload** in the same message as target selection or `tcms` persistence
     - Ignore legacy `publish-plan.md` if present
 
+    **Publish gate:** Run `qaspec publish-gate --change <name>` before the publish summary. When it fails, report
+    each listed precondition and how to resolve it — do not proceed to MCP. When it passes, note the gate token.
+
     Prepare summary and confirm (no Qase MCP upload in this phase):
     - Present in-chat publish summary derived from `testcases.md`: target (provider, project, base URL), each suite with unchecked-case count, warnings (cases without **Steps** blocks, suspected PII)
-    - End with **exactly one** confirmation halt
+    - Include the **full payload of one representative case** (all mapped Qase fields) so the user validates the mapping, not just counts
+    - End with **exactly one** confirmation halt citing the current gate token
     - **Do not invoke Qase MCP** in the same message as the summary
 
-    After user confirms:
+    After user confirms (with gate token cited):
+    - Write `publish-log.md` rows for all planned cases as **pending** before the first MCP call
     - Re-read `testcases.md`
     - Read **Preconditions** and **Steps** under each unchecked case to publish; do not re-generate steps from titles alone when a **Steps** block exists
     - Read Qase MCP tool schemas before the first call
-    - Validate cases against rules; upload via MCP; write `publish-log.md` with suite/case trace (use template `templates/publish-log.md`)
-    - Mark each published case `- [x]` in `testcases.md`
+    - **Omit-on-unmapped:** Send only Qase fields documented in `qase_test_case_rules.md` mapping table; never infer severity/priority/type
+    - Per case: mark publish-log row `in-flight` → MCP create → record returned ID + `done` → mark `- [x]` in `testcases.md`
+    - On re-run: reconcile `pending`/`in-flight` rows against Qase by title or recorded ID before creating — never blind-create on retry
 
-    User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-present summary, ask again for confirm before MCP.
+    User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-run publish gate, re-present summary, ask again for confirm before MCP.
 
     Do not write `execution-context.md` or `publish-plan.md`. Do not modify application source code under test. Stop on PII/secrets.

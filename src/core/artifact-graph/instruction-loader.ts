@@ -148,6 +148,11 @@ export interface ChangeStatus {
   applyRequires: string[];
   /** Status of each artifact */
   artifacts: ArtifactStatus[];
+  /** Phase approval state (qaspec-pr-review only) */
+  approval?: {
+    analyze: 'valid' | 'stale' | 'missing';
+    reason?: 'content-changed' | 'head-moved';
+  };
 }
 
 export interface ArtifactPathSummary {

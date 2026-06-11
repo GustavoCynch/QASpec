@@ -591,7 +591,51 @@ qaspec status [options]
 |--------|-------------|
 | `--change <id>` | Change name (prompts if omitted) |
 | `--schema <name>` | Schema override (auto-detected from change's config) |
+| `--head-sha <sha>` | PR head SHA for approval verification (`qaspec-pr-review`) |
 | `--json` | Output as JSON |
+
+**Approval block (JSON, `qaspec-pr-review` only):**
+
+```json
+{
+  "approval": {
+    "analyze": "valid",
+    "reason": "content-changed"
+  }
+}
+```
+
+States: `valid`, `stale`, or `missing`. Stale includes `reason`: `content-changed` or `head-moved`.
+
+### `qaspec approve analyze`
+
+Record user approval of analyze-phase artifacts after the digest halt.
+
+```
+qaspec approve analyze --change <name> [--head-sha <sha>] [--json]
+```
+
+Writes `approvals.analyze` to the change `.openspec.yaml` with content hash over `analysis.md` + `specs/**/*.md`.
+
+### `qaspec validate cases`
+
+Validate `testcases.md` coverage and format against change delta specs.
+
+```
+qaspec validate cases --change <name> [--json]
+```
+
+Exits non-zero on uncovered requirements, dangling `req` references, unannotated cases, or malformed Preconditions/Steps blocks.
+
+### `qaspec publish-gate`
+
+Verify publish preconditions and emit a gate token.
+
+```
+qaspec publish-gate --change <name> [--head-sha <sha>] [--json]
+```
+
+Checks: approval valid, cases validation passes, `tcms` block in config. On success prints `qaspec-gate:<8-hex>`.
 
 **Examples:**
 

@@ -35,6 +35,9 @@ import {
   type SchemasOptions,
   type NewChangeOptions,
 } from '../commands/workflow/index.js';
+import { approveCommand } from '../commands/approve.js';
+import { validateCasesCommand } from '../commands/validate-cases.js';
+import { publishGateCommand } from '../commands/publish-gate.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
 
 const program = new Command();
@@ -302,7 +305,8 @@ registerWorkspaceCommand(program);
 // Top-level validate command
 program
   .command('validate [item-name]')
-  .description('Validate changes and specs')
+  .description('Validate changes and specs (use "validate cases" for testcases coverage)')
+  .option('--change <id>', 'Change name (required for validate cases)')
   .option('--all', 'Validate all changes and specs')
   .option('--changes', 'Validate all changes')
   .option('--specs', 'Validate all specs')
@@ -311,8 +315,15 @@ program
   .option('--json', 'Output validation results as JSON')
   .option('--concurrency <n>', 'Max concurrent validations (defaults to env OPENSPEC_CONCURRENCY or 6)')
   .option('--no-interactive', 'Disable interactive prompts')
-  .action(async (itemName?: string, options?: { all?: boolean; changes?: boolean; specs?: boolean; type?: string; strict?: boolean; json?: boolean; noInteractive?: boolean; concurrency?: string }) => {
+  .action(async (itemName?: string, options?: { change?: string; all?: boolean; changes?: boolean; specs?: boolean; type?: string; strict?: boolean; json?: boolean; noInteractive?: boolean; concurrency?: string }) => {
     try {
+      if (itemName === 'cases') {
+        await validateCasesCommand({ change: options?.change, json: options?.json });
+        if (typeof process.exitCode === 'number' && process.exitCode !== 0) {
+          process.exit(process.exitCode);
+        }
+        return;
+      }
       const validateCommand = new ValidateCommand();
       await validateCommand.execute(itemName, options);
     } catch (error) {
@@ -438,6 +449,7 @@ program
   .description('Display artifact completion status for a change')
   .option('--change <id>', 'Change name to show status for')
   .option('--schema <name>', 'Schema override (auto-detected from config.yaml)')
+  .option('--head-sha <sha>', 'PR head SHA for approval verification (qaspec-pr-review)')
   .option('--json', 'Output as JSON')
   .action(async (options: StatusOptions) => {
     try {
@@ -515,6 +527,47 @@ newCmd
   .action(async (name: string, options: NewChangeOptions) => {
     try {
       await newChangeCommand(name, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Publish gate — precondition check before TCMS upload
+program
+  .command('publish-gate')
+  .description('Verify approval, cases validation, and tcms config before publish')
+  .requiredOption('--change <id>', 'Change name')
+  .option('--head-sha <sha>', 'PR head SHA for approval verification')
+  .option('--json', 'Output gate result as JSON')
+  .action(async (options: { change: string; headSha?: string; json?: boolean }) => {
+    try {
+      await publishGateCommand(options);
+      if (typeof process.exitCode === 'number' && process.exitCode !== 0) {
+        process.exit(process.exitCode);
+      }
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Approve command — record phase approval in the change ledger
+const approveCmd = program
+  .command('approve')
+  .description('Record user approval of a workflow phase');
+
+approveCmd
+  .command('analyze')
+  .description('Record approval of analyze-phase artifacts (analysis.md + delta specs)')
+  .requiredOption('--change <id>', 'Change name')
+  .option('--head-sha <sha>', 'PR head commit SHA at approval time')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change: string; headSha?: string; json?: boolean }) => {
+    try {
+      await approveCommand('analyze', options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

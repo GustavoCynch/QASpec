@@ -4,7 +4,7 @@ import { getQasWorkflowConfigPreamble } from './qas-workflow-preamble.js';
 
 const QAS_PUBLISH_BODY = `${getQasWorkflowConfigPreamble(['apply'])}
 
-Run QASpec **publish** (Phase 3). Resolve TCMS target, get user confirmation via in-chat summary, then upload approved \`testcases.md\` via MCP.
+Run QASpec **publish** (Phase 3). Resolve TCMS target, run publish gate, get user confirmation via in-chat summary, then upload approved \`testcases.md\` via MCP.
 
 ## Steps
 
@@ -15,13 +15,14 @@ Run QASpec **publish** (Phase 3). Resolve TCMS target, get user confirmation via
 5. Read completed \`specs/**/*.md\` for context when files exist.
 6. Resolve TCMS target (provider, project code, base URL) from \`tcms\` block in \`qaspec/config.yaml\`.
 7. When config has no usable \`tcms\` block: if change has legacy \`execution-context.md\`, read project code and base URL and offer persisting to config; otherwise discover Qase projects via MCP (or ask for project code when list/create tools are missing), offer create-new when supported, persist chosen target to \`qaspec/config.yaml\` \`tcms\` block and announce the edit. **Do not invoke Qase MCP for upload in this message.** Ignore legacy \`publish-plan.md\`.
-8. Present in-chat publish summary from \`testcases.md\` (target, suites with unchecked-case counts, warnings). End with **exactly one** confirmation halt. **Do not invoke Qase MCP in this message.**
-9. After user confirms: read **Preconditions** and **Steps** under each unchecked case; map to Qase fields per rules — do not invent steps from titles when a **Steps** block exists. Read Qase MCP tool schemas (\`create_suite\`, \`create_case\`, \`bulk_create_cases\` if present); validate cases against rules; MCP upload; write \`publish-log.md\`; mark each published row \`- [x]\` in \`testcases.md\`.
-10. Stop on PII/secrets — do not echo in chat or Qase. Do not modify application source under test.
+8. Run \`qaspec publish-gate --change "<name>"\` before the publish summary. When it fails, report each precondition and resolving command — do not proceed. When it passes, note the gate token.
+9. Present in-chat publish summary from \`testcases.md\` (target, suites with unchecked-case counts, warnings). Include the **full payload of one representative case** (all mapped Qase fields). End with **exactly one** confirmation halt citing the gate token. **Do not invoke Qase MCP in this message.**
+10. After user confirms (with gate token cited): write \`publish-log.md\` rows for all planned cases as **pending** before the first MCP call; read **Preconditions** and **Steps** under each unchecked case; **omit-on-unmapped** — send only Qase fields in the mapping table, never infer severity/priority/type; per case mark publish-log \`in-flight\` → MCP create → \`done\` → \`- [x]\` in \`testcases.md\`; on re-run reconcile \`pending\`/\`in-flight\` rows against Qase by title or recorded ID before creating.
+11. Stop on PII/secrets — do not echo in chat or Qase. Do not modify application source under test.
 
-User-requested edits after the confirm halt: update \`testcases.md\` or note agreed exclusions, re-present summary, ask again for confirm before MCP.
+User-requested edits after the confirm halt: update \`testcases.md\` or note agreed exclusions, re-run \`qaspec publish-gate\`, re-present summary, ask again for confirm before MCP.
 
-**Guardrails:** target resolution (steps 6–7) and confirmation halt (step 8) are separate from MCP upload; v1 TCMS is Qase only. Do not write \`execution-context.md\` or \`publish-plan.md\`.`;
+**Guardrails:** target resolution (steps 6–7), publish gate (step 8), and confirmation halt (step 9) are separate from MCP upload; v1 TCMS is Qase only. Do not write \`execution-context.md\` or \`publish-plan.md\`.`;
 
 export function getQasPublishSkillTemplate(): SkillTemplate {
   return {
@@ -29,7 +30,7 @@ export function getQasPublishSkillTemplate(): SkillTemplate {
     description: 'QASpec publish — resolve TCMS target, confirm via in-chat summary, then Qase MCP upload',
     instructions: QAS_PUBLISH_BODY,
     compatibility: 'Requires qaspec CLI and Qase MCP.',
-    metadata: { author: 'qaspec', version: '1.3' },
+    metadata: { author: 'qaspec', version: '1.4' },
   };
 }
 

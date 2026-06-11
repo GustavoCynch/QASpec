@@ -31,13 +31,23 @@ Typical happy path:
 /qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:archive
 ```
 
-### Halts and prerequisites
+### Halts, gates, and prerequisites
 
-- **Analyze → cases:** `analysis.md` and the co-produced delta specs are the validated source of truth for cases (especially **Validated clarifications** and intent vs implementation). Analyze reads existing `qaspec/specs/<capability>/spec.md` baselines, halts once covering both artifacts, and persists halt answers into both; cases reads them before the PR diff and they override the diff when they conflict.
-- **Cases → publish:** Publish requires approved test cases and deltas; cases halts for case-list approval and covers every requirement scenario in the specs with at least one case. Each case in `testcases.md` includes **Preconditions** and **Steps** under its checkbox line (built from sources, not invented).
-- **Publish summary → upload:** Publish resolves the TCMS target from `tcms` in `qaspec/config.yaml` (or discovers/creates a Qase project on first run and persists the choice), presents an in-chat summary of unchecked cases, halts once for confirm, then runs **Qase MCP** only after confirmation and writes `publish-log.md`. v1 does not upload to TestRail, Xray, or other TCMS — more connectors are in progress; see [Test management (TCMS)](../README.md#test-management-tcms).
-- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` (source of truth) or state exclusions in chat instead. Legacy `execution-context.md` in a change is read once and offered for migration to config.
-- **Cases without analyze:** Not supported — cases requires `analysis.md` from analyze.
+The QA pipeline uses **CLI gates** so critical invariants are mechanically verified, not only prompt-enforced:
+
+| Step | CLI gate | When |
+|------|----------|------|
+| After analyze halt | `qaspec approve analyze --change <name> [--head-sha <sha>]` | User approves the digest; records content hash + optional PR head SHA in `.openspec.yaml` |
+| Before cases halt | `qaspec validate cases --change <name>` | Every requirement has a covering case; every case has a `req` annotation; format lint passes |
+| Before publish upload | `qaspec publish-gate --change <name>` | Approval valid, cases validation passes, `tcms` block present; emits `qaspec-gate:<token>` |
+
+Check approval state anytime with `qaspec status --change <name> --json` — the `approval` block reports `valid`, `stale`, or `missing` for `qaspec-pr-review` changes.
+
+- **Analyze → cases:** `analysis.md` and co-produced delta specs are the validated source of truth. Cases halts when `approval.analyze` is `stale` or `missing` and asks for re-approval via `/qsx:analyze`. Analyze ends with an **approval digest** (zero to three questions); after approval run `qaspec approve analyze`.
+- **Cases → publish:** Every case requires `<!-- req: capability/slug -->`, `assumption:<id>`, or `gap`. Cases halts only after `qaspec validate cases` passes.
+- **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first Qase MCP call. Write `publish-log.md` rows as **pending** before upload; reconcile on retry.
+- **Legacy changes:** Changes created before the approval ledger have `approval: missing` — re-run analyze halt and `qaspec approve analyze` rather than failing hard.
+- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. Legacy `execution-context.md` is read once and offered for migration to config `tcms`.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
 
@@ -67,7 +77,7 @@ Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_t
 ### Exploratory PR review
 
 ```text
-/qsx:analyze ──► /qsx:cases ──► (approve) ──► /qsx:publish ──► (confirm summary) ──► Qase upload
+/qsx:analyze ──► (approve) ──► /qsx:cases ──► (validate) ──► /qsx:publish ──► (publish-gate + confirm) ──► Qase upload
 ```
 
 Use when a PR or requirement doc needs structured risk analysis before cases are written.
