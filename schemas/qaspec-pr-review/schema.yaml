@@ -159,7 +159,7 @@ apply:
   instruction: |
     Publish the approved test cases to Qase (MCP) and update tracking.
 
-    **Language:** Write `publish-log.md` and user-facing halt text in the project language from config.
+    **Language:** Write user-facing halt text in the project language from config.
 
     Resolve TCMS target (no case upload in this phase):
     - Re-read `qaspec/references/qase_test_case_rules.md`
@@ -177,7 +177,7 @@ apply:
       - After the user chooses, persist with `qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]` and announce it
       - **Never write the `tcms` block in `qaspec/config.yaml`**
       - **Do not invoke Qase MCP for upload** in the same message as target selection or target persistence
-    - Ignore legacy `publish-plan.md` if present
+    - Ignore legacy `publish-plan.md` and legacy `publish-log.md` if present
 
     **Publish gate:** Run `qaspec publish-gate --change <name>` before the publish summary. When it fails, report
     each listed precondition and how to resolve it — do not proceed to MCP. When it passes, note the gate token.
@@ -189,14 +189,13 @@ apply:
     - **Do not invoke Qase MCP** in the same message as the summary
 
     After user confirms (with gate token cited):
-    - Write `publish-log.md` rows for all planned cases as **pending** before the first MCP call
     - Re-read `testcases.md`
     - Read **Preconditions** and **Steps** under each unchecked case to publish; do not re-generate steps from titles alone when a **Steps** block exists
     - Read Qase MCP tool schemas before the first call
     - **Omit-on-unmapped:** Send only Qase fields documented in `qase_test_case_rules.md` mapping table; never infer severity/priority/type
-    - Per case: mark publish-log row `in-flight` → MCP create → record returned ID + `done` → mark `- [x]` in `testcases.md`
-    - On re-run: reconcile `pending`/`in-flight` rows against Qase by title or recorded ID before creating — never blind-create on retry
+    - Per case: MCP create → mark that case `- [x]` in `testcases.md` immediately after the successful create call. No local Qase IDs are recorded and no per-case trace file is written.
+    - On re-run: before creating, check each unchecked case against existing Qase cases by title and never blind-create — cases already present in Qase are marked `- [x]` without a duplicate create call
 
     User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-run publish gate, re-present summary, ask again for confirm before MCP.
 
-    Do not write `execution-context.md`, `publish-plan.md`, or the `tcms` block in `qaspec/config.yaml`. Do not modify application source code under test. Stop on PII/secrets.
+    Do not write `execution-context.md`, `publish-plan.md`, `publish-log.md`, or the `tcms` block in `qaspec/config.yaml`. Do not modify application source code under test. Stop on PII/secrets.

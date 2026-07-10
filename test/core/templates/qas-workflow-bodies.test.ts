@@ -46,15 +46,19 @@ describe('qas workflow bodies (hardened pipeline)', () => {
     expect(getQasCasesCommandTemplate().content).toBe(getQasCasesSkillTemplate().instructions);
   });
 
-  it('publish body runs publish-gate, write-ahead log, and omit-on-unmapped', () => {
+  it('publish body runs publish-gate, marks checkboxes per case, and omit-on-unmapped', () => {
     const body = getQasPublishSkillTemplate().instructions;
 
     expect(body).toMatch(/qaspec publish-gate --change/);
     expect(body).toMatch(/gate token/i);
-    expect(body).toMatch(/pending.*before the first MCP call/i);
+    expect(body).toMatch(/mark that case `?- \[x\]`? in `?testcases\.md/i);
+    expect(body).toMatch(/reconcil(e|ing).*by title/i);
     expect(body).toMatch(/omit-on-unmapped/i);
     expect(body).toMatch(/representative case/i);
     expect(body).toMatch(/direct user to complete `\/qsx:analyze`/);
+    expect(body).toMatch(/ignore legacy `publish-plan\.md` and legacy `publish-log\.md`/i);
+    expect(body).not.toMatch(/writes? `publish-log\.md`(?! ,? or)/i);
+    expect(body).not.toMatch(/publish-log row/i);
   });
 
   it('schema instructions include digest halt, validate gate, and publish gate', () => {
@@ -69,7 +73,7 @@ describe('qas workflow bodies (hardened pipeline)', () => {
     expect(content).toMatch(/Unvalidated assumptions/i);
   });
 
-  it('templates contain Unvalidated assumptions section and publish-log Status column', () => {
+  it('templates contain Unvalidated assumptions section and no publish-log template', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../../..');
     const templatesDir = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'templates');
 
@@ -80,8 +84,6 @@ describe('qas workflow bodies (hardened pipeline)', () => {
     const testcases = fs.readFileSync(path.join(templatesDir, 'testcases.md'), 'utf-8');
     expect(testcases).toMatch(/<!-- req:/);
 
-    const publishLog = fs.readFileSync(path.join(templatesDir, 'publish-log.md'), 'utf-8');
-    expect(publishLog).toMatch(/\| Status \|/);
-    expect(publishLog).toMatch(/pending/);
+    expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(false);
   });
 });

@@ -79,7 +79,7 @@ You: /qsx:publish
 AI:  Resolves Qase target from config (or asks once on first publish), shows an in-chat summary, halts for confirm.
 You: Confirm (or adjust testcases.md / scope in chat first).
 
-AI:  Uploads approved cases via Qase MCP, writes publish-log.md, and marks checkboxes.
+AI:  Uploads approved cases via Qase MCP and marks checkboxes in testcases.md.
 ```
 
 > **TCMS support:** v1 publish is **Qase-only**. TestRail, Xray, and install-time TCMS selection are in active development. To help or request another system, see [Test management (TCMS)](../README.md#test-management-tcms) in the README.

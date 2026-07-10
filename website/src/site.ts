@@ -50,7 +50,7 @@ export const WORKFLOW_COMMANDS = [
     label: 'Publish',
     description:
       'Approved cases upload to Qase via MCP — only after you review the in-chat summary and confirm.',
-    artifact: '→ publish-log.md',
+    artifact: '→ testcases.md ✓',
   },
   {
     num: '04',

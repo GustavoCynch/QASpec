@@ -22,7 +22,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 |----|---------------|--------|
 | `analyze` | `/qsx:analyze` | `analysis.md` + delta specs |
 | `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) |
-| `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; `publish-log.md` trace |
+| `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; checkbox marks in `testcases.md` |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
@@ -45,9 +45,9 @@ Check approval state anytime with `qaspec status --change <name> --json` — the
 
 - **Analyze → cases:** `analysis.md` and co-produced delta specs are the validated source of truth. Cases halts when `approval.analyze` is `stale` or `missing` and asks for re-approval via `/qsx:analyze`. Analyze ends with an **approval digest** (zero to three questions); after approval run `qaspec approve analyze`.
 - **Cases → publish:** Every case requires `<!-- req: capability/slug -->`, `assumption:<id>`, or `gap`. Cases halts only after `qaspec validate cases` passes.
-- **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first Qase MCP call. Write `publish-log.md` rows as **pending** before upload; reconcile on retry.
+- **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first Qase MCP call. Per case: MCP create → mark `- [x]` in `testcases.md`; on re-run, unchecked cases are reconciled against Qase by title before creating — never blind-create.
 - **Legacy changes:** Changes created before the approval ledger have `approval: missing` — re-run analyze halt and `qaspec approve analyze` rather than failing hard.
-- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. Legacy `execution-context.md` values are surfaced as an alternative in the target halt and, once chosen, persisted per change via `qaspec tcms set`.
+- **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. A legacy `publish-log.md` from an earlier QASpec version is ignored. Legacy `execution-context.md` values are surfaced as an alternative in the target halt and, once chosen, persisted per change via `qaspec tcms set`.
 
 Team policy lives in `qaspec/config.yaml` (`context`, `rules`, `workflow`). Generated `qaspec-*` skills stay thin and load policy via:
 
