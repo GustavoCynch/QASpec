@@ -229,7 +229,7 @@ Generated `qaspec-analyze` and `qaspec-cases` skills SHALL instruct agents to re
 
 ### Requirement: Publish workflow behavior
 
-The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) per change via `qaspec tcms show` (change `.openspec.yaml` `tcms` block merged over project-config defaults), run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full Qase payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — write the write-ahead rows to `publish-log.md`, call Qase via MCP, update each row with the returned ID, and mark published rows in the tracked cases file. On re-run with pending or in-flight rows, the agent SHALL reconcile against Qase by recorded ID or title before creating. Qase fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
+The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) per change via `qaspec tcms show` (change `.openspec.yaml` `tcms` block merged over project-config defaults), run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full Qase payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — call Qase via MCP and mark each published case `- [x]` in the tracked cases file immediately after its successful create call. Checkbox marks SHALL be the only local publish tracking; the skill SHALL NOT write `publish-log.md`. On re-run with unchecked cases, the agent SHALL reconcile against existing Qase cases by title before creating and SHALL never blind-create; a legacy `publish-log.md` in the change directory SHALL be ignored. Qase fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
 
 #### Scenario: Target resolved from change metadata
 
@@ -260,16 +260,23 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 #### Scenario: MCP only after confirmation with gate token
 
 - **WHEN** the user confirms publish after the summary halt
-- **THEN** the agent cites the current gate token, writes all planned rows to `publish-log.md` as pending, then re-reads `testcases.md` and maps case **Preconditions** and **Steps** to Qase fields per `qase_test_case_rules.md` without replacing steps with newly invented steps based only on titles
-- **AND** after each successful MCP create the agent records the returned case ID, sets the row to done, and marks the row `- [x]` in `testcases.md`
+- **THEN** the agent cites the current gate token, re-reads `testcases.md`, and maps case **Preconditions** and **Steps** to Qase fields per `qase_test_case_rules.md` without replacing steps with newly invented steps based only on titles
+- **AND** after each successful MCP create the agent marks that case `- [x]` in `testcases.md`
+- **AND** no `publish-log.md` or other per-case trace file is written
 - **AND** fields without a mapping entry are omitted or defaulted, never inferred
 
 #### Scenario: Interrupted publish resumes without duplicates
 
-- **GIVEN** `publish-log.md` contains pending or in-flight rows from a previous attempt
+- **GIVEN** a previous publish attempt left unchecked cases in `testcases.md`
 - **WHEN** the user runs `/qsx:publish` again and confirms
-- **THEN** the agent looks up each such case in Qase by recorded ID or title before creating
-- **AND** cases found in Qase are marked done and `- [x]` without a duplicate create call
+- **THEN** the agent checks each unchecked case against existing Qase cases by title before creating
+- **AND** cases found in Qase are marked `- [x]` without a duplicate create call
+
+#### Scenario: Legacy publish log is ignored
+
+- **GIVEN** a change directory contains a `publish-log.md` from an earlier QASpec version
+- **WHEN** the user runs `/qsx:publish`
+- **THEN** the agent ignores the file and derives publish scope only from unchecked cases in `testcases.md`
 
 #### Scenario: Scope edits after the halt
 
