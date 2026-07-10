@@ -66,6 +66,15 @@ describe('qa-config-seed', () => {
     expect(applyRules).toMatch(/never write the tcms block in qaspec\/config\.yaml/i);
   });
 
+  it('apply seed rules encode checkbox tracking and title-based reconciliation, no publish-log', () => {
+    const seed = getQaspecPrReviewConfigSeed();
+    const applyRules = seed.rules!.apply.join('\n');
+
+    expect(applyRules).toMatch(/mark(ing)? each published case `?- \[x\]`? in `?testcases\.md/i);
+    expect(applyRules).toMatch(/reconcil(e|ing).*by title/i);
+    expect(applyRules).not.toMatch(/publish-log\.md/i);
+  });
+
   it('serializeConfig for qaspec-pr-review includes commented tcms example', () => {
     const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
 
@@ -170,7 +179,7 @@ describe('qa-config-seed', () => {
     expect(content).toContain('tcms');
     expect(content).not.toMatch(/Write or update `publish-plan\.md`/);
     expect(content).toMatch(
-      /Do not write `execution-context\.md`, `publish-plan\.md`, or the `tcms` block in `qaspec\/config\.yaml`/
+      /Do not write `execution-context\.md`, `publish-plan\.md`, `publish-log\.md`, or the `tcms` block in `qaspec\/config\.yaml`/
     );
     expect(content).toMatch(/propose creating a new TCMS project/i);
     expect(content).toMatch(/wait for the user's choice/i);
@@ -180,8 +189,12 @@ describe('qa-config-seed', () => {
     expect(content).toMatch(/Do not invoke Qase MCP/i);
     expect(content).toMatch(/Preconditions.*Steps/s);
 
+    expect(content).toMatch(/ignore legacy `publish-plan\.md` and legacy `publish-log\.md`/i);
+    expect(content).not.toMatch(/writes? `publish-log\.md`(?! ,? or)/i);
+    expect(content).not.toMatch(/publish-log row/i);
+
     const templatesDir = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'templates');
-    expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(true);
+    expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(false);
     expect(fs.existsSync(path.join(templatesDir, 'execution-context.md'))).toBe(false);
     expect(fs.existsSync(path.join(templatesDir, 'publish-plan.md'))).toBe(false);
   });
