@@ -1,5 +1,19 @@
 # @qaspec/cli
 
+## 2.0.0
+
+### Major Changes
+
+- 2a29d96: **BREAKING:** Remove OpenSpec fork-compat (telemetry, upstream coexistence, legacy cleanup, profile migration). QASpec resolves only `qaspec/` planning homes and `.qaspec.yaml` change metadata. Rename env vars to `QASPEC_CONCURRENCY`, `QASPEC_NO_COMPLETIONS`, `QASPEC_NO_AUTO_CONFIG`, and `QASPEC_INTERACTIVE`. Move global config to `~/.config/qaspec/` (XDG-resolved). Workspace metadata lives only in `.qaspec-workspace/` (legacy `.openspec-workspace/` is no longer read). Shell completions install as `_qaspec` files with `QASPEC:START`/`QASPEC:END` managed blocks and `_qaspec_*` functions; blocks installed by older versions must be removed by hand. Config-file managed blocks use `QASPEC:START`/`QASPEC:END` markers. JSON output `metadata.format` is now `qaspec`/`qaspec-change`.
+
+### Minor Changes
+
+- c7ce04c: Move the TCMS publish target from project config to per-change metadata and default publish to proposing a new TCMS project.
+
+  - New `qaspec tcms set/show --change <name>` commands persist and resolve the target (provider, project, baseUrl) in the change's `.qaspec.yaml`; the `tcms` block in `qaspec/config.yaml` is now optional user-managed defaults that no workflow or command writes.
+  - `qaspec publish-gate` validates the per-change target (merged over config defaults) and prints the resolved target with the gate token.
+  - The publish workflow now defaults to proposing the creation of a new TCMS project (existing projects are offered only as alternatives) and must halt for the user's explicit choice before persisting anything — it never selects an existing project on its own.
+
 ## 1.5.2
 
 ### Patch Changes
