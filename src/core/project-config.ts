@@ -27,7 +27,7 @@ const WorkflowConfigSchema = z.object({
 });
 
 const TcmsConfigSchema = z.object({
-  provider: z.string().optional().describe('TCMS provider (v1: qase)'),
+  provider: z.string().optional().describe('TCMS provider (any MCP-backed provider)'),
   project: z.string().optional().describe('TCMS project code'),
   baseUrl: z.string().optional().describe('TCMS base URL'),
 });

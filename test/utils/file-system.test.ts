@@ -272,6 +272,28 @@ describe('FileSystemUtils', () => {
     });
   });
 
+  describe('moveFile', () => {
+    it('should rename a file preserving its content', async () => {
+      const srcPath = path.join(testDir, 'legacy.md');
+      const destPath = path.join(testDir, 'current.md');
+      const content = 'custom user content\nwith multiple lines';
+      await fs.writeFile(srcPath, content);
+
+      await FileSystemUtils.moveFile(srcPath, destPath);
+
+      const movedContent = await fs.readFile(destPath, 'utf-8');
+      expect(movedContent).toBe(content);
+      await expect(fs.access(srcPath)).rejects.toThrow();
+    });
+
+    it('should reject when the source file does not exist', async () => {
+      const srcPath = path.join(testDir, 'missing.md');
+      const destPath = path.join(testDir, 'destination.md');
+
+      await expect(FileSystemUtils.moveFile(srcPath, destPath)).rejects.toThrow();
+    });
+  });
+
   describe('joinPath', () => {
     it('should join POSIX-style paths', () => {
       const result = FileSystemUtils.joinPath(

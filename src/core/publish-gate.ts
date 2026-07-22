@@ -90,7 +90,7 @@ export function runPublishGate(
       message:
         'Change has no usable TCMS target (provider + project) in .qaspec.yaml or config defaults',
       resolve:
-        'qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]',
+        'qaspec tcms set --change <name> --provider <provider> --project <CODE> [--base-url <url>]',
     });
   }
 

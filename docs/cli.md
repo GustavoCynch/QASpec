@@ -642,7 +642,7 @@ Checks: approval valid, cases validation passes, usable TCMS target for the chan
 Manage the per-change TCMS publish target stored in the change's `.qaspec.yaml`.
 
 ```
-qaspec tcms set --change <name> [--provider qase] [--project <CODE>] [--base-url <url>] [--json]
+qaspec tcms set --change <name> [--provider <provider>] [--project <CODE>] [--base-url <url>] [--json]
 qaspec tcms show --change <name> [--json]
 ```
 

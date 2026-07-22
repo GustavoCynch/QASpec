@@ -1,6 +1,6 @@
 name: qaspec-pr-review
 version: 1
-description: QASpec QA workflow — analysis → test cases + specs → Qase publish
+description: QASpec QA workflow — analysis → test cases + specs → TCMS publish
 artifacts:
   - id: analyze
     generates: analysis.md
@@ -73,7 +73,7 @@ artifacts:
       Before writing:
       - Run `qaspec status --change "<name>" --json` and check `approval.analyze`. When `stale` or `missing`, halt and ask the user to re-approve via `/qsx:analyze` — do not draft `testcases.md` in that message.
       - Load instructions for the `test-cases` artifact (`qaspec instructions` JSON).
-      - Read `qaspec/references/qase_test_case_rules.md` (mandatory).
+      - Read `qaspec/references/tcms_case_rules.md` (mandatory).
       - Read `analysis.md` in full (mandatory first read): **Validated clarifications**, **Affected capabilities**,
         **Functional intent vs implementation**, **Risks for cases phase**, **Synthesis notes**.
       - Read the change `specs/**/*.md` files in full (mandatory; binding input for the case list).
@@ -93,7 +93,7 @@ artifacts:
       **IMPORTANT: Follow the checkbox template exactly.** Progress tracking parses `- [ ]` / `- [x]` only on checkbox lines; enriched case detail lives **below** each checkbox line.
 
       **Enriched case body (mandatory for new drafts):** Under each `- [ ] N.N Title` line, include:
-      - **Preconditions:** standard environment and role prefix (per `qase_test_case_rules.md`) plus case-specific setup from sources
+      - **Preconditions:** standard environment and role prefix (per `tcms_case_rules.md`) plus case-specific setup from sources
       - **Steps:** table or numbered list with **Action** and **Expected** per step; step 1 is navigation when a URL is known; empty Expected only for transition steps
 
       **Build from sources — do not invent:** Derive preconditions and steps from `analysis.md`, the change set (PR diff or patch), referenced requirements, `qaspec/specs/<capability>/spec.md`, and observable UI/API detail from code or docs read for this change. Do not use vague invented flows (e.g. "add an item via any available flow") unless sources lack actionable detail — then use one explicit generic step and document the gap (`<!-- gap: ... -->` or self-audit before halt).
@@ -109,7 +109,7 @@ artifacts:
       Fix all reported errors and re-run after edits. Include the validator coverage summary in the halt message.
       The halt is forbidden until validation passes.
 
-      End with an approval question covering the case list (halt). Do not publish to Qase in this step.
+      End with an approval question covering the case list (halt). Do not publish to your TCMS in this step.
     requires:
       - analyze
       - specs
@@ -157,12 +157,12 @@ apply:
     - specs
   tracks: testcases.md
   instruction: |
-    Publish the approved test cases to Qase (MCP) and update tracking.
+    Publish the approved test cases to your TCMS (MCP) and update tracking.
 
     **Language:** Write user-facing halt text in the project language from config.
 
     Resolve TCMS target (no case upload in this phase):
-    - Re-read `qaspec/references/qase_test_case_rules.md`
+    - Re-read `qaspec/references/tcms_case_rules.md`
     - Confirm `testcases.md` is approved and checkbox-formatted
     - Confirm at least one file exists under `specs/` for this change (publish is blocked until delta specs exist)
     - Read completed `specs/**/*.md` for context when files exist
@@ -172,29 +172,29 @@ apply:
       - Discover existing projects via MCP listing tool only to present them as alternatives — never select one yourself
       - Present create-new (recommended) plus existing-project alternatives in **one** halt and **wait for the user's choice**; reuse an existing project only when the user explicitly selects it
       - If change contains legacy `execution-context.md`, surface its project code and base URL as one alternative
-      - On create-new use MCP creation tool when available, otherwise instruct user to create in Qase UI and provide code
+      - On create-new use MCP creation tool when available, otherwise instruct user to create it in the TCMS UI and provide code
       - When MCP lacks list/create tools, ask for project code in the same single halt (still proposing create-new first)
-      - After the user chooses, persist with `qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]` and announce it
+      - After the user chooses, persist with `qaspec tcms set --change <name> --provider <provider> --project <CODE> [--base-url <url>]` and announce it
       - **Never write the `tcms` block in `qaspec/config.yaml`**
-      - **Do not invoke Qase MCP for upload** in the same message as target selection or target persistence
+      - **Do not invoke the TCMS MCP for upload** in the same message as target selection or target persistence
     - Ignore legacy `publish-plan.md` and legacy `publish-log.md` if present
 
     **Publish gate:** Run `qaspec publish-gate --change <name>` before the publish summary. When it fails, report
     each listed precondition and how to resolve it — do not proceed to MCP. When it passes, note the gate token.
 
-    Prepare summary and confirm (no Qase MCP upload in this phase):
+    Prepare summary and confirm (no TCMS MCP upload in this phase):
     - Present in-chat publish summary derived from `testcases.md`: target (provider, project, base URL), each suite with unchecked-case count, warnings (cases without **Steps** blocks, suspected PII)
-    - Include the **full payload of one representative case** (all mapped Qase fields) so the user validates the mapping, not just counts
+    - Include the **full payload of one representative case** (all mapped TCMS fields) so the user validates the mapping, not just counts
     - End with **exactly one** confirmation halt citing the current gate token
-    - **Do not invoke Qase MCP** in the same message as the summary
+    - **Do not invoke the TCMS MCP** in the same message as the summary
 
     After user confirms (with gate token cited):
     - Re-read `testcases.md`
     - Read **Preconditions** and **Steps** under each unchecked case to publish; do not re-generate steps from titles alone when a **Steps** block exists
-    - Read Qase MCP tool schemas before the first call
-    - **Omit-on-unmapped:** Send only Qase fields documented in `qase_test_case_rules.md` mapping table; never infer severity/priority/type
-    - Per case: MCP create → mark that case `- [x]` in `testcases.md` immediately after the successful create call. No local Qase IDs are recorded and no per-case trace file is written.
-    - On re-run: before creating, check each unchecked case against existing Qase cases by title and never blind-create — cases already present in Qase are marked `- [x]` without a duplicate create call
+    - Read the TCMS MCP tool schemas before the first call
+    - **Omit-on-unmapped:** Send only TCMS fields documented in `tcms_case_rules.md` mapping table; never infer severity/priority/type
+    - Per case: MCP create → mark that case `- [x]` in `testcases.md` immediately after the successful create call. No local TCMS IDs are recorded and no per-case trace file is written.
+    - On re-run: before creating, check each unchecked case against existing TCMS cases by title and never blind-create — cases already present in the TCMS are marked `- [x]` without a duplicate create call
 
     User edits after the confirm halt: update `testcases.md` or note agreed exclusions, re-run publish gate, re-present summary, ask again for confirm before MCP.
 

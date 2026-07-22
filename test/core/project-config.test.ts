@@ -7,6 +7,7 @@ import {
   readProjectConfig,
   validateConfigRules,
   suggestSchemas,
+  ProjectConfigSchema,
 } from '../../src/core/project-config.js';
 
 describe('project-config', () => {
@@ -511,6 +512,16 @@ workflow:
         );
         expect(config?.workflow?.multipleSubagents?.review).toBeUndefined();
         expect(config?.workflow?.multipleSubagents?.cases).toBe(true);
+      });
+    });
+
+    describe('tcms schema wording', () => {
+      it('describes provider as any MCP-backed provider, no v1: qase framing', () => {
+        const tcmsSchema = ProjectConfigSchema.shape.tcms.unwrap();
+        const description = tcmsSchema.shape.provider.description;
+
+        expect(description).toBe('TCMS provider (any MCP-backed provider)');
+        expect(description).not.toMatch(/v1:\s*qase/i);
       });
     });
 

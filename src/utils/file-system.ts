@@ -211,6 +211,14 @@ export class FileSystemUtils {
     return await fs.readFile(filePath, 'utf-8');
   }
 
+  /**
+   * Renames/moves a file from src to dest, preserving its content.
+   * Thin wrapper over fs.rename giving callers a mockable, testable seam.
+   */
+  static async moveFile(src: string, dest: string): Promise<void> {
+    await fs.rename(src, dest);
+  }
+
   static async updateFileWithMarkers(
     filePath: string,
     content: string,

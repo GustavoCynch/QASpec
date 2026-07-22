@@ -121,7 +121,7 @@ The QASpec fork keeps **implementation** (CLI, bundled skills under `src/`, test
 | **Phase policy** | `rules.analyze`, `rules.test-cases`, `rules.specs`, `rules.apply` | Depth per workflow step (BVA, dual-source, MCP gates) |
 | **Orchestration** | Generated `qaspec-*` skills | CLI steps, Task×2 protocol, halts — English in the product |
 | **Artifact shape** | Schema templates + `qaspec instructions … --json` | Section headings, file paths, checkbox format |
-| **Team data** | `qaspec/references/*.md` | Historical bugs, Qase field rules |
+| **Team data** | `qaspec/references/*.md` | Historical bugs, TCMS field rules |
 
 Generated `/qsx:*` skills always tell the agent to run `qaspec instructions <artifact> --json` and apply `context`/`rules` without copying them into artifact files.
 
@@ -134,7 +134,7 @@ context: |
   Role: QA Architect — read-only on application source.
   Language: Spanish (es)
   All QA artifacts, reference scaffolds, and halt messages must be written in Spanish.
-  Stack: Angular SPA, REST APIs, Qase
+  Stack: Angular SPA, REST APIs
 
 rules:
   analyze:
@@ -146,7 +146,7 @@ rules:
   specs:
     - Requisitos y escenarios en español; SHALL/MUST normativos
   apply:
-    - Releer qase_test_case_rules.md antes del primer MCP
+    - Releer tcms_case_rules.md antes del primer MCP
 ```
 
 New projects initialized with `qaspec-pr-review` receive an **active** `context` and `rules` seed with `(edit — …)` placeholders for language, stack, and domain. Replace those lines with your project details before the first `/qsx:analyze` run.

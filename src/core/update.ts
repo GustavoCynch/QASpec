@@ -43,6 +43,7 @@ import {
 } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
+import { migrateReferenceFilenames } from './reference-scaffold.js';
 import {
   WORKFLOW_TO_SKILL_DIR,
   getCommandConfiguredTools,
@@ -88,6 +89,10 @@ export class UpdateCommand {
     if (!await FileSystemUtils.directoryExists(planningPath)) {
       throw new Error(`No QASpec planning home found. Run 'qaspec init' first.`);
     }
+
+    // 1b. Migrate legacy reference filenames unconditionally — independent of tool
+    // version status, so up-to-date and --force-less runs are still migrated.
+    await migrateReferenceFilenames(resolvedProjectPath);
 
     // 2. Read global config for profile/delivery
     const globalConfig = getGlobalConfig();

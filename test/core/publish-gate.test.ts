@@ -116,6 +116,14 @@ describe('publish-gate', () => {
     expect(tcmsFailure?.resolve).toContain('qaspec tcms set');
   });
 
+  it('tcms-missing resolve hint is provider-neutral (no hardcoded --provider qase)', async () => {
+    const result = runPublishGate(changeDir, projectRoot);
+    const tcmsFailure = result.failures.find((f) => f.code === 'tcms-missing');
+    expect(tcmsFailure).toBeDefined();
+    expect(tcmsFailure?.resolve).toContain('--provider <provider>');
+    expect(tcmsFailure?.resolve).not.toMatch(/--provider qase/);
+  });
+
   it('replaces token on re-run', async () => {
     await seedGreenPath();
     const first = runPublishGate(changeDir, projectRoot);

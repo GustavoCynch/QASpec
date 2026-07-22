@@ -49,7 +49,7 @@ When init creates `qaspec/references/*.md` for the first time, the seed content 
 #### Scenario: First init with Spanish context
 
 - **WHEN** init creates config with Spanish declared in `context` (user prompt or existing config)
-- **THEN** new `historical_bugs.md` and `qase_test_case_rules.md` scaffolds are written in Spanish
+- **THEN** new `historical_bugs.md` and `tcms_case_rules.md` scaffolds are written in Spanish
 - **AND** existing reference files are not overwritten
 
 #### Scenario: English default

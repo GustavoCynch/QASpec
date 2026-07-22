@@ -53,7 +53,7 @@ import {
   type CoreWorkflowId,
 } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
-import { scaffoldQaspecReferences } from './reference-scaffold.js';
+import { scaffoldQaspecReferences, migrateReferenceFilenames } from './reference-scaffold.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import { WORKFLOW_TO_SKILL_DIR } from './profile-sync-drift.js';
 
@@ -132,6 +132,7 @@ export class InitCommand {
 
     // Create directory structure and config
     await this.createDirectoryStructure(planningPath, extendMode);
+    await migrateReferenceFilenames(projectPath);
     await scaffoldQaspecReferences(projectPath);
 
     // Generate skills and commands for each tool
@@ -673,7 +674,7 @@ export class InitCommand {
       console.log('  qaspec new change <name>   Create a QA change');
       console.log('  /qsx:analyze                 Analysis (analysis.md)');
       console.log('  /qsx:cases                   Test cases (testcases.md)');
-      console.log('  /qsx:publish                 Publish to Qase');
+      console.log('  /qsx:publish                 Publish to your TCMS');
     } else {
       console.log("Done. Run 'qaspec config profile core' to enable QASpec workflows.");
     }

@@ -189,6 +189,17 @@ describe('config key validation', () => {
   });
 });
 
+describe('config command workflow prompt copy', () => {
+  it('publish workflow prompt meta is provider-neutral', async () => {
+    const { WORKFLOW_PROMPT_META } = await import('../../src/commands/config.js');
+
+    expect(WORKFLOW_PROMPT_META.publish.name).not.toContain('Qase');
+    expect(WORKFLOW_PROMPT_META.publish.description).not.toContain('Qase');
+    expect(WORKFLOW_PROMPT_META.publish.name).toMatch(/Publish to your TCMS/i);
+    expect(WORKFLOW_PROMPT_META.publish.description).toMatch(/TCMS/i);
+  });
+});
+
 describe('config profile command', () => {
   let tempDir: string;
   let originalEnv: NodeJS.ProcessEnv;

@@ -142,7 +142,7 @@ The `qaspec-analyze` skill and `/qsx:analyze` command SHALL produce `analysis.md
 
 ### Requirement: Cases workflow behavior
 
-The `qaspec-cases` skill and `/qsx:cases` command SHALL verify the analyze approval state via `qaspec status --change --json` before reading sources and halt for re-approval when it is `stale` or `missing`, produce `testcases.md` with mandatory checkboxes and, for each case, a `req` traceability annotation plus preconditions and steps with action and expected result built from sources in hand, read the approved change delta specs under `specs/**/*.md` as binding input for the case list, read `qaspec/references/qase_test_case_rules.md`, read `qaspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md` when present, treat user-validated `analysis.md` and the approved delta specs as the source of truth over PR diff or current implementation when they conflict, honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis for draft lists only when that flag is **true** (drafts grouped by requirement slug, merged as a keyed union with recorded discards), otherwise draft cases in the orchestrator without Task subagents, run `qaspec validate cases --change <name>` to a passing result before the halt, and halt once for human approval of the case list including the validator's coverage summary.
+The `qaspec-cases` skill and `/qsx:cases` command SHALL verify the analyze approval state via `qaspec status --change --json` before reading sources and halt for re-approval when it is `stale` or `missing`, produce `testcases.md` with mandatory checkboxes and, for each case, a `req` traceability annotation plus preconditions and steps with action and expected result built from sources in hand, read the approved change delta specs under `specs/**/*.md` as binding input for the case list, read `qaspec/references/tcms_case_rules.md`, read `qaspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md` when present, treat user-validated `analysis.md` and the approved delta specs as the source of truth over PR diff or current implementation when they conflict, honor `workflow.multipleSubagents.cases` from `qaspec/config.yaml` (default **false** when unset), use dual blind analyst Task synthesis for draft lists only when that flag is **true** (drafts grouped by requirement slug, merged as a keyed union with recorded discards), otherwise draft cases in the orchestrator without Task subagents, run `qaspec validate cases --change <name>` to a passing result before the halt, and halt once for human approval of the case list including the validator's coverage summary.
 
 #### Scenario: Approval verified before drafting
 
@@ -173,7 +173,13 @@ The `qaspec-cases` skill and `/qsx:cases` command SHALL verify the analyze appro
 
 - **WHEN** the cases phase ends awaiting user approval
 - **THEN** the agent asks exactly one question covering approval of the case list
-- **AND** the agent does not start publish or Qase MCP in the same message
+- **AND** the agent does not start publish or the provider's TCMS MCP in the same message
+
+#### Scenario: Cases halt wording is provider-neutral
+
+- **WHEN** the `qaspec-cases` template body is generated
+- **THEN** the template does not name a specific TCMS product as the only publish target
+- **AND** any MCP tool name in the template is framed as an illustrative example
 
 #### Scenario: analysis.md and specs override diff in cases phase
 
@@ -229,11 +235,11 @@ Generated `qaspec-analyze` and `qaspec-cases` skills SHALL instruct agents to re
 
 ### Requirement: Publish workflow behavior
 
-The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) per change via `qaspec tcms show` (change `.openspec.yaml` `tcms` block merged over project-config defaults), run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full Qase payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — call Qase via MCP and mark each published case `- [x]` in the tracked cases file immediately after its successful create call. Checkbox marks SHALL be the only local publish tracking; the skill SHALL NOT write `publish-log.md`. On re-run with unchecked cases, the agent SHALL reconcile against existing Qase cases by title before creating and SHALL never blind-create; a legacy `publish-log.md` in the change directory SHALL be ignored. Qase fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
+The `qaspec-publish` skill SHALL treat missing change delta specs as blocking when the schema requires the `specs` artifact, read completed `specs/**/*.md` for context before MCP when files exist, resolve the TCMS target (provider, project code, base URL) per change via `qaspec tcms show` (change `.qaspec.yaml` `tcms` block merged over project-config defaults), run `qaspec publish-gate --change <name>` and resolve any unmet preconditions before the summary, present an in-chat publish summary derived from unchecked cases in `testcases.md` (or legacy `testmatrix.md` when only that file exists) including the full TCMS payload of one representative case, halt once for the user to confirm or adjust scope, and only after explicit confirmation — citing the current gate token — call the provider's TCMS MCP and mark each published case `- [x]` in the tracked cases file immediately after its successful create call. Checkbox marks SHALL be the only local publish tracking; the skill SHALL NOT write `publish-log.md`. On re-run with unchecked cases, the agent SHALL reconcile against existing TCMS cases by title before creating and SHALL never blind-create; a legacy `publish-log.md` in the change directory SHALL be ignored. TCMS fields without an entry in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. Publish is MCP-only and provider-neutral: the skill SHALL NOT name a specific TCMS product as the only target, and MCP tool names MAY appear only as illustrative examples. The prepare step SHALL NOT write `publish-plan.md` or `execution-context.md`.
 
 #### Scenario: Target resolved from change metadata
 
-- **GIVEN** the change's `.openspec.yaml` resolves a usable `tcms` target (directly or filled by project-config defaults)
+- **GIVEN** the change's `.qaspec.yaml` resolves a usable `tcms` target (directly or filled by project-config defaults)
 - **WHEN** the user runs `/qsx:publish`
 - **THEN** the agent uses that target without asking prerequisite questions
 - **AND** proceeds directly to the gate, the publish summary, and single confirm halt
@@ -241,13 +247,13 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 #### Scenario: Publish blocked without specs
 
 - **WHEN** `testcases.md` exists but no files exist under the change `specs/` directory and the schema apply phase requires `specs`
-- **THEN** the agent does not invoke Qase MCP
+- **THEN** the agent does not invoke the provider's TCMS MCP
 - **AND** the agent directs the user to complete `/qsx:analyze` (or author deltas) before publish
 
 #### Scenario: Gate failure blocks the upload path
 
 - **WHEN** `qaspec publish-gate` exits non-zero
-- **THEN** the agent does not invoke Qase MCP
+- **THEN** the agent does not invoke the provider's TCMS MCP
 - **AND** reports each unmet precondition with the command that resolves it
 
 #### Scenario: In-chat summary before confirm
@@ -255,22 +261,28 @@ The `qaspec-publish` skill SHALL treat missing change delta specs as blocking wh
 - **WHEN** the TCMS target is known and the gate passes
 - **THEN** the agent presents in chat: the target (provider, project, base URL), each suite with its unchecked-case count, warnings (cases without **Steps** blocks, suspected PII), and the full payload of one representative case
 - **AND** the summary is derived from `testcases.md` at that moment, with no plan file written
-- **AND** the agent asks exactly one confirmation question and does not call Qase MCP in the same message
+- **AND** the agent asks exactly one confirmation question and does not call the provider's TCMS MCP in the same message
 
 #### Scenario: MCP only after confirmation with gate token
 
 - **WHEN** the user confirms publish after the summary halt
-- **THEN** the agent cites the current gate token, re-reads `testcases.md`, and maps case **Preconditions** and **Steps** to Qase fields per `qase_test_case_rules.md` without replacing steps with newly invented steps based only on titles
+- **THEN** the agent cites the current gate token, re-reads `testcases.md`, and maps case **Preconditions** and **Steps** to TCMS fields per `tcms_case_rules.md` without replacing steps with newly invented steps based only on titles
 - **AND** after each successful MCP create the agent marks that case `- [x]` in `testcases.md`
 - **AND** no `publish-log.md` or other per-case trace file is written
 - **AND** fields without a mapping entry are omitted or defaulted, never inferred
+
+#### Scenario: Publish wording is provider-neutral
+
+- **WHEN** the `qaspec-publish` template body is generated
+- **THEN** the template does not name a specific TCMS product in its publish, MCP-call, or field-mapping wording
+- **AND** it refers to the TCMS target and the provider's MCP generically, with any tool name shown only as an example
 
 #### Scenario: Interrupted publish resumes without duplicates
 
 - **GIVEN** a previous publish attempt left unchecked cases in `testcases.md`
 - **WHEN** the user runs `/qsx:publish` again and confirms
-- **THEN** the agent checks each unchecked case against existing Qase cases by title before creating
-- **AND** cases found in Qase are marked `- [x]` without a duplicate create call
+- **THEN** the agent checks each unchecked case against existing TCMS cases by title before creating
+- **AND** cases found in the TCMS are marked `- [x]` without a duplicate create call
 
 #### Scenario: Legacy publish log is ignored
 
@@ -297,7 +309,7 @@ When the change resolves no usable TCMS target, the publish workflow SHALL defau
 #### Scenario: First publish without a target proposes a new project
 
 - **GIVEN** the change resolves no usable TCMS target
-- **WHEN** the user runs `/qsx:publish` with Qase MCP available
+- **WHEN** the user runs `/qsx:publish` with the provider's TCMS MCP available
 - **THEN** the agent proposes creating a new project (with a suggested code) as the recommended option, listing existing projects only as alternatives, in a single halt
 - **AND** the agent does not persist any target or pick an existing project before the user answers
 - **AND** after the user picks, the agent persists the target via `qaspec tcms set` and says so
@@ -305,7 +317,7 @@ When the change resolves no usable TCMS target, the publish workflow SHALL defau
 
 #### Scenario: User chooses to create a new project
 
-- **WHEN** the user selects "create new project" and the Qase MCP exposes a project-creation tool
+- **WHEN** the user selects "create new project" and the provider's TCMS MCP exposes a project-creation tool
 - **THEN** the agent creates the project via MCP with a name and code the user approved
 - **AND** persists the new project code via `qaspec tcms set --change <name>`
 
@@ -317,7 +329,7 @@ When the change resolves no usable TCMS target, the publish workflow SHALL defau
 
 #### Scenario: Discovery degrades without optional MCP tools
 
-- **WHEN** the Qase MCP lacks project listing or creation tools
+- **WHEN** the provider's TCMS MCP lacks project listing or creation tools
 - **THEN** the agent still proposes create-new first and asks for the project code in the same single halt instead of failing
 - **AND** persists the provided value via `qaspec tcms set --change <name>`
 

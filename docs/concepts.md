@@ -704,7 +704,7 @@ qaspec/
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  3. PUBLISH    │  /qsx:publish → in-chat summary, Qase upload, checkboxes │
+│   │  3. PUBLISH    │  /qsx:publish → in-chat summary, TCMS upload, checkboxes │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │
