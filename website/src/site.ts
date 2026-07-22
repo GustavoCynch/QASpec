@@ -49,7 +49,7 @@ export const WORKFLOW_COMMANDS = [
     command: '/qsx:publish',
     label: 'Publish',
     description:
-      'Approved cases upload to Qase via MCP — only after you review the in-chat summary and confirm.',
+      'Approved cases upload to your TCMS via MCP — only after you review the in-chat summary and confirm.',
     artifact: '→ testcases.md ✓',
   },
   {
@@ -97,7 +97,7 @@ export const FAQ = [
   {
     question: 'Do I need a test management system?',
     answer:
-      'No. Artifacts stay in git. Today `/qsx:publish` supports Qase via MCP; more TCMS connectors are in progress.',
+      'No. Artifacts stay in git. `/qsx:publish` works with any MCP-backed TCMS (e.g. Qase, Probara) — you pick the target per change.',
   },
   {
     question: 'Can I use QASpec on an existing codebase?',
