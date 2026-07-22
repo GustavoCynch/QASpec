@@ -35,7 +35,7 @@ ${getQasAnalystPromptBlock('analyze')}
 11. When the user approves: persist only facts they **explicitly addressed** in **Validated clarifications**; keep unconfirmed inferences in **Unvalidated assumptions**; update affected \`specs/**/*.md\` as needed.
 12. After approval, run \`qaspec approve analyze --change "<name>" [--head-sha <sha>]\` and confirm hashed artifacts in the output.
 
-**Guardrails:** no Qase MCP; no app code edits; one message for this phase unless updating \`analysis.md\` or delta specs after user halt response.`;
+**Guardrails:** no TCMS MCP; no app code edits; one message for this phase unless updating \`analysis.md\` or delta specs after user halt response.`;
 
 export function getQasAnalyzeSkillTemplate(): SkillTemplate {
   return {

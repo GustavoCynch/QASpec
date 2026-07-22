@@ -57,6 +57,15 @@ describe('showWelcomeScreen', () => {
     expect(output).not.toContain('lightweight spec-driven framework');
   });
 
+  it('uses provider-neutral publish copy in the quick-start line', async () => {
+    setTty(false);
+    await showWelcomeScreen();
+
+    const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+    expect(output).not.toContain('Publish to Qase');
+    expect(output).toMatch(/Publish to your TCMS/i);
+  });
+
   it('does not write terminal redraw escape sequences to stdout', async () => {
     setTty(false);
     const stdoutWrites: string[] = [];

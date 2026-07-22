@@ -22,7 +22,7 @@ You can revisit earlier steps; halts exist where human judgment matters.
 |----|---------------|--------|
 | `analyze` | `/qsx:analyze` | `analysis.md` + delta specs |
 | `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) |
-| `publish` | `/qsx:publish` | In-chat summary, then **Qase** upload after confirm; checkbox marks in `testcases.md` |
+| `publish` | `/qsx:publish` | In-chat summary, then **TCMS** upload after confirm; checkbox marks in `testcases.md` |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
@@ -45,7 +45,7 @@ Check approval state anytime with `qaspec status --change <name> --json` — the
 
 - **Analyze → cases:** `analysis.md` and co-produced delta specs are the validated source of truth. Cases halts when `approval.analyze` is `stale` or `missing` and asks for re-approval via `/qsx:analyze`. Analyze ends with an **approval digest** (zero to three questions); after approval run `qaspec approve analyze`.
 - **Cases → publish:** Every case requires `<!-- req: capability/slug -->`, `assumption:<id>`, or `gap`. Cases halts only after `qaspec validate cases` passes.
-- **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first Qase MCP call. Per case: MCP create → mark `- [x]` in `testcases.md`; on re-run, unchecked cases are reconciled against Qase by title before creating — never blind-create.
+- **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first TCMS MCP call. Per case: MCP create → mark `- [x]` in `testcases.md`; on re-run, unchecked cases are reconciled against the TCMS by title before creating — never blind-create.
 - **Legacy changes:** Changes created before the approval ledger have `approval: missing` — re-run analyze halt and `qaspec approve analyze` rather than failing hard.
 - **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. A legacy `publish-log.md` from an earlier QASpec version is ignored. Legacy `execution-context.md` values are surfaced as an alternative in the target halt and, once chosen, persisted per change via `qaspec tcms set`.
 
@@ -70,14 +70,14 @@ Set `review: true` and/or `cases: true` to restore **two parallel blind Task** a
 qaspec instructions <artifact> --json
 ```
 
-Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/qase_test_case_rules.md`.
+Project seeds: `qaspec/references/historical_bugs.md`, `qaspec/references/tcms_case_rules.md`.
 
 ## Workflow patterns
 
 ### Exploratory PR review
 
 ```text
-/qsx:analyze ──► (approve) ──► /qsx:cases ──► (validate) ──► /qsx:publish ──► (publish-gate + confirm) ──► Qase upload
+/qsx:analyze ──► (approve) ──► /qsx:cases ──► (validate) ──► /qsx:publish ──► (publish-gate + confirm) ──► TCMS upload
 ```
 
 Use when a PR or requirement doc needs structured risk analysis before cases are written.
@@ -111,7 +111,7 @@ Each case keeps one progress checkbox, with detail nested below:
   | 3 | Open the downloaded file | Row count matches the filtered list only |
 ```
 
-Agents build preconditions and steps from `analysis.md`, the diff, requirements, and specs. Generic steps are allowed only when sources lack actionable detail (document with `<!-- gap: ... -->` or self-audit). Publish maps these blocks to Qase — it does not re-generate steps from titles alone.
+Agents build preconditions and steps from `analysis.md`, the diff, requirements, and specs. Generic steps are allowed only when sources lack actionable detail (document with `<!-- gap: ... -->` or self-audit). Publish maps these blocks to your TCMS — it does not re-generate steps from titles alone.
 
 ### Custom profile (subset)
 

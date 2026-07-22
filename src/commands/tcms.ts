@@ -107,7 +107,7 @@ export async function tcmsShowCommand(options: TcmsShowOptions): Promise<void> {
   if (Object.keys(resolved.target).length === 0) {
     console.log(chalk.yellow(`No TCMS target resolved for change "${changeName}"`));
     console.log(
-      'Set one with: qaspec tcms set --change <name> --provider qase --project <CODE> [--base-url <url>]'
+      'Set one with: qaspec tcms set --change <name> --provider <provider> --project <CODE> [--base-url <url>]'
     );
     return;
   }

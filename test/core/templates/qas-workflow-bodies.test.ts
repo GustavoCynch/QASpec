@@ -61,6 +61,30 @@ describe('qas workflow bodies (hardened pipeline)', () => {
     expect(body).not.toMatch(/publish-log row/i);
   });
 
+  it('analyze body guardrail is provider-neutral (no Qase MCP)', () => {
+    const body = getQasAnalyzeSkillTemplate().instructions;
+
+    expect(body).not.toContain('Qase');
+    expect(body).toMatch(/no TCMS MCP/i);
+  });
+
+  it('cases body wording is provider-neutral (no Qase MCP, no publish to Qase)', () => {
+    const body = getQasCasesSkillTemplate().instructions;
+
+    expect(body).not.toContain('Qase');
+    expect(body).toMatch(/tcms_case_rules\.md/);
+    expect(body).toMatch(/do not publish to (your )?tcms/i);
+  });
+
+  it('publish body wording is provider-neutral (no Qase MCP, no Qase fields, no v1 Qase-only)', () => {
+    const body = getQasPublishSkillTemplate().instructions;
+
+    expect(body).not.toContain('Qase');
+    expect(body).toMatch(/tcms mcp/i);
+    expect(body).toMatch(/mapped tcms fields/i);
+    expect(body).not.toMatch(/v1 tcms is qase only/i);
+  });
+
   it('schema instructions include digest halt, validate gate, and publish gate', () => {
     const repoRoot = path.resolve(import.meta.dirname, '../../..');
     const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');

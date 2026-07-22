@@ -9,12 +9,13 @@ const CONFIG_HEADER = `# QASpec project config
 /** Optional footer hints appended after the active qaspec-pr-review seed (not injected into prompts). */
 const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 # tcms — optional user-managed DEFAULTS for /qsx:publish (uncomment and edit yourself).
-# The publish target lives per change in the change's .qaspec.yaml (qaspec tcms set);
-# publish never writes this block. Set it only when every change targets the same project.
+# Leaving provider unset is the generic default: /qsx:publish halts once and asks you to
+# choose a TCMS target per change. Set the concrete target per change with \`qaspec tcms set\`
+# (publish never writes this block). Fill this in only when every change targets the same project.
 # tcms:
-#   provider: qase
+#   provider: YOUR_TCMS_PROVIDER   # the provider id your MCP server supports
 #   project: YOUR_PROJECT_CODE
-#   baseUrl: https://app.qase.io
+#   baseUrl: https://your-tcms.example.com
 #
 # workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
 # workflow.multipleSubagents.cases — dual Task analysts for /qsx:cases (default: false)
@@ -25,7 +26,7 @@ const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 #   - Conventions, style guides, environment names, doc links
 #   - Domain knowledge and high-risk areas for this product
 # Example (add inside context: | or replace the Stack/Domain lines):
-#   Stack: TypeScript monorepo, REST APIs, Playwright, Qase
+#   Stack: TypeScript monorepo, REST APIs, Playwright
 #   Domain: billing and subscriptions — stress refunds and proration
 `;
 

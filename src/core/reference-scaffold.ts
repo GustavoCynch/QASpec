@@ -9,8 +9,16 @@ const REFERENCES_DIR = path.join('qaspec', 'references');
 
 export const REFERENCE_FILES = {
   historicalBugs: 'historical_bugs.md',
-  qaseRules: 'qase_test_case_rules.md',
+  tcmsRules: 'tcms_case_rules.md',
 } as const;
+
+/**
+ * Legacy → current filename renames applied by `migrateReferenceFilenames`.
+ * Add new entries here for future reference-file renames.
+ */
+const RENAME_MAP: ReadonlyArray<{ legacy: string; current: string }> = [
+  { legacy: 'qase_test_case_rules.md', current: REFERENCE_FILES.tcmsRules },
+];
 
 const ENGLISH_HISTORICAL_BUGS = `# Historical bugs — project reference
 
@@ -38,21 +46,22 @@ Agents read this file at the start of every \`/qsx:analyze\` run (re-read each t
 - Regression cases that prove filters and page boundaries are respected.
 `;
 
-const ENGLISH_QASE_RULES = `# Qase test case rules (MCP)
+const ENGLISH_TCMS_RULES = `# TCMS test case rules (MCP)
 
-Rules for creating suites and cases in Qase via MCP (\`create_suite\`, \`create_case\`).
+Rules for creating suites and cases in your team's test case management system (TCMS) via MCP
+(e.g. Qase's \`create_suite\`, \`create_case\`).
 Read before \`/qsx:cases\` and again before \`/qsx:publish\`.
 
-## Field mapping (closed set)
+## Field mapping (conceptual)
 
-**Omit-on-unmapped:** Any Qase field not listed below MUST be omitted from MCP payloads or sent with the documented default — never inferred.
+**Omit-on-unmapped:** Any TCMS field not listed below MUST be omitted from MCP payloads or sent with the documented default — never inferred.
 
-| Qase field | Source in testcases.md | Default | Allowed values |
+| Case field | Source in testcases.md | Default | Allowed values |
 |------------|-------------------------|---------|----------------|
 | title | Checkbox line text (after \`- [ ] N.N\`) | — | Plain-language, tester-observable |
-| description | **Preconditions** block (numbered list) | empty | Project language |
-| steps | **Steps** table (Action column) | — | One step per row |
-| expected | **Steps** table (Expected column) | empty for transition steps | Observable outcomes |
+| description (preconditions) | **Preconditions** block (numbered list) | empty | Project language |
+| steps (action) | **Steps** table (Action column) | — | One step per row |
+| steps (expected) | **Steps** table (Expected column) | empty for transition steps | Observable outcomes |
 | suite | \`## Suite:\` heading above the case | — | Plain language module/feature name |
 
 Do not send severity, priority, or type unless your team extends this table with explicit mapping rules.
@@ -65,9 +74,9 @@ Do not send severity, priority, or type unless your team extends this table with
 ## Cases
 
 - Titles and steps: tester-observable behavior in the **project language** (see \`qaspec/config.yaml\`).
-- No code identifiers (camelCase fields, selectors, file paths) in Qase-bound text unless shown in the UI.
-- One checkbox in \`testcases.md\` maps to one Qase case after publish.
-- Under each checkbox line, cases phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for \`create_case\` — do not re-generate from the title alone.
+- No code identifiers (camelCase fields, selectors, file paths) in TCMS-bound text unless shown in the UI.
+- One checkbox in \`testcases.md\` maps to one TCMS case after publish.
+- Under each checkbox line, cases phase writes **Preconditions** and **Steps** (Action + Expected per step). Publish reads those blocks for the create-case call — do not re-generate from the title alone.
 - Mandatory traceability: \`<!-- req: capability/requirement-slug -->\`, \`<!-- req: assumption:<id> -->\`, or \`<!-- req: gap -->\` on every case.
 
 ## Test case structure
@@ -97,7 +106,8 @@ Build steps from \`analysis.md\`, diff, requirements, and specs — not invented
 
 ## Customize
 
-Replace this file with your team's Qase field codes and extend the mapping table with explicit source/default/allowed values for additional fields.
+This section is the extension point: plug in your provider's concrete field codes here.
+Replace this file with your team's TCMS field codes and extend the mapping table with explicit source/default/allowed values for additional fields.
 `;
 
 export async function scaffoldQaspecReferences(projectRoot: string): Promise<string[]> {
@@ -110,7 +120,7 @@ export async function scaffoldQaspecReferences(projectRoot: string): Promise<str
 
   const seeds: Array<{ name: string; content: string }> = [
     { name: REFERENCE_FILES.historicalBugs, content: ENGLISH_HISTORICAL_BUGS },
-    { name: REFERENCE_FILES.qaseRules, content: ENGLISH_QASE_RULES },
+    { name: REFERENCE_FILES.tcmsRules, content: ENGLISH_TCMS_RULES },
   ];
 
   for (const { name, content } of seeds) {
@@ -122,4 +132,38 @@ export async function scaffoldQaspecReferences(projectRoot: string): Promise<str
   }
 
   return created;
+}
+
+/**
+ * One-time, idempotent, content-preserving rename of legacy reference filenames
+ * to their current names. Checks the new filename first: if it already exists,
+ * legacy is left untouched (never overwritten). Errors are swallowed/logged
+ * best-effort so a locked or edge-case file never aborts init/update.
+ *
+ * @returns relative paths (from projectRoot) of files that were renamed.
+ */
+export async function migrateReferenceFilenames(projectRoot: string): Promise<string[]> {
+  const renamed: string[] = [];
+  const refsDir = path.join(projectRoot, REFERENCES_DIR);
+
+  for (const { legacy, current } of RENAME_MAP) {
+    try {
+      const currentPath = path.join(refsDir, current);
+      if (await FileSystemUtils.fileExists(currentPath)) {
+        continue;
+      }
+
+      const legacyPath = path.join(refsDir, legacy);
+      if (!(await FileSystemUtils.fileExists(legacyPath))) {
+        continue;
+      }
+
+      await FileSystemUtils.moveFile(legacyPath, currentPath);
+      renamed.push(path.join(REFERENCES_DIR, current));
+    } catch (error: any) {
+      console.debug(`Unable to migrate reference file "${legacy}" -> "${current}": ${error?.message ?? error}`);
+    }
+  }
+
+  return renamed;
 }

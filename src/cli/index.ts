@@ -527,7 +527,7 @@ tcmsCmd
   .command('set')
   .description('Persist the TCMS target (provider, project, base URL) for a change')
   .requiredOption('--change <id>', 'Change name')
-  .option('--provider <provider>', 'TCMS provider (v1: qase)')
+  .option('--provider <provider>', 'TCMS provider (any MCP-backed provider)')
   .option('--project <code>', 'TCMS project code')
   .option('--base-url <url>', 'Base URL for test navigation steps')
   .option('--json', 'Output as JSON')

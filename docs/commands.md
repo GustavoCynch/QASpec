@@ -12,7 +12,7 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 |---------|---------|
 | `/qsx:analyze` | Create `analysis.md` and change delta specs (risk, capabilities, dual review) |
 | `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
-| `/qsx:publish` | Publish approved cases to **Qase** (only TCMS supported today; via MCP) |
+| `/qsx:publish` | Publish approved cases to your **TCMS** (any MCP-backed provider) |
 | `/qsx:archive` | Finalize and archive the change |
 
 Workflow ids: `analyze`, `cases`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these four).
@@ -60,7 +60,7 @@ Produce **`testcases.md`** with mandatory checkboxes covering the approved delta
 **Prerequisites:**
 
 - Prior `/qsx:analyze` with approved `analysis.md` and delta specs unless you explicitly accept gaps
-- Reads `qaspec/references/qase_test_case_rules.md` when publishing to Qase later
+- Reads `qaspec/references/tcms_case_rules.md` when publishing to your TCMS later
 - Reads `qaspec/specs/<capability>/spec.md` for capabilities listed in `analysis.md`
 
 **What it does:**
@@ -73,7 +73,7 @@ Produce **`testcases.md`** with mandatory checkboxes covering the approved delta
 
 ## `/qsx:publish`
 
-Prepare and upload **approved** test cases from `testcases.md` to **Qase** via MCP. Other TCMS connectors (TestRail, Xray, install-time selection) are not available yet — see [Test management (TCMS)](../README.md#test-management-tcms) to collaborate on the roadmap.
+Prepare and upload **approved** test cases from `testcases.md` to your TCMS via MCP. `provider` is an open string, so any MCP-backed TCMS works; installer-side connector selection for specific systems is still in progress — see [Test management (TCMS)](../README.md#test-management-tcms) to collaborate on the roadmap.
 
 **Syntax:**
 
@@ -90,16 +90,16 @@ Prepare and upload **approved** test cases from `testcases.md` to **Qase** via M
 
 1. Resolves the TCMS target for the change (`qaspec tcms show`): the `tcms` block in the change's `.qaspec.yaml`, with `qaspec/config.yaml` `tcms` as optional user-managed defaults.
 2. When no usable target exists, proposes **creating a new TCMS project** for the change (recommended), lists existing projects only as alternatives, and halts for your choice — an existing project is reused only when you explicitly pick it. Your choice is persisted per change with `qaspec tcms set`; the agent never writes `tcms` into `qaspec/config.yaml`.
-3. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no Qase upload in that message**.
-4. After you confirm, uploads via MCP and marks each published row `- [x]` in `testcases.md` immediately after its successful create call; on re-run, unchecked cases are reconciled against Qase by title before creating.
+3. Presents an in-chat publish summary (target, suites, unchecked-case counts, warnings) and halts once for confirm — **no TCMS upload in that message**.
+4. After you confirm, uploads via MCP and marks each published row `- [x]` in `testcases.md` immediately after its successful create call; on re-run, unchecked cases are reconciled against the TCMS by title before creating.
 
 **Per-change TCMS target** (change `.qaspec.yaml`, written by `qaspec tcms set`):
 
 ```yaml
 tcms:
-  provider: qase
+  provider: your-tcms-provider
   project: PR415
-  baseUrl: https://app.qase.io
+  baseUrl: https://your-tcms.example.com
 ```
 
 Project codes and base URLs often vary per PR or tenant, so the target lives with the change. Teams with one fixed target can uncomment the `tcms` defaults block in `qaspec/config.yaml` (user-managed; publish never writes it). If you previously edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.

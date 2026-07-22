@@ -50,7 +50,7 @@ interface WorkspaceConfigProfileContext {
   root: string;
 }
 
-const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
+export const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
   propose: {
     name: 'Propose change',
     description: 'Create proposal, design, and tasks from a request',
@@ -64,8 +64,8 @@ const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
     description: 'Build test cases and delta specs (testcases.md)',
   },
   publish: {
-    name: 'Publish to Qase',
-    description: 'Upload approved test cases to Qase via MCP',
+    name: 'Publish to your TCMS',
+    description: 'Upload approved test cases to your TCMS via MCP',
   },
   new: {
     name: 'New change',

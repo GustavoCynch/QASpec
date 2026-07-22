@@ -693,6 +693,37 @@ Old version content
     });
   });
 
+  describe('legacy reference file migration', () => {
+    it('renames a legacy qase_test_case_rules.md even when all tools are up to date and --force is not set', async () => {
+      // Initialize full core profile output so there is no profile/delivery drift (tools end up up-to-date).
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+      await initCommand.execute(testDir);
+
+      // Simulate a project on an older QASpec version: only the legacy filename
+      // exists (init's own scaffold already wrote the new filename above, so
+      // remove it to reproduce the pre-migration state).
+      const refsDir = path.join(testDir, 'qaspec', 'references');
+      await fs.rm(path.join(refsDir, 'tcms_case_rules.md'), { force: true });
+      const customContent = 'team-specific legacy provider rules';
+      await fs.writeFile(path.join(refsDir, 'qase_test_case_rules.md'), customContent);
+
+      const consoleSpy = vi.spyOn(console, 'log');
+
+      await updateCommand.execute(testDir);
+
+      // Confirms the early-return path (tools already up to date) still ran.
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('up to date')
+      );
+
+      expect(await FileSystemUtils.fileExists(path.join(refsDir, 'qase_test_case_rules.md'))).toBe(false);
+      const newContent = await fs.readFile(path.join(refsDir, 'tcms_case_rules.md'), 'utf-8');
+      expect(newContent).toBe(customContent);
+
+      consoleSpy.mockRestore();
+    });
+  });
+
   describe('--force flag', () => {
     it('should update when force is true even if up to date', async () => {
       // Set up a configured tool with current version

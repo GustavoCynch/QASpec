@@ -4,7 +4,7 @@ This guide explains how QASpec works after you've installed and initialized it. 
 
 ## How It Works
 
-QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to Qase (the only supported TCMS in v1).
+QASpec helps testers and engineers agree on **what to test and why** before execution. You work in a planning home (`qaspec/`), produce QA artifacts in a change folder, and optionally publish approved cases to your TCMS via MCP (any MCP-backed provider).
 
 **Default path (core profile)** — installed by `qaspec init`:
 
@@ -25,7 +25,7 @@ After `qaspec init`, a typical project includes:
 ```text
 qaspec/                          # Planning home
 ├── config.yaml                  # QA context, rules, schema (optional)
-├── references/                  # historical_bugs.md, qase_test_case_rules.md, …
+├── references/                  # historical_bugs.md, tcms_case_rules.md, …
 ├── specs/                       # Source-of-truth capability specs (when used)
 └── changes/
     └── <change-name>/
@@ -45,7 +45,7 @@ qaspec/                          # Planning home
 |----------|-------------|---------|
 | `analysis.md` + delta specs | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis, and delta specs for agreed behavior |
 | `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes covering the approved specs |
-| Qase upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to Qase after human approval (only TCMS supported today) |
+| TCMS upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to your TCMS after human approval |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
 `/qsx:analyze` includes investigation before writing `analysis.md`. `/qsx:analyze`, `/qsx:cases`, and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
@@ -76,13 +76,13 @@ AI:  Creates testcases.md covering the approved delta specs
 ```text
 You: /qsx:publish
 
-AI:  Resolves Qase target from config (or asks once on first publish), shows an in-chat summary, halts for confirm.
+AI:  Resolves the TCMS target from config (or asks once on first publish), shows an in-chat summary, halts for confirm.
 You: Confirm (or adjust testcases.md / scope in chat first).
 
-AI:  Uploads approved cases via Qase MCP and marks checkboxes in testcases.md.
+AI:  Uploads approved cases via the TCMS MCP and marks checkboxes in testcases.md.
 ```
 
-> **TCMS support:** v1 publish is **Qase-only**. TestRail, Xray, and install-time TCMS selection are in active development. To help or request another system, see [Test management (TCMS)](../README.md#test-management-tcms) in the README.
+> **TCMS support:** publish is MCP-only and provider-neutral — `provider` is an open string, so any MCP-backed TCMS works. Installer-side connector selection for specific systems like TestRail and Xray is in active development. To help or request another system, see [Test management (TCMS)](../README.md#test-management-tcms) in the README.
 
 ### 5. Archive
 

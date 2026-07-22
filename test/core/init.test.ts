@@ -65,6 +65,16 @@ describe('InitCommand', () => {
       expect(await directoryExists(path.join(openspecPath, 'changes', 'archive'))).toBe(true);
     });
 
+    it('should print provider-neutral publish copy in getting-started output', async () => {
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+
+      await initCommand.execute(testDir);
+
+      const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+      expect(output).not.toContain('Publish to Qase');
+      expect(output).toMatch(/Publish to your TCMS/i);
+    });
+
     it('should create config.yaml with default schema', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
 
@@ -331,6 +341,23 @@ describe('InitCommand', () => {
     });
   });
 
+  describe('legacy reference file migration', () => {
+    it('renames a legacy qase_test_case_rules.md before scaffolding, without seeding a duplicate', async () => {
+      const refsDir = path.join(testDir, 'qaspec', 'references');
+      await fs.mkdir(refsDir, { recursive: true });
+      const customContent = 'team-specific legacy provider rules';
+      await fs.writeFile(path.join(refsDir, 'qase_test_case_rules.md'), customContent);
+
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+      await initCommand.execute(testDir);
+
+      expect(await fileExists(path.join(refsDir, 'qase_test_case_rules.md'))).toBe(false);
+
+      const newContent = await fs.readFile(path.join(refsDir, 'tcms_case_rules.md'), 'utf-8');
+      expect(newContent).toBe(customContent);
+    });
+  });
+
   describe('skill content validation', () => {
     it('should generate valid SKILL.md with YAML frontmatter', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
@@ -372,7 +399,8 @@ describe('InitCommand', () => {
       const content = await fs.readFile(skillFile, 'utf-8');
 
       expect(content).toContain('name: qaspec-publish');
-      expect(content).toContain('Qase');
+      expect(content).toContain('TCMS');
+      expect(content).not.toContain('Qase');
     });
 
     it('should embed generatedBy version in skill files', async () => {

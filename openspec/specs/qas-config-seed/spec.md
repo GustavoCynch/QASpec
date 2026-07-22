@@ -33,13 +33,19 @@ When init creates a new project config with schema `qaspec-pr-review`, the seed 
 
 ### Requirement: Seed documents the tcms target block
 
-When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include a commented `tcms` example block documenting `provider`, `project`, and `baseUrl`, explaining that the block holds optional user-managed defaults, that the publish target lives per change in the change's `.openspec.yaml` (set via `qaspec tcms set`), and that publish never writes this block.
+When init creates a new project config with schema `qaspec-pr-review`, the seed SHALL include a commented `tcms` example block documenting `provider`, `project`, and `baseUrl` in a provider-neutral form that OMITS a concrete `provider` value (no vendor-specific provider, no vendor-specific `baseUrl`). The comment SHALL explain that the block holds optional user-managed defaults, that absence of a `provider` is the generic default which leaves the target unusable until set, that the publish target lives per change in the change's `.qaspec.yaml` (set via `qaspec tcms set`), and that publish never writes this block.
 
 #### Scenario: Fresh init includes commented tcms example
 
 - **WHEN** init creates `qaspec/config.yaml` with `schema: qaspec-pr-review` and no prior config existed
-- **THEN** the file contains a commented `tcms` block showing `provider: qase`, a project code placeholder, and a base URL placeholder
+- **THEN** the file contains a commented `tcms` block showing `provider`, `project`, and `baseUrl` keys with provider-neutral placeholders
 - **AND** a comment states the block is user-managed defaults only and the per-change target is persisted via `qaspec tcms set`, never by publish writing this file
+
+#### Scenario: Seeded tcms example is provider-neutral and provider-absent
+
+- **WHEN** `getQaspecPrReviewConfigSeed()` supplies the commented `tcms` example block
+- **THEN** the block does NOT contain a concrete `provider` value or a vendor-specific base URL example
+- **AND** the comment documents that omitting `provider` is the generic default and that a concrete target is chosen per change, not in `config.yaml`
 
 #### Scenario: Existing config is not overwritten
 
@@ -84,7 +90,7 @@ QA rule keys in the init seed SHALL use the exact artifact ids from the `qaspec-
 
 ### Requirement: Seed rules encode pipeline hardening gates
 
-The init seed for schema `qaspec-pr-review` SHALL encode the hardening contract in its phase rules: `rules.analyze` SHALL require the approval digest halt (Unvalidated assumptions, zero to three targeted questions, no fabricated question), recording approval via `qaspec approve analyze` after the user approves, and the ABSENT-intent guard; `rules.test-cases` SHALL require checking the approval state before drafting, a `req` annotation on every case, and a passing `qaspec validate cases` run before the halt; `rules.apply` SHALL require running `qaspec publish-gate` before the summary, citing the gate token with the user confirmation, marking each published case `- [x]` in `testcases.md` after its successful create call with title-based reconciliation against Qase before creating on re-run, and omitting or defaulting unmapped Qase fields. No seeded rule SHALL reference `publish-log.md`.
+The init seed for schema `qaspec-pr-review` SHALL encode the hardening contract in its phase rules: `rules.analyze` SHALL require the approval digest halt (Unvalidated assumptions, zero to three targeted questions, no fabricated question), recording approval via `qaspec approve analyze` after the user approves, and the ABSENT-intent guard; `rules.test-cases` SHALL require checking the approval state before drafting, a `req` annotation on every case, and a passing `qaspec validate cases` run before the halt; `rules.apply` SHALL require running `qaspec publish-gate` before the summary, citing the gate token with the user confirmation, marking each published case `- [x]` in `testcases.md` after its successful create call with title-based reconciliation against the TCMS before creating on re-run, and omitting or defaulting unmapped TCMS fields. Seeded publish wording SHALL be provider-neutral and MCP-only, with no vendor-specific MCP-call naming, field naming, or publish-target phrasing; MCP tool names MAY appear only as illustrative examples. No seeded rule SHALL reference `publish-log.md`.
 
 #### Scenario: Seeded analyze rules encode the digest halt and ledger
 
@@ -104,9 +110,15 @@ The init seed for schema `qaspec-pr-review` SHALL encode the hardening contract 
 
 - **WHEN** `getQaspecPrReviewConfigSeed()` supplies `rules.apply`
 - **THEN** at least one active rule requires `qaspec publish-gate` before the summary and the gate token with the confirmation
-- **AND** at least one active rule requires marking each published case `- [x]` in `testcases.md` and reconciling unchecked cases against Qase by title before creating on re-run
-- **AND** at least one active rule forbids inferring unmapped Qase field values
+- **AND** at least one active rule requires marking each published case `- [x]` in `testcases.md` and reconciling unchecked cases against the TCMS by title before creating on re-run
+- **AND** at least one active rule forbids inferring unmapped TCMS field values
 - **AND** no rule references `publish-log.md`
+
+#### Scenario: Seeded apply rules are provider-neutral
+
+- **WHEN** `getQaspecPrReviewConfigSeed()` supplies `rules.apply`
+- **THEN** no active rule names a specific TCMS product in its MCP-call, field, payload, or publish-target wording
+- **AND** any MCP tool name that appears is framed as an illustrative example, not a required provider
 
 #### Scenario: Seed validation still aligns with artifact ids
 

@@ -111,7 +111,7 @@ Orchestrator synthesizes predicted vs reconstructed behavior after both return.`
   }
 
   const phaseTask =
-    'Produce draft test cases grouped by requirement slug (capability/requirement-slug headers). Each case: suite, checkbox line, mandatory <!-- req: ... --> annotation, Preconditions, Steps. Do NOT add approval halt. Do NOT publish to Qase.';
+    'Produce draft test cases grouped by requirement slug (capability/requirement-slug headers). Each case: suite, checkbox line, mandatory <!-- req: ... --> annotation, Preconditions, Steps. Do NOT add approval halt. Do NOT publish to your TCMS.';
 
   return `## Analyst Task prompt (use only when workflow.multipleSubagents.cases is true — copy to both parallel Task runs)
 
@@ -122,7 +122,7 @@ You are a QA analyst executing one pass of the QASpec cases workflow.
 
 ## Mandatory references
 - qaspec/references/historical_bugs.md
-- qaspec/references/qase_test_case_rules.md
+- qaspec/references/tcms_case_rules.md
 - Apply rules from the orchestrator brief (project config)
 
 ## Validated analysis and specs (binding — orchestrator pastes full analysis.md and change delta specs)

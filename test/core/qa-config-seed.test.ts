@@ -66,6 +66,18 @@ describe('qa-config-seed', () => {
     expect(applyRules).toMatch(/never write the tcms block in qaspec\/config\.yaml/i);
   });
 
+  it('apply seed rules are provider-neutral (no Qase MCP call, Qase fields/payloads/IDs, or publish to Qase)', () => {
+    const seed = getQaspecPrReviewConfigSeed();
+    const applyRules = seed.rules!.apply.join('\n');
+
+    expect(applyRules).not.toMatch(/Qase MCP/i);
+    expect(applyRules).not.toMatch(/Qase fields/i);
+    expect(applyRules).not.toMatch(/Qase payloads/i);
+    expect(applyRules).not.toMatch(/Qase IDs/i);
+    expect(applyRules).not.toMatch(/publish to Qase/i);
+    expect(applyRules).toMatch(/TCMS fields/i);
+  });
+
   it('apply seed rules encode checkbox tracking and title-based reconciliation, no publish-log', () => {
     const seed = getQaspecPrReviewConfigSeed();
     const applyRules = seed.rules!.apply.join('\n');
@@ -79,12 +91,20 @@ describe('qa-config-seed', () => {
     const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
 
     expect(yaml).toMatch(/# tcms:/);
-    expect(yaml).toContain('provider: qase');
+    expect(yaml).toContain('YOUR_TCMS_PROVIDER');
     expect(yaml).toContain('YOUR_PROJECT_CODE');
-    expect(yaml).toContain('https://app.qase.io');
     expect(yaml).toMatch(/user-managed defaults/i);
     expect(yaml).toMatch(/qaspec tcms set/);
     expect(yaml).toMatch(/publish never writes this block/i);
+  });
+
+  it('serializeConfig for qaspec-pr-review is provider-neutral and provider-absent', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+
+    expect(yaml).not.toContain('provider: qase');
+    expect(yaml).not.toContain('https://app.qase.io');
+    expect(yaml).toMatch(/generic default/i);
+    expect(yaml).toMatch(/qaspec tcms set/);
   });
 
   it('test-cases seed rules require approval check, req annotations, and validate gate', () => {
@@ -186,7 +206,7 @@ describe('qa-config-seed', () => {
     expect(content).toMatch(/qaspec tcms set/);
     expect(content).toMatch(/Never write the `tcms` block in `qaspec\/config\.yaml`/);
     expect(content).toMatch(/confirmation halt/i);
-    expect(content).toMatch(/Do not invoke Qase MCP/i);
+    expect(content).toMatch(/Do not invoke.*TCMS MCP/i);
     expect(content).toMatch(/Preconditions.*Steps/s);
 
     expect(content).toMatch(/ignore legacy `publish-plan\.md` and legacy `publish-log\.md`/i);
@@ -197,5 +217,15 @@ describe('qa-config-seed', () => {
     expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(false);
     expect(fs.existsSync(path.join(templatesDir, 'execution-context.md'))).toBe(false);
     expect(fs.existsSync(path.join(templatesDir, 'publish-plan.md'))).toBe(false);
+  });
+
+  it('qaspec-pr-review schema title and apply instructions are provider-neutral (no Qase)', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..');
+    const schemaPath = path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml');
+    const content = fs.readFileSync(schemaPath, 'utf-8');
+
+    expect(content).not.toMatch(/Qase/);
+    expect(content).toMatch(/TCMS MCP/);
+    expect(content).toMatch(/mapped TCMS fields/i);
   });
 });

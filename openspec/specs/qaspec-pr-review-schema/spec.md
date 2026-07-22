@@ -140,7 +140,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 
 - **WHEN** an agent writes or updates `testcases.md` for a case
 - **THEN** the case includes a **Preconditions** block with the standard environment and role prefix plus case-specific preconditions
-- **AND** the case includes a **Steps** block where each step has an observable **Action** and **Expected** result (empty expected allowed only for transition steps per Qase rules)
+- **AND** the case includes a **Steps** block where each step has an observable **Action** and **Expected** result (empty expected allowed only for transition steps per TCMS case rules)
 - **AND** step 1 is navigation to the base URL when a URL is known from sources or execution context
 
 #### Scenario: Steps traceable to sources
@@ -154,7 +154,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 
 - **WHEN** a maintainer opens `schemas/qaspec-pr-review/templates/testcases.md`
 - **THEN** the template shows at least one full example case with **Preconditions**, **Steps**, and a `req` annotation under a checkbox line
-- **AND** the example aligns with `qaspec/references/qase_test_case_rules.md` narrative rules
+- **AND** the example aligns with `qaspec/references/tcms_case_rules.md` narrative rules
 
 #### Scenario: Cases instructions respect subagent flag
 
@@ -165,7 +165,7 @@ The schema SHALL define artifact `test-cases` that generates `testcases.md`, req
 
 ### Requirement: Publish artifact and tracking
 
-The schema SHALL define a publish phase that requires both `test-cases` and `specs`, tracks `testcases.md`, and SHALL instruct publish to resolve the TCMS target per change via `qaspec tcms show` (change `.openspec.yaml` `tcms` block merged over project-config defaults) — defaulting to proposing a new TCMS project in one halt when no usable target exists, persisting the user's choice via `qaspec tcms set` and never writing the `tcms` block in `qaspec/config.yaml` — run `qaspec publish-gate` before the summary, present an in-chat summary of unchecked cases plus the full Qase payload of one representative case before one confirmation halt, and use preconditions and steps recorded under each approved case in `testcases.md` when preparing Qase payloads. Upload SHALL proceed only with the user's confirmation and the current gate token. Checkbox marks in `testcases.md` SHALL be the only local publish tracking: after each successful upload the agent marks that case `- [x]`. On any re-run the agent SHALL reconcile unchecked cases against existing Qase cases by title before creating and SHALL never blind-create. Qase fields not present in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The instruction SHALL NOT direct agents to write `publish-log.md`, `publish-plan.md`, or `execution-context.md`.
+The schema SHALL define a publish phase that requires both `test-cases` and `specs`, tracks `testcases.md`, and SHALL instruct publish to resolve the TCMS target per change via `qaspec tcms show` (change `.qaspec.yaml` `tcms` block merged over project-config defaults) — defaulting to proposing a new TCMS project in one halt when no usable target exists, persisting the user's choice via `qaspec tcms set` and never writing the `tcms` block in `qaspec/config.yaml` — run `qaspec publish-gate` before the summary, present an in-chat summary of unchecked cases plus the full TCMS payload of one representative case before one confirmation halt, and use preconditions and steps recorded under each approved case in `testcases.md` when preparing TCMS payloads. Upload SHALL proceed only with the user's confirmation and the current gate token. Publish is MCP-only and provider-neutral: apply instructions SHALL reference the TCMS MCP and TCMS fields rather than a specific product, and MCP tool names MAY appear only as illustrative examples. Checkbox marks in `testcases.md` SHALL be the only local publish tracking: after each successful upload the agent marks that case `- [x]`. On any re-run the agent SHALL reconcile unchecked cases against existing TCMS cases by title before creating and SHALL never blind-create. TCMS fields not present in the project's field mapping SHALL be omitted or sent with the documented default, never inferred. The instruction SHALL NOT direct agents to write `publish-log.md`, `publish-plan.md`, or `execution-context.md`.
 
 #### Scenario: Publish readiness
 
@@ -177,7 +177,7 @@ The schema SHALL define a publish phase that requires both `test-cases` and `spe
 
 - **WHEN** apply-phase instructions run for publish
 - **THEN** instructions require running `qaspec publish-gate --change <name>` before presenting the publish summary
-- **AND** instructions forbid Qase MCP upload without citing the current gate token alongside the user's confirmation
+- **AND** instructions forbid the provider's TCMS MCP upload without citing the current gate token alongside the user's confirmation
 
 #### Scenario: Summary and confirm before MCP
 
@@ -187,9 +187,15 @@ The schema SHALL define a publish phase that requires both `test-cases` and `spe
 - **AND** instructions require exactly one user confirmation halt after the summary
 - **AND** instructions forbid MCP upload in the same message as TCMS target selection or persistence
 
+#### Scenario: Apply instructions are provider-neutral
+
+- **WHEN** apply-phase instructions for publish are generated from `schema.yaml`
+- **THEN** the instruction text does not name a specific TCMS product in its MCP-call or field-mapping wording
+- **AND** it refers to the TCMS MCP and TCMS fields generically, with any create tool name shown only as an example
+
 #### Scenario: Checkbox marked after each upload
 
-- **WHEN** the user confirms publish and a case is created in Qase via MCP
+- **WHEN** the user confirms publish and a case is created in the TCMS via MCP
 - **THEN** the agent marks that case `- [x]` in `testcases.md` immediately after the successful create call
 - **AND** no `publish-log.md` or other per-case trace file is written
 
@@ -197,18 +203,18 @@ The schema SHALL define a publish phase that requires both `test-cases` and `spe
 
 - **GIVEN** a previous publish attempt left unchecked cases in `testcases.md`
 - **WHEN** publish runs again and the user confirms
-- **THEN** the agent checks each unchecked case against existing Qase cases by title before creating
-- **AND** cases already present in Qase are marked `- [x]` without a duplicate create call
+- **THEN** the agent checks each unchecked case against existing TCMS cases by title before creating
+- **AND** cases already present in the TCMS are marked `- [x]` without a duplicate create call
 
 #### Scenario: Publish reads case blocks from the case list
 
 - **WHEN** apply-phase instructions run for publish
-- **THEN** instructions require reading **Preconditions** and **Steps** under each unchecked case in `testcases.md` when building Qase `create_case` payloads
+- **THEN** instructions require reading **Preconditions** and **Steps** under each unchecked case in `testcases.md` when building the provider's create-case payloads (e.g. a `create_case` tool)
 - **AND** instructions forbid deriving steps solely from the case title when a **Steps** block exists for that case
 
 #### Scenario: Unmapped fields are never inferred
 
-- **WHEN** the agent builds a Qase payload and a field has no entry in the project's field mapping reference
+- **WHEN** the agent builds a TCMS payload and a field has no entry in the project's field mapping reference
 - **THEN** the field is omitted or sent with the documented default
 - **AND** severity, priority, and type values are never invented by the agent
 
