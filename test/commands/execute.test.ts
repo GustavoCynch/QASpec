@@ -1155,4 +1155,233 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
       expect(result.stdout).toMatch(new RegExp(`^\\s+${name}\\b`, 'm'));
     }
   });
+
+  describe('results, results-gate and tcms-map', () => {
+    const runTcms = (args: string[]) => runCLI(args, { cwd: workDir });
+    const readRunFile = (run: string) => JSON.parse(readFileSync(path.join(runFolder(run), 'run.json'), 'utf-8'));
+
+    /** A confirmed run whose control case passed at the start and at the end, and whose case 1.1 passed. */
+    const runFinished = async (): Promise<string> => {
+      const run = await startConfirmedRun();
+      await writeJson('control-plan.json', CONTROL_PLAN);
+      await writeJson('control-pass.json', CONTROL_PASS);
+      await writeJson('case-plan.json', CASE_PLAN);
+      await writeJson('case-pass.json', CASE_PASS);
+      await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+      await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+      await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+      await cli(['record', '--run', run, '--case', '1.1', 'case-pass.json']);
+      await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+      await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+      expect((await cli(['finish', '--run', run])).exitCode).toBe(0);
+      return run;
+    };
+
+    it('results prints one entry per testcase of a finished run as JSON', async () => {
+      await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+      const run = await runFinished();
+
+      const result = await cli(['results', '--run', run, '--json']);
+
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        schema: 'qaspec.execution-results/v1',
+        run,
+        change: 'pr-1',
+        state: 'completed',
+        results: [
+          { case: '1.1', title: 'Export totals', status: 'passed', attempts: 1, comment: 'Verdict passed (attempts: 1).' },
+          { case: '1.2', title: 'Export by date', status: 'skipped', attempts: 0 },
+        ],
+      });
+    }, 60_000);
+
+    it('results prints each testcase with its status and comment as text, then the next step', async () => {
+      await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+      const run = await runFinished();
+
+      const result = await cli(['results', '--run', run]);
+      const text = result.stdout.replace(/\x1b\[[0-9;]*m/g, '');
+
+      expect(result.exitCode).toBe(0);
+      expect(text).toContain(`Results of run ${run} for change "pr-1": completed`);
+      expect(text).toMatch(/passed\s+1\.1 Export totals\n {2}Verdict passed \(attempts: 1\)\./);
+      expect(text).toMatch(/skipped\s+1\.2 Export by date\n {2}No verdict \(attempts: 0\)\. Skipped: never planned\./);
+      expect(text).toContain(`Next: qaspec execute results-gate --run ${run}`);
+    }, 60_000);
+
+    it('results exits 1 and names the state while the run is not finished', async () => {
+      await setUp();
+      const run = await startConfirmedRun();
+
+      const result = await cli(['results', '--run', run]);
+
+      expect(result.exitCode).toBe(1);
+      expect(`${result.stdout}${result.stderr}`).toContain('only for a finished run');
+    });
+
+    it('results-gate exits 0, prints its token and stores the token in the run', async () => {
+      await setUp();
+      const run = await runFinished();
+      expect(
+        (await runTcms(['tcms', 'set', '--change', 'pr-1', '--provider', 'example-tcms', '--project', 'QA'])).exitCode
+      ).toBe(0);
+
+      const gate = await cli(['results-gate', '--run', run, '--json']);
+
+      expect(gate.exitCode).toBe(0);
+      const parsed = JSON.parse(gate.stdout);
+      expect(parsed).toMatchObject({ run, change: 'pr-1', passed: true, failures: [] });
+      expect(parsed.token).toMatch(/^results-gate:[0-9a-f]{8}$/);
+      expect(readRunFile(run).resultsGate).toMatchObject({ token: parsed.token });
+    }, 60_000);
+
+    it('results-gate exits 1, lists the missing TCMS target and stores no token', async () => {
+      await setUp();
+      const run = await runFinished();
+
+      const gate = await cli(['results-gate', '--run', run, '--json']);
+
+      expect(gate.exitCode).toBe(1);
+      const parsed = JSON.parse(gate.stdout);
+      expect(parsed).toMatchObject({ passed: false, failures: [{ code: 'tcms-missing' }] });
+      expect(parsed.token).toBeUndefined();
+      expect(readRunFile(run).resultsGate).toBeUndefined();
+    }, 60_000);
+
+    it('tcms-map records the title to TCMS id mapping, and status --json shows it', async () => {
+      await setUp();
+      const run = await startConfirmedRun();
+      const empty = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+      expect(empty.tcms).toEqual({ schema: 'qaspec.execution-tcms/v1', run, tcmsRun: null, cases: {} });
+
+      const mapped = await cli([
+        'tcms-map',
+        '--run',
+        run,
+        '--title',
+        'Export totals',
+        '--tcms-id',
+        '42',
+        '--tcms-run',
+        '7',
+        '--json',
+      ]);
+
+      expect(mapped.exitCode).toBe(0);
+      const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+      expect(status.tcms).toMatchObject({ tcmsRun: '7', cases: { 'Export totals': { tcmsId: '42' } } });
+    });
+
+    it('tcms-map exits 1 for a title that is not a testcase and records nothing', async () => {
+      await setUp();
+      const run = await startConfirmedRun();
+
+      const result = await cli(['tcms-map', '--run', run, '--title', 'Export total', '--tcms-id', '42']);
+
+      expect(result.exitCode).toBe(1);
+      expect(`${result.stdout}${result.stderr}`).toContain('is not a testcase of change "pr-1"');
+      expect(JSON.parse((await cli(['status', '--run', run, '--json'])).stdout).tcms.cases).toEqual({});
+    });
+
+    it('two tcms-map commands at the same time on one run both persist their mapping', async () => {
+      await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+      const run = await startConfirmedRun();
+
+      const mapped = await Promise.all([
+        cli(['tcms-map', '--run', run, '--title', 'Export totals', '--tcms-id', '42']),
+        cli(['tcms-map', '--run', run, '--title', 'Export by date', '--tcms-id', '43']),
+      ]);
+
+      expect(mapped.map((result) => result.exitCode)).toEqual([0, 0]);
+      const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+      expect(status.tcms.cases).toEqual({
+        'Export totals': { tcmsId: '42', recordedAt: expect.any(String) },
+        'Export by date': { tcmsId: '43', recordedAt: expect.any(String) },
+      });
+    }, 60_000);
+
+    it('runs the whole flow through the CLI: triage, finish, results, results-gate and tcms-map', async () => {
+      await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+      const run = await startConfirmedRun();
+      await writeJson('control-plan.json', CONTROL_PLAN);
+      await writeJson('control-pass.json', CONTROL_PASS);
+      await writeJson('case-plan.json', CASE_PLAN);
+      await writeJson('case-fail.json', CASE_FAIL);
+      await writeJson('second-case-plan.json', SECOND_CASE_PLAN);
+      await writeJson('second-case-pass.json', SECOND_CASE_PASS);
+      await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+      await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+      await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+      await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+      await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+      await cli(['plan', '--run', run, '--case', '1.2', 'second-case-plan.json']);
+      await cli(['record', '--run', run, '--case', '1.2', 'second-case-pass.json']);
+      await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+      await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+      const judged = await cli([
+        'triage',
+        '--run',
+        run,
+        '--case',
+        '1.1',
+        '--classification',
+        'app',
+        '--rationale',
+        'The banner reports an error after a valid save',
+        '--expected',
+        'Saved banner shown',
+        '--observed',
+        'Error banner shown',
+      ]);
+      expect(judged.exitCode).toBe(0);
+      expect((await cli(['finish', '--run', run])).exitCode).toBe(0);
+
+      const results = await cli(['results', '--run', run, '--json']);
+
+      expect(results.exitCode).toBe(0);
+      expect(JSON.parse(results.stdout).results).toEqual([
+        {
+          case: '1.1',
+          title: 'Export totals',
+          status: 'failed',
+          comment: expect.stringContaining('Finding F1: Case 1.1 expects: Saved banner shown.'),
+          attempts: 2,
+          evidence: [],
+        },
+        {
+          case: '1.2',
+          title: 'Export by date',
+          status: 'passed',
+          comment: 'Verdict passed (attempts: 1).',
+          attempts: 1,
+          evidence: [],
+        },
+      ]);
+      expect(
+        (await runTcms(['tcms', 'set', '--change', 'pr-1', '--provider', 'example-tcms', '--project', 'QA'])).exitCode
+      ).toBe(0);
+      const gate = await cli(['results-gate', '--run', run, '--json']);
+      expect(gate.exitCode).toBe(0);
+      expect(JSON.parse(gate.stdout).token).toMatch(/^results-gate:[0-9a-f]{8}$/);
+      expect((await cli(['tcms-map', '--run', run, '--title', 'Export totals', '--tcms-id', '42'])).exitCode).toBe(0);
+      expect(
+        (await cli(['tcms-map', '--run', run, '--title', 'Export by date', '--tcms-id', '43', '--tcms-run', '7'])).exitCode
+      ).toBe(0);
+      const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+      expect(status.tcms).toMatchObject({
+        tcmsRun: '7',
+        cases: { 'Export totals': { tcmsId: '42' }, 'Export by date': { tcmsId: '43' } },
+      });
+    }, 90_000);
+
+    it('lists the results and TCMS subcommands in help', async () => {
+      const result = await runCLI(['execute', '--help']);
+
+      expect(result.exitCode).toBe(0);
+      for (const name of ['results', 'results-gate', 'tcms-map']) {
+        expect(result.stdout).toMatch(new RegExp(`^\\s+${name}\\s`, 'm'));
+      }
+    });
+  });
 });

@@ -23,6 +23,7 @@ import {
   readLedger,
   readRun,
   readStoredPlan,
+  testcaseTitle,
   withRunLock,
   writeFileAtomic,
   type CaseStatus,
@@ -39,7 +40,6 @@ const INTENDED_ANSWERS = ['yes', 'no'] as const;
 const FINDINGS_FILE = 'findings.json';
 const FINDINGS_MARKDOWN = 'findings.md';
 const CHECKBOX_START = /^-\s+\[[ xX]\]\s/;
-const CASE_ID_PREFIX = /^\d+(?:\.\d+)*\s+/;
 
 export interface Finding {
   /** Stable id in creation order: F1, F2, ... */
@@ -165,9 +165,36 @@ function noiseRefusal(run: RunRecord, purpose: string): Refusal {
   return refusal(`Run ${run.id} is environment-noise: its ${purpose}`);
 }
 
+/** A judgement of one case: its classification and rationale, and when it was recorded. */
+export interface Judgement {
+  case: string;
+  classification: Classification;
+  rationale: string;
+  at: string;
+}
+
+/**
+ * Judgements of the run by case key, read from the judged lines of the ledger. A judged line without a valid
+ * classification is not a judgement.
+ */
+export function readJudgements(runDir: string): Map<string, Judgement> {
+  const judgements = new Map<string, Judgement>();
+  for (const entry of readLedger(runDir)) {
+    if (entry.stage === 'judged' && typeof entry.classification === 'string' && isClassification(entry.classification)) {
+      judgements.set(String(entry.case), {
+        case: String(entry.case),
+        classification: entry.classification,
+        rationale: String(entry.rationale),
+        at: String(entry.at),
+      });
+    }
+  }
+  return judgements;
+}
+
 /** Judged cases of the run, from the judged lines of the ledger. */
 function judgedCases(runDir: string): Set<string> {
-  return new Set(readLedger(runDir).filter((entry) => entry.stage === 'judged').map((entry) => String(entry.case)));
+  return new Set(readJudgements(runDir).keys());
 }
 
 function answeredFindings(runDir: string): Set<string> {
@@ -178,7 +205,7 @@ function answeredFindings(runDir: string): Set<string> {
   );
 }
 
-function readFindings(runDir: string): Finding[] {
+export function readFindings(runDir: string): Finding[] {
   const file = path.join(runDir, FINDINGS_FILE);
   if (!existsSync(file)) {
     return [];
@@ -188,6 +215,25 @@ function readFindings(runDir: string): Finding[] {
     throw new Error(`${file} is not a list of findings; the run cannot be trusted`);
   }
   return findings as Finding[];
+}
+
+/**
+ * The finding of each case, named by the last reported line of that case in the ledger. A finding left behind
+ * by an interrupted judgement is therefore never shown for a case that was judged again.
+ */
+export function findingsByCase(runDir: string): Map<string, Finding> {
+  const findings = readFindings(runDir);
+  const byCase = new Map<string, Finding>();
+  for (const entry of readLedger(runDir)) {
+    if (entry.stage !== 'reported') {
+      continue;
+    }
+    const finding = findings.find((item) => item.id === entry.finding);
+    if (finding) {
+      byCase.set(String(entry.case), finding);
+    }
+  }
+  return byCase;
 }
 
 /**
@@ -255,7 +301,7 @@ function buildContext(location: RunLocation, run: RunRecord, key: string): Triag
     caseStatus: record.status,
     testcase: {
       id: plan.case.id,
-      title: detail.title.replace(CASE_ID_PREFIX, ''),
+      title: testcaseTitle(detail.title),
       line: detail.line,
       source: control ? 'control/testcases.md' : 'testcases.md',
       text: caseText(source.path, detail.line),

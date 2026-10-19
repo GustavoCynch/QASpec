@@ -37,6 +37,13 @@ import {
   type StartBlocker,
 } from '../core/execution-run.js';
 import { answerFinding, triageCase, triageContext, type TriageContext } from '../core/execution-triage.js';
+import {
+  buildResults,
+  readTcmsMapping,
+  recordTcmsMapping,
+  runResultsGate,
+  type ResultEntry,
+} from '../core/execution-results.js';
 
 export interface ExecuteLoginCommandOptions {
   json?: boolean;
@@ -586,7 +593,8 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
   }
 
   if (options.run) {
-    const { run, ledger, cases } = describeRunStatus(resolveRun(options.run));
+    const location = resolveRun(options.run);
+    const { run, ledger, cases } = describeRunStatus(location);
     if (options.json) {
       console.log(
         JSON.stringify(
@@ -602,6 +610,7 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
             controlCase: run.controlCase ?? null,
             cases,
             ledger,
+            tcms: readTcmsMapping(location.runDir),
           },
           null,
           2
@@ -742,4 +751,90 @@ export async function executeAnswerCommand(options: ExecuteAnswerOptions): Promi
   }
   const meaning = outcome.intended === 'yes' ? 'intended (dismissed)' : 'not intended (confirmed)';
   console.log(chalk.green(`✓ Finding ${outcome.finding} recorded: ${meaning}, ${outcome.secondsToAnswer} s after it was reported`));
+}
+
+/* Results (T8): the TCMS results of a finished run, the results gate, and the title to TCMS id mapping. */
+
+export interface ExecuteTcmsMapOptions extends ExecuteRunCommandOptions {
+  title: string;
+  tcmsId: string;
+  tcmsRun?: string;
+}
+
+const RESULT_COLORS = {
+  passed: chalk.green,
+  failed: chalk.red,
+  blocked: chalk.yellow,
+  skipped: chalk.dim,
+} satisfies Record<ResultEntry['status'], (text: string) => string>;
+
+/** Prints the TCMS results of a finished run: each testcase with its status and comment. JSON prints the payload. */
+export async function executeResultsCommand(options: ExecuteRunCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = buildResults(location);
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Results not built for run ${location.run.id}`);
+    return;
+  }
+  const { payload } = outcome;
+  if (options.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+  console.log(`Results of run ${payload.run} for change "${payload.change}": ${payload.state}`);
+  for (const entry of payload.results) {
+    console.log(`${RESULT_COLORS[entry.status](entry.status.padEnd(8))} ${entry.case ?? '-'} ${entry.title}`);
+    console.log(`  ${entry.comment}`);
+  }
+  console.log(`Next: qaspec execute results-gate --run ${payload.run}`);
+}
+
+/** Checks that the run can be reported to TCMS, then prints the gate token the workflow cites before any TCMS write. */
+export async function executeResultsGateCommand(options: ExecuteRunCommandOptions): Promise<void> {
+  const planningHome = resolveCurrentPlanningHomeSync();
+  const location = findRun(planningHome.changesDir, options.run);
+  const result = runResultsGate(location, planningHome.root);
+  const runId = location.run.id;
+  if (options.json) {
+    console.log(JSON.stringify({ run: runId, change: location.changeName, ...result }, null, 2));
+  } else if (result.passed && result.token) {
+    console.log(chalk.green(`✓ Results gate passed for run ${runId}`));
+    console.log(`Token: ${result.token}`);
+    if (result.tcms) {
+      const target = [result.tcms.provider, result.tcms.project, result.tcms.baseUrl].filter(Boolean).join(' · ');
+      console.log(`Target: ${target}`);
+    }
+  } else {
+    console.log(chalk.red(`✗ Results gate failed for run ${runId}`));
+    for (const failure of result.failures) {
+      console.log(chalk.red(`  • ${failure.message}`));
+      console.log(`    Resolve: ${failure.resolve}`);
+    }
+  }
+  if (!result.passed) {
+    process.exitCode = 1;
+  }
+}
+
+/** Records the TCMS id of one case title in the run, and the TCMS run id when it is given. */
+export async function executeTcmsMapCommand(options: ExecuteTcmsMapOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = recordTcmsMapping(location, {
+    title: options.title,
+    tcmsId: options.tcmsId,
+    tcmsRun: options.tcmsRun,
+  });
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `TCMS mapping not recorded for run ${location.run.id}`);
+    return;
+  }
+  const { title, tcmsId, mapping } = outcome;
+  if (options.json) {
+    console.log(JSON.stringify({ run: location.run.id, title, tcmsId, tcmsRun: mapping.tcmsRun }, null, 2));
+    return;
+  }
+  console.log(chalk.green(`✓ "${title}" is TCMS id ${tcmsId}`));
+  if (mapping.tcmsRun !== null) {
+    console.log(`TCMS run: ${mapping.tcmsRun}`);
+  }
 }

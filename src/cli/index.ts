@@ -47,8 +47,11 @@ import {
   executeLoginCommand,
   executePlanCommand,
   executeRecordCommand,
+  executeResultsCommand,
+  executeResultsGateCommand,
   executeStartCommand,
   executeStatusCommand,
+  executeTcmsMapCommand,
   executeTriageCommand,
   executeTriageContextCommand,
   executeValidatePlanCommand,
@@ -793,6 +796,56 @@ executeCmd
       process.exit(1);
     }
   });
+
+executeCmd
+  .command('results')
+  .description('Print the TCMS results of a finished run: one entry per testcase, control cases excluded')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await executeResultsCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('results-gate')
+  .description('Check that the run can be reported to TCMS and print the gate token the workflow cites before any TCMS write')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await executeResultsGateCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('tcms-map')
+  .description('Record the TCMS id of one case title in the run (a title keeps one id; status --json shows the mapping)')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--title <text>', 'Case title: the checkbox text after the case number, as written in testcases.md')
+  .requiredOption('--tcms-id <id>', 'Case id in the TCMS')
+  .option('--tcms-run <id>', 'Run id in the TCMS, recorded once per run')
+  .option('--json', 'Output as JSON')
+  .action(
+    async (options: { run: string; title: string; tcmsId: string; tcmsRun?: string; json?: boolean }) => {
+      try {
+        await executeTcmsMapCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    }
+  );
 
 // Approve command — record phase approval in the change ledger
 const approveCmd = program

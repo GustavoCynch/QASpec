@@ -20,6 +20,7 @@ import {
   recordObservations,
   startRun,
   storePlan,
+  testcaseTitle,
 } from '../../src/core/execution-run.js';
 import { writeChangeMetadata } from '../../src/utils/change-metadata.js';
 
@@ -896,6 +897,12 @@ describe('execution run lifecycle', () => {
       expect(isValidRunId('../../x')).toBe(false);
       expect(isValidRunId('20261019T163000Z-abcdef/..')).toBe(false);
       expect(() => findRun(changesDir, '../../x')).toThrow(/Invalid run id/);
+    });
+
+    it('takes the TCMS title from the checkbox text after the case number, exactly as written', () => {
+      expect(testcaseTitle('1.1 Export totals')).toBe('Export totals');
+      expect(testcaseTitle('10.2.1   Export   by date')).toBe('Export   by date');
+      expect(testcaseTitle('Export totals')).toBe('Export totals');
     });
 
     it('accepts testcase ids and control, and rejects anything else', () => {
