@@ -39,7 +39,11 @@ import { approveCommand } from '../commands/approve.js';
 import { validateCasesCommand } from '../commands/validate-cases.js';
 import { publishGateCommand } from '../commands/publish-gate.js';
 import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
-import { executeLoginCommand } from '../commands/execute.js';
+import {
+  executeCheckCommand,
+  executeLoginCommand,
+  executeValidatePlanCommand,
+} from '../commands/execute.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -579,6 +583,38 @@ executeCmd
   .action(async (options: { json?: boolean }) => {
     try {
       await executeLoginCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('validate-plan')
+  .description('Validate an execution plan against the Steps of its case in testcases.md (nothing is executed)')
+  .argument('<plan>', 'Execution plan JSON file')
+  .requiredOption('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (plan: string, options: { change: string; json?: boolean }) => {
+    try {
+      await executeValidatePlanCommand(plan, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('check')
+  .description('Evaluate captured observations against a validated plan and print the case verdict')
+  .argument('<plan>', 'Execution plan JSON file')
+  .argument('<observations>', 'Observations JSON file')
+  .option('--json', 'Output as JSON')
+  .action(async (plan: string, observations: string, options: { json?: boolean }) => {
+    try {
+      await executeCheckCommand(plan, observations, options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

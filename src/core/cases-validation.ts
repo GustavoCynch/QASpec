@@ -40,6 +40,29 @@ export interface ParsedCase {
   formatIssues: string[];
 }
 
+/** One row of a case's Steps table, as execution plans refer to it. */
+export interface TestcaseStepRow {
+  /** Value of the "#" column. */
+  n: number;
+  action: string;
+  /** Empty for transition steps, which need no check. */
+  expected: string;
+  line: number;
+}
+
+/** A checkbox case with the detail that execution plans are validated against. */
+export interface TestcaseDetail {
+  /** Leading number of the checkbox title, such as "1.1". */
+  id?: string;
+  /** Checkbox title, as ParsedCase.title. */
+  title: string;
+  line: number;
+  /** Valid Steps rows in table order; repeated step numbers are reported in stepIssues. */
+  steps: TestcaseStepRow[];
+  /** Problems with the Steps block; each names the block or the line. */
+  stepIssues: string[];
+}
+
 export interface CasesValidationResult {
   valid: boolean;
   errors: CasesValidationIssue[];
@@ -59,6 +82,8 @@ const REQ_ANNOTATION = /<!--\s*req:\s*([^>]+?)\s*-->/i;
 const SUITE_HEADER = /^##\s+Suite:/i;
 const PRECONDITIONS_HEADER = /^\*\*Preconditions:\*\*\s*$/i;
 const STEPS_HEADER = /^\*\*Steps:\*\*\s*$/i;
+const CASE_ID_PREFIX = /^(\d+(?:\.\d+)*)(?=\s|$)/;
+const STEP_NUMBER = /^\d+$/;
 
 export function toRequirementSlug(name: string): string {
   return name
@@ -148,20 +173,23 @@ function extractReqAnnotation(lines: string[], startIndex: number): string | und
   return undefined;
 }
 
-function validateStepsTable(lines: string[], stepsStart: number): { valid: boolean; issues: string[] } {
-  const issues: string[] = [];
-  let headerIndex = -1;
-
+/** Index of the Action/Expected table header inside a Steps block, or -1 when there is none. */
+function findStepsHeaderIndex(lines: string[], stepsStart: number): number {
   for (let i = stepsStart + 1; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     if (CHECKBOX_LINE.test(trimmed) || SUITE_HEADER.test(trimmed)) {
       break;
     }
     if (trimmed.startsWith('|') && trimmed.includes('Action') && trimmed.includes('Expected')) {
-      headerIndex = i;
-      break;
+      return i;
     }
   }
+  return -1;
+}
+
+function validateStepsTable(lines: string[], stepsStart: number): { valid: boolean; issues: string[] } {
+  const issues: string[] = [];
+  const headerIndex = findStepsHeaderIndex(lines, stepsStart);
 
   if (headerIndex === -1) {
     return { valid: false, issues: ['Steps block missing Action/Expected table header'] };
@@ -194,6 +222,73 @@ function validateStepsTable(lines: string[], stepsStart: number): { valid: boole
   }
 
   return { valid: issues.length === 0, issues };
+}
+
+/** Index of the "**Steps:**" line of the case whose checkbox is above `from`, or -1 when it has none. */
+function findStepsBlockIndex(lines: string[], from: number): number {
+  for (let j = from; j < lines.length; j++) {
+    const trimmed = lines[j].trim();
+    if (CHECKBOX_LINE.test(trimmed) || SUITE_HEADER.test(trimmed)) {
+      return -1;
+    }
+    if (STEPS_HEADER.test(trimmed)) {
+      return j;
+    }
+  }
+  return -1;
+}
+
+/** Splits one Markdown table row into trimmed cells by position; an escaped pipe stays inside its cell. */
+function splitTableRow(trimmed: string): string[] {
+  const inner = trimmed.replace(/^\|/, '').replace(/(?<!\\)\|$/, '');
+  return inner.split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, '|').trim());
+}
+
+/** Reads the Steps rows of one case with the table rules of validateStepsTable. */
+function readStepRows(lines: string[], stepsStart: number, detail: TestcaseDetail): void {
+  const headerIndex = findStepsHeaderIndex(lines, stepsStart);
+  if (headerIndex === -1) {
+    detail.stepIssues.push('Steps block missing Action/Expected table header');
+    return;
+  }
+
+  let dataRowCount = 0;
+  for (let i = headerIndex + 2; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (CHECKBOX_LINE.test(trimmed) || SUITE_HEADER.test(trimmed)) {
+      break;
+    }
+    if (!trimmed.startsWith('|') || /^\|[-:\s|]+\|$/.test(trimmed)) {
+      continue;
+    }
+    dataRowCount++;
+
+    const line = i + 1;
+    const cells = splitTableRow(trimmed);
+    if (cells.length !== 3) {
+      detail.stepIssues.push(`Steps row at line ${line} must have three columns (#, Action, Expected)`);
+      continue;
+    }
+
+    const [number, action, expected] = cells;
+    const n = Number(number);
+    if (!STEP_NUMBER.test(number) || n < 1) {
+      detail.stepIssues.push(`Steps row at line ${line} has no step number in the # column`);
+      continue;
+    }
+    if (detail.steps.some((step) => step.n === n)) {
+      detail.stepIssues.push(`Steps table repeats step number ${n} at line ${line}`);
+      continue;
+    }
+    detail.steps.push({ n, action, expected, line });
+  }
+
+  if (dataRowCount === 0) {
+    detail.stepIssues.push('Steps block has no data rows');
+  }
 }
 
 /**
@@ -402,4 +497,44 @@ export function validateCases(changeDir: string): CasesValidationResult {
 /** Resolves testcases path for external callers (publish gate). */
 export function resolveTestcasesFile(changeDir: string): string | null {
   return resolveTestcasesPath(changeDir);
+}
+
+/**
+ * Reads every checkbox case with its id and Steps rows, for execution plans.
+ * Additive: parseTestcases and validateCases keep their results unchanged.
+ */
+export function parseTestcaseDetails(changeDir: string): { path: string | null; cases: TestcaseDetail[] } {
+  const casesPath = resolveTestcasesPath(changeDir);
+  if (!casesPath) {
+    return { path: null, cases: [] };
+  }
+
+  const lines = normalizeLines(fs.readFileSync(casesPath, 'utf-8'));
+  const cases: TestcaseDetail[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(CHECKBOX_LINE);
+    if (!match) {
+      continue;
+    }
+
+    const title = match[2].trim();
+    const detail: TestcaseDetail = {
+      id: CASE_ID_PREFIX.exec(title)?.[1],
+      title,
+      line: i + 1,
+      steps: [],
+      stepIssues: [],
+    };
+
+    const stepsStart = findStepsBlockIndex(lines, i + 1);
+    if (stepsStart === -1) {
+      detail.stepIssues.push('Missing **Steps:** block');
+    } else {
+      readStepRows(lines, stepsStart, detail);
+    }
+    cases.push(detail);
+  }
+
+  return { path: casesPath, cases };
 }
