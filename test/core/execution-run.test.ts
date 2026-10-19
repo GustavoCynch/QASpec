@@ -391,6 +391,24 @@ describe('execution run lifecycle', () => {
       expect(run.cases['1.1']).toEqual({ status: 'pending', attempts: [] });
     });
 
+    it('keeps every run out of git with a self-ignoring .gitignore in runs/', async () => {
+      const runId = await startedId();
+
+      expect(readFileSync(path.join(changeDir, 'runs', '.gitignore'), 'utf-8')).toBe('*\n');
+      const runFile = path.join('qaspec', 'changes', CHANGE, 'runs', runId, 'run.json');
+      expect(() => execFileSync('git', ['check-ignore', '-q', '--', runFile], { cwd: projectRoot })).not.toThrow();
+      const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: projectRoot }).toString();
+      expect(status).not.toContain('/runs/');
+    });
+
+    it('leaves an existing runs/.gitignore unchanged', async () => {
+      await write(path.join('qaspec', 'changes', CHANGE, 'runs', '.gitignore'), '# team rule\n*\n!README.md\n');
+
+      await startedId();
+
+      expect(readFileSync(path.join(changeDir, 'runs', '.gitignore'), 'utf-8')).toBe('# team rule\n*\n!README.md\n');
+    });
+
     it('uses execution.dataPrefix in the data tag', async () => {
       await writeConfig(BASE_EXECUTION + '  dataPrefix: ACME\n');
 
