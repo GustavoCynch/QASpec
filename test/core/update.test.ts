@@ -634,6 +634,31 @@ execution:
       consoleSpy.mockRestore();
     });
 
+    it('should remove the Playwright MCP server when the execution block is gone', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'qaspec', 'config.yaml'),
+        `schema: qaspec-pr-review
+execution:
+  app:
+    url: https://app.example.test
+`
+      );
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+      await initCommand.execute(testDir);
+      await fs.writeFile(path.join(testDir, 'qaspec', 'config.yaml'), 'schema: qaspec-pr-review\n');
+      const consoleSpy = vi.spyOn(console, 'log');
+
+      await updateCommand.execute(testDir);
+
+      const claudeMcp = JSON.parse(await fs.readFile(path.join(testDir, '.mcp.json'), 'utf-8'));
+      expect(claudeMcp.mcpServers).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Playwright MCP server "qaspec-playwright" removed from .mcp.json')
+      );
+
+      consoleSpy.mockRestore();
+    });
+
     it('should detect update needed when generatedBy is missing', async () => {
       // Set up a configured tool without generatedBy
       const skillsDir = path.join(testDir, '.claude', 'skills');

@@ -44,11 +44,7 @@ import {
 import { getAvailableTools } from './available-tools.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import { migrateReferenceFilenames } from './reference-scaffold.js';
-import {
-  formatExecutionMcpResult,
-  isExecutionMcpWarning,
-  syncExecutionMcpEntries,
-} from './execution-mcp.js';
+import { printExecutionMcpResults, syncExecutionMcpEntries } from './execution-mcp.js';
 import {
   WORKFLOW_TO_SKILL_DIR,
   getCommandConfiguredTools,
@@ -124,10 +120,7 @@ export class UpdateCommand {
 
     // 3b. Sync the Playwright MCP server for /qsx:execute unconditionally, like the reference
     // migration, so it follows the config's execution block even when skills are up to date.
-    for (const result of await syncExecutionMcpEntries(resolvedProjectPath, configuredTools)) {
-      const message = formatExecutionMcpResult(result);
-      console.log(isExecutionMcpWarning(result) ? chalk.yellow(message) : message);
-    }
+    printExecutionMcpResults(await syncExecutionMcpEntries(resolvedProjectPath, configuredTools));
 
     const effectiveDelivery = await resolveEffectiveDelivery(
       resolvedProjectPath,

@@ -19,9 +19,17 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-/** Checks POSIX and Windows forms explicitly so validation is identical on every platform. */
+/**
+ * Checks POSIX and Windows forms explicitly so validation is identical on every platform.
+ * `$` is rejected because agent tools expand `${...}` in the MCP arguments these paths end up in.
+ */
 function isProjectRelativePath(value: string): boolean {
-  if (value.length === 0 || path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) {
+  if (
+    value.length === 0 ||
+    value.includes('$') ||
+    path.posix.isAbsolute(value) ||
+    path.win32.isAbsolute(value)
+  ) {
     return false;
   }
   const normalized = path.posix.normalize(value.split('\\').join('/'));
