@@ -7,22 +7,17 @@
  * script only runs when git confirms the credentials and session files stay out of the repo.
  */
 
-import { execFile, spawn } from 'child_process';
+import { execFile } from 'child_process';
 import { existsSync, promises as fs, rmSync } from 'fs';
 import path from 'path';
 import { parseEnv } from 'util';
 import { readProjectConfig } from './project-config.js';
+import { runInProcessGroup, type ProcessGroupResult } from './process-group.js';
 
 /** Extensions QASpec runs with the current Node.js binary. */
 export const LOGIN_SCRIPT_EXTENSIONS = ['.js', '.mjs', '.cjs'] as const;
 
 export const DEFAULT_LOGIN_TIMEOUT_MS = 120_000;
-
-/** Time a timed-out script gets to exit after SIGTERM before it is killed. */
-const KILL_GRACE_MS = 2_000;
-
-/** Time allowed for remaining output to drain after the script exits. */
-const EXIT_GRACE_MS = 500;
 
 /** Shorter values are not redacted: masking them would corrupt ordinary output. */
 const MIN_REDACTED_LENGTH = 4;
@@ -90,117 +85,25 @@ function secretForms(value: string): string[] {
   return jsonEscaped === value ? [value] : [value, jsonEscaped];
 }
 
-interface LoginScriptOutcome {
-  exitCode: number | null;
-  output: string;
-  timedOut: boolean;
-}
-
-/** Signals that would end QASpec while the script runs; on POSIX they no longer reach the script. */
-const FORWARDED_SIGNALS: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-
+/**
+ * Runs the login script with Node.js in its own process group, with the credentials in its
+ * environment. Its output is captured for redaction; the group is stopped when it ends or is interrupted.
+ */
 function runLoginScript(
   projectRoot: string,
   scriptPath: string,
   env: NodeJS.ProcessEnv,
   timeoutMs: number,
   onInterrupt: () => void
-): Promise<LoginScriptOutcome> {
-  return new Promise((resolve, reject) => {
-    // On POSIX the script leads its own process group, so the processes it starts can be
-    // stopped with it. Windows has no process groups to signal; only the script is stopped.
-    const ownGroup = process.platform !== 'win32';
-    const child = spawn(process.execPath, [scriptPath], {
-      cwd: projectRoot,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: ownGroup,
-    });
-    let output = '';
-    let timedOut = false;
-    let settled = false;
-    let killTimer: NodeJS.Timeout | undefined;
-    let exitGraceTimer: NodeJS.Timeout | undefined;
-    // Decoding per stream keeps a multi-byte character split across chunks intact for redaction.
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => (output += chunk));
-    child.stderr.on('data', (chunk: string) => (output += chunk));
-
-    const signalScript = (signal: NodeJS.Signals) => {
-      try {
-        if (ownGroup && child.pid !== undefined) {
-          process.kill(-child.pid, signal);
-        } else {
-          child.kill(signal);
-        }
-      } catch {
-        // Already gone.
-      }
-    };
-
-    // A detached script does not get the terminal's Ctrl+C or hangup, so QASpec stops it, runs
-    // the interrupt cleanup and then ends with the same signal it received.
-    const onParentSignal = (signal: NodeJS.Signals) => {
-      removeSignalForwarding();
-      signalScript('SIGKILL');
-      try {
-        onInterrupt();
-      } catch {
-        // The cleanup is best effort; ending with the received signal must still happen.
-      }
-      process.kill(process.pid, signal);
-    };
-    const removeSignalForwarding = () => {
-      for (const signal of FORWARDED_SIGNALS) {
-        process.removeListener(signal, onParentSignal);
-      }
-    };
-    if (ownGroup) {
-      for (const signal of FORWARDED_SIGNALS) {
-        process.on(signal, onParentSignal);
-      }
-    }
-
-    // Processes the script leaves running are stopped, so none can rewrite the session later.
-    const finish = (exitCode: number | null) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      removeSignalForwarding();
-      clearTimeout(timer);
-      clearTimeout(killTimer);
-      clearTimeout(exitGraceTimer);
-      signalScript('SIGKILL');
-      child.stdout.destroy();
-      child.stderr.destroy();
-      resolve({ exitCode, output, timedOut });
-    };
-    const timer = setTimeout(() => {
-      timedOut = true;
-      signalScript('SIGTERM');
-      killTimer = setTimeout(() => signalScript('SIGKILL'), KILL_GRACE_MS);
-    }, timeoutMs);
-
-    child.on('error', (error) => {
-      settled = true;
-      removeSignalForwarding();
-      clearTimeout(timer);
-      clearTimeout(killTimer);
-      clearTimeout(exitGraceTimer);
-      reject(error);
-    });
-    // 'close' waits for every output pipe, which a process started by the script can keep
-    // open after the script exits; the script's own exit decides once remaining output drains.
-    child.on('exit', (exitCode) => {
-      if (timedOut) {
-        finish(exitCode);
-      } else {
-        exitGraceTimer = setTimeout(() => finish(exitCode), EXIT_GRACE_MS);
-      }
-    });
-    child.on('close', (exitCode) => finish(exitCode));
+): Promise<ProcessGroupResult> {
+  return runInProcessGroup({
+    file: process.execPath,
+    args: [scriptPath],
+    cwd: projectRoot,
+    env,
+    timeoutMs,
+    captureOutput: true,
+    onInterrupt,
   });
 }
 

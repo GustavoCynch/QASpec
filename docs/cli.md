@@ -831,11 +831,11 @@ A run gets an id: a UTC timestamp plus six random hexadecimal characters, such a
 
 Readiness runs in this order:
 
-1. Each `execution.readinessChecks` command runs from the project root, one after another. The command line is printed before it runs. A command that runs longer than 120 seconds gets SIGTERM, then SIGKILL two seconds later. Its output is neither printed nor stored: the run keeps only the name, exit code and duration.
+1. Each `execution.readinessChecks` command runs from the project root, one after another. In text mode its command line is printed before it runs; with `--json` the command text is in `readiness.checks[].command` instead. A command that runs longer than 120 seconds gets SIGTERM, then SIGKILL two seconds later. Its output is neither printed nor stored: the run keeps the name, the command text, the exit code and the duration. On POSIX systems the processes a command started are stopped with it: when the command ends, when it times out, and when `qaspec execute start` is interrupted. A background process that a command leaves running is therefore stopped too. On Windows only the command's own shell is stopped.
 2. With `probe`, one HTTP GET to `execution.app.probeUrl` must answer 2xx within 10 seconds. The run keeps only the origin and path of the URL, never its query string.
 3. With `manual`, the run waits for the user. The agent must ask the user to confirm that the app serves the change's code, then run `qaspec execute confirm`.
 
-A failed readiness command, a timeout or a failed probe still creates the run, with state `blocked-by-environment`, and marks every case `blocked-by-environment`: these cases are not failed and are not run. The command exits 1.
+A failed readiness command, a timeout or a failed probe still creates the run, with state `blocked-by-environment`, and marks every case `blocked-by-environment`: these cases are not failed and are not run. The command exits 1. In text mode the output names the state and each failed check or probe, and it does not report the run as started.
 
 The control case file is copied into the run when it starts, so the run keeps the control case it began with. On success the command prints the run id, the data tag, the control case path and the run folder. With `--json` it prints `{ run, change, state, dataTag, runDir, controlCase, readiness }`.
 
@@ -874,8 +874,9 @@ Evaluates the observations with the rules of `qaspec execute check`, against the
 | `needs-human` | `needs-human` | Final at once, no retry; a person judges the listed steps |
 | `failed` or `incomplete`, first attempt | `retry` | Run the case again from a clean state and record attempt 2 |
 | `failed` or `incomplete`, second attempt | `needs-triage` | Final; a `candidate` line is added to `ledger.jsonl` |
+| `failed` or `incomplete`, control case (start or end) | `needs-triage` | Final at once, no retry; a `candidate` line is added and the run finishes as `environment-noise` |
 
-A third record for a case is refused. The command exits 0 only for a `passed` verdict; `needs-human`, `retry`, `needs-triage` and validation errors exit 1, and the output names the outcome.
+A third record for a case is refused. A control plan takes one record only, because its verdict is final. The command exits 0 only for a `passed` verdict; `needs-human`, `retry`, `needs-triage` and validation errors exit 1, and the output names the outcome.
 
 ### `qaspec execute finish`
 
@@ -889,6 +890,8 @@ Closes the run. It requires a verdict for the control case at the start and at t
 
 `plan` and `record` need a `ready` run, and `confirm` and `finish` each need their own state. Any other state is refused, and the error names it: `awaiting-confirmation` (confirm first), `blocked-by-environment` (fix the environment and start a new run), or `completed` and `environment-noise` (already finished).
 
+`confirm`, `plan`, `record` and `finish` change a run under a lock folder, `runs/<run-id>/.lock`, which records the pid and time of the command that holds it. A command that finds the lock held waits up to 10 seconds and then fails without changing anything. A lock whose process has exited is taken over. Two commands on one run therefore never lose each other's updates. `status` reads the run without the lock.
+
 ### `qaspec execute status`
 
 ```
@@ -896,7 +899,7 @@ qaspec execute status --run <id> [--json]
 qaspec execute status --change <name> [--json]
 ```
 
-`--run` shows the run state, readiness results, control case verdicts, the status and attempts of every case, and the ledger counts. `--change` lists the runs of a change with their state and creation time. The run id is found among the changes of the planning home. Run ids must match `<UTC timestamp>-<six hex characters>` and case ids must be a testcase id such as `1.1`, or `control`; any other value is refused before it names a file.
+`--run` shows the run state, readiness results (each with its command text), control case verdicts, the status and attempts of every case, and the ledger counts. `--change` lists the runs of a change with their state and creation time. The run id is found among the changes of the planning home. Run ids must match `<UTC timestamp>-<six hex characters>` and case ids must be a testcase id such as `1.1`, or `control`; any other value is refused before it names a file.
 
 Run states: `awaiting-confirmation`, `ready`, `blocked-by-environment`, `completed`, `environment-noise`. Case statuses: `pending`, `planned`, `retry`, `passed`, `needs-human`, `needs-triage`, `blocked-by-environment`.
 

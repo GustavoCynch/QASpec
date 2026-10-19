@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, promises as fs, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { computeAnalyzeContentHash, writeApprovalRecord } from '../../src/core/approval-ledger.js';
 import {
+  acquireRunLock,
   confirmRun,
   describeRunStatus,
   findRun,
@@ -428,8 +429,15 @@ describe('execution run lifecycle', () => {
       if (!outcome.started) return;
       expect(outcome.run.state).toBe('blocked-by-environment');
       expect(outcome.run.readiness.checks).toEqual([
-        { name: 'backend deployed', status: 'failed', exitCode: 3, durationMs: expect.any(Number) },
+        {
+          name: 'backend deployed',
+          command: `${NODE} -e "process.exit(3)"`,
+          status: 'failed',
+          exitCode: 3,
+          durationMs: expect.any(Number),
+        },
       ]);
+      expect(readRunFile(outcome.run.id).readiness.checks[0].command).toBe(`${NODE} -e "process.exit(3)"`);
       expect(outcome.run.cases['1.1']).toEqual({ status: 'blocked-by-environment', attempts: [] });
       expect(outcome.run.cases['control-start'].status).toBe('blocked-by-environment');
     });
@@ -721,8 +729,9 @@ describe('execution run lifecycle', () => {
     it('marks the run environment-noise and keeps its candidates marked when the control case fails', async () => {
       const runId = await startConfirmed();
       storePlan(locate(runId), 'control', planBytes(CONTROL_PLAN));
-      expect(recordObservations(locate(runId), 'control', obsBytes(CONTROL_FAIL))).toMatchObject({ outcome: 'retry' });
-      expect(recordObservations(locate(runId), 'control', obsBytes(CONTROL_FAIL)).ok).toBe(true);
+      expect(recordObservations(locate(runId), 'control', obsBytes(CONTROL_FAIL))).toMatchObject({
+        outcome: 'needs-triage',
+      });
       expect(readRunFile(runId).cases['control-start'].status).toBe('needs-triage');
       await runCase(runId, 'control', CONTROL_PLAN, CONTROL_PASS);
 
@@ -734,6 +743,35 @@ describe('execution run lifecycle', () => {
       expect(ledgerLines(runId)).toEqual([
         expect.objectContaining({ stage: 'candidate', case: 'control-start', environmentNoise: true }),
       ]);
+    });
+
+    it('makes a failed control verdict final at once, with a candidate line and no retry', async () => {
+      const runId = await startConfirmed();
+      storePlan(locate(runId), 'control', planBytes(CONTROL_PLAN));
+
+      const recorded = recordObservations(locate(runId), 'control', obsBytes(CONTROL_FAIL));
+
+      expect(recorded.ok && recorded.outcome).toBe('needs-triage');
+      expect(readRunFile(runId).cases['control-start']).toMatchObject({
+        status: 'needs-triage',
+        attempts: [expect.objectContaining({ attempt: 1, verdict: 'failed' })],
+      });
+      expect(ledgerLines(runId)).toEqual([
+        expect.objectContaining({ stage: 'candidate', case: 'control-start', attempts: 1, verdicts: ['failed'] }),
+      ]);
+      expect(() => recordObservations(locate(runId), 'control', obsBytes(CONTROL_PASS))).toThrow(
+        /No control case plan awaits a record/
+      );
+    });
+
+    it('says that a planned case still awaits its verdict before the control case at the end', async () => {
+      const runId = await startConfirmed();
+      await runCase(runId, 'control', CONTROL_PLAN, CONTROL_PASS);
+      storePlan(locate(runId), '1.1', planBytes(CASE_PLAN));
+
+      expect(() => storePlan(locate(runId), 'control', planBytes(CONTROL_PLAN))).toThrow(
+        /Case 1\.1 still awaits a verdict \(status planned\): record its observations before the control case at the end/
+      );
     });
 
     it('refuses to finish when the control case was never recorded', async () => {
@@ -772,6 +810,59 @@ describe('execution run lifecycle', () => {
       expect(status.run.cases['1.1'].status).toBe('retry');
       expect(status.run.cases['1.1'].attempts.map((attempt) => attempt.verdict)).toEqual(['failed']);
       expect(status.ledger).toEqual({ candidates: 0, environmentNoise: 0 });
+    });
+  });
+
+  describe('run lock', () => {
+    const lockDir = (runId: string) => path.join(locate(runId).runDir, '.lock');
+    const lockOwner = (runId: string) => JSON.parse(readFileSync(path.join(lockDir(runId), 'owner.json'), 'utf-8'));
+
+    it('waits for a live owner, gives up after its timeout and leaves that lock in place', async () => {
+      const runId = await startedId();
+      await fs.mkdir(lockDir(runId));
+      await fs.writeFile(
+        path.join(lockDir(runId), 'owner.json'),
+        json({ pid: process.pid, token: 'held', acquiredAt: APPROVED_AT })
+      );
+
+      expect(() => acquireRunLock(locate(runId).runDir, 300)).toThrow(/is busy/);
+      expect(lockOwner(runId)).toEqual({ pid: process.pid, token: 'held', acquiredAt: APPROVED_AT });
+    });
+
+    it('takes over a lock whose owner process has exited', async () => {
+      const runId = await startedId();
+      const exitedPid = spawnSync(process.execPath, ['-e', '']).pid;
+      await fs.mkdir(lockDir(runId));
+      await fs.writeFile(
+        path.join(lockDir(runId), 'owner.json'),
+        json({ pid: exitedPid, token: 'stale', acquiredAt: APPROVED_AT })
+      );
+
+      const release = acquireRunLock(locate(runId).runDir, 2_000);
+
+      expect(lockOwner(runId)).toMatchObject({ pid: process.pid });
+      release();
+      expect(existsSync(lockDir(runId))).toBe(false);
+    });
+
+    it('does not remove a lock that another owner took after this one was acquired', async () => {
+      const runId = await startedId();
+      const release = acquireRunLock(locate(runId).runDir);
+      await fs.writeFile(
+        path.join(lockDir(runId), 'owner.json'),
+        json({ pid: process.pid, token: 'other', acquiredAt: APPROVED_AT })
+      );
+
+      release();
+
+      expect(lockOwner(runId).token).toBe('other');
+    });
+
+    it('releases the lock when a write is refused by the run state', async () => {
+      const runId = await startedId();
+
+      expect(() => storePlan(locate(runId), 'control', planBytes(CONTROL_PLAN))).toThrow(/awaiting-confirmation/);
+      expect(existsSync(lockDir(runId))).toBe(false);
     });
   });
 

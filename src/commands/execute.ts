@@ -310,7 +310,38 @@ function printBlockers(blockers: StartBlocker[]): void {
   }
 }
 
+/** The readiness checks and probe that block a run, each with the reason it blocks. */
+function blockReasons(readiness: RunRecord['readiness']): string[] {
+  const reasons = readiness.checks
+    .filter((check) => check.status !== 'passed')
+    .map((check) => {
+      if (check.status === 'timed-out') {
+        return `readiness check "${check.name}" timed out`;
+      }
+      const exit = check.exitCode === null ? 'without an exit code' : `with exit code ${check.exitCode}`;
+      return `readiness check "${check.name}" failed ${exit}`;
+    });
+  if (readiness.probe && !readiness.probe.ok) {
+    const { probe } = readiness;
+    const result = probe.httpStatus ? `answered HTTP ${probe.httpStatus}` : `failed (${probe.error ?? 'no answer'})`;
+    reasons.push(`probe ${probe.url} ${result}`);
+  }
+  return reasons;
+}
+
+/** A blocked run keeps its evidence, but it is never reported as started: no case runs. */
+function printBlocked(run: RunRecord, runFolder: string): void {
+  const reasons = blockReasons(run.readiness).join('; ') || 'the environment did not pass its readiness';
+  console.log(chalk.red(`✗ Run ${run.id} is blocked-by-environment: ${reasons}`));
+  console.log(`  Run folder: ${runFolder}`);
+  console.log(chalk.red('Cases are not run. Fix the environment, then start a new run.'));
+}
+
 function printStarted(run: RunRecord, dataTag: string, runFolder: string): void {
+  if (run.state === 'blocked-by-environment') {
+    printBlocked(run, runFolder);
+    return;
+  }
   console.log(chalk.green(`✓ Run ${run.id} started for change "${run.change}"`));
   console.log(`  Data tag: ${dataTag}`);
   if (run.controlCase) {
@@ -330,8 +361,6 @@ function printStarted(run: RunRecord, dataTag: string, runFolder: string): void 
     );
   } else if (run.state === 'ready') {
     console.log(`Ready. Store the control case plan first: qaspec execute plan --run ${run.id} --case control <plan.json>`);
-  } else if (run.state === 'blocked-by-environment') {
-    console.log(chalk.red('Blocked by the environment: cases are not run. Fix it, then start a new run.'));
   }
 }
 

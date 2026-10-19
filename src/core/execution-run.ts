@@ -16,6 +16,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -186,6 +187,8 @@ export type PlanStoreOutcome =
 /**
  * What a recorded attempt means next: done, a person must judge it, retry once, or needs triage
  * after the retry. A needs-human verdict is final at once: running the case again cannot change it.
+ * A control case gets no retry: its first verdict other than passed needs triage at once, because its
+ * run ends as environment-noise either way.
  */
 export type RecordStatusOutcome = 'passed' | 'needs-human' | 'retry' | 'needs-triage';
 
@@ -270,6 +273,151 @@ function writeNewFile(filePath: string, content: Buffer | string, label: string)
       throw new Error(`${label} is already stored in this run; stored files cannot be replaced`);
     }
     throw error;
+  }
+}
+
+/** Write lock of a run: a folder created atomically, whose owner.json holds the owner's pid and time. */
+const LOCK_DIRNAME = '.lock';
+const LOCK_OWNER_FILE = 'owner.json';
+/** How long a write waits for another command on the same run before it fails. */
+export const RUN_LOCK_TIMEOUT_MS = 10_000;
+/** Pause between attempts to take the lock. */
+const LOCK_RETRY_MS = 25;
+
+interface LockOwner {
+  pid: number;
+  token: string;
+  acquiredAt: string;
+}
+
+/** Waits synchronously: the run commands are synchronous, so their lock wait is too. */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function readLockOwner(lockDir: string): LockOwner | undefined {
+  try {
+    const owner = JSON.parse(readFileSync(path.join(lockDir, LOCK_OWNER_FILE), 'utf-8')) as Partial<LockOwner>;
+    return typeof owner.pid === 'number' && typeof owner.token === 'string' ? (owner as LockOwner) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to another user.
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/**
+ * A lock is stale when its owner has exited. A folder whose owner file never appeared (a crash between
+ * creating the folder and writing the file) is stale once it is older than the lock timeout.
+ */
+function isStaleLock(lockDir: string): boolean {
+  const owner = readLockOwner(lockDir);
+  if (owner) {
+    return !isProcessAlive(owner.pid);
+  }
+  try {
+    return Date.now() - statSync(lockDir).mtimeMs > RUN_LOCK_TIMEOUT_MS;
+  } catch {
+    // Released meanwhile: the caller creates the lock again.
+    return false;
+  }
+}
+
+/**
+ * Removes a stale lock without deleting a live lock that replaced it in the meantime: the folder is
+ * moved aside first, and moved back when its owner is not the stale one.
+ */
+function removeStaleLock(lockDir: string): void {
+  const staleToken = readLockOwner(lockDir)?.token;
+  const parked = `${lockDir}.stale-${randomBytes(4).toString('hex')}`;
+  try {
+    renameSync(lockDir, parked);
+  } catch {
+    // Another command removed it first.
+    return;
+  }
+  if (readLockOwner(parked)?.token === staleToken) {
+    rmSync(parked, { recursive: true, force: true });
+    return;
+  }
+  try {
+    renameSync(parked, lockDir);
+  } catch {
+    // Another command took the path meanwhile; the moved folder stays beside it for manual removal.
+  }
+}
+
+function busyLockError(runDir: string, owner: LockOwner | undefined): Error {
+  const holder = owner ? ` (pid ${owner.pid}, since ${owner.acquiredAt})` : '';
+  return new Error(
+    `Run ${path.basename(runDir)} is busy: another qaspec execute command holds its lock${holder}. ` +
+      `Retry when it finishes; if no qaspec command is running, delete the ${LOCK_DIRNAME} folder in the run folder.`
+  );
+}
+
+/**
+ * Takes the write lock of a run and returns its release. Only one command holds the lock at a time: a
+ * command waits with short backoff while a live owner holds it, takes over a stale one, and fails with
+ * a clear message after the timeout. Reads do not take the lock.
+ */
+export function acquireRunLock(runDir: string, timeoutMs: number = RUN_LOCK_TIMEOUT_MS): () => void {
+  const lockDir = path.join(runDir, LOCK_DIRNAME);
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      mkdirSync(lockDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw busyLockError(runDir, readLockOwner(lockDir));
+      }
+      if (isStaleLock(lockDir)) {
+        removeStaleLock(lockDir);
+      } else {
+        sleepSync(LOCK_RETRY_MS);
+      }
+      continue;
+    }
+
+    const token = randomBytes(8).toString('hex');
+    try {
+      writeFileSync(
+        path.join(lockDir, LOCK_OWNER_FILE),
+        `${JSON.stringify({ pid: process.pid, token, acquiredAt: nowIso() })}\n`,
+        { flag: 'wx' }
+      );
+    } catch (error) {
+      rmSync(lockDir, { recursive: true, force: true });
+      throw error;
+    }
+    return () => releaseRunLock(lockDir, token);
+  }
+}
+
+/** Removes the lock only while this command still owns it. */
+function releaseRunLock(lockDir: string, token: string): void {
+  if (readLockOwner(lockDir)?.token === token) {
+    rmSync(lockDir, { recursive: true, force: true });
+  }
+}
+
+/** Runs one write of a run under its lock; the lock is released even when the write throws. */
+function withRunLock<T>(runDir: string, write: () => T): T {
+  const release = acquireRunLock(runDir);
+  try {
+    return write();
+  } finally {
+    release();
   }
 }
 
@@ -595,17 +743,19 @@ export function listRuns(changeDir: string): RunSummary[] {
 }
 
 export function confirmRun(location: RunLocation): RunRecord {
-  const run = readRun(location.runDir);
-  if (run.state !== 'awaiting-confirmation') {
-    throw new Error(`Run ${run.id} is ${run.state}; only a run awaiting confirmation can be confirmed`);
-  }
-  const confirmed: RunRecord = {
-    ...run,
-    state: 'ready',
-    readiness: { ...run.readiness, confirmedAt: nowIso() },
-  };
-  writeRun(location.runDir, confirmed);
-  return confirmed;
+  return withRunLock<RunRecord>(location.runDir, () => {
+    const run = readRun(location.runDir);
+    if (run.state !== 'awaiting-confirmation') {
+      throw new Error(`Run ${run.id} is ${run.state}; only a run awaiting confirmation can be confirmed`);
+    }
+    const confirmed: RunRecord = {
+      ...run,
+      state: 'ready',
+      readiness: { ...run.readiness, confirmedAt: nowIso() },
+    };
+    writeRun(location.runDir, confirmed);
+    return confirmed;
+  });
 }
 
 /** Planning and recording need a ready run: anything else explains what the run is waiting for. */
@@ -651,7 +801,9 @@ function controlKeyForPlan(run: RunRecord): string {
   if (end.status === 'pending') {
     const [open] = openCaseIds(run);
     if (open !== undefined) {
-      throw new Error(`Case ${open} still awaits a verdict: record its retry before the control case at the end`);
+      const status = run.cases[open].status;
+      const next = status === 'retry' ? 'record its retry' : 'record its observations';
+      throw new Error(`Case ${open} still awaits a verdict (status ${status}): ${next} before the control case at the end`);
     }
     return CONTROL_END;
   }
@@ -694,7 +846,10 @@ function controlKeyForRecord(run: RunRecord): string {
       return key;
     }
   }
-  throw new Error(`No control case plan awaits a record in run ${run.id}; store it with qaspec execute plan first`);
+  throw new Error(
+    `No control case plan awaits a record in run ${run.id}: the control case already has a final verdict ` +
+      'or its next plan is not stored yet (qaspec execute plan --case control)'
+  );
 }
 
 function caseKeyForRecord(run: RunRecord, caseId: string): string {
@@ -721,44 +876,46 @@ function casesForPlan(location: RunLocation, control: boolean) {
  */
 export function storePlan(location: RunLocation, caseArg: string, bytes: Buffer): PlanStoreOutcome {
   const caseId = parseCaseArg(caseArg);
-  const run = readRun(location.runDir);
-  requireReady(run);
-  const control = caseId === CONTROL_ARG;
-  const key = control ? controlKeyForPlan(run) : caseKeyForPlan(run, caseId);
+  return withRunLock<PlanStoreOutcome>(location.runDir, () => {
+    const run = readRun(location.runDir);
+    requireReady(run);
+    const control = caseId === CONTROL_ARG;
+    const key = control ? controlKeyForPlan(run) : caseKeyForPlan(run, caseId);
 
-  const parsed = parseJsonText(bytes.toString('utf-8'));
-  if (!parsed.ok) {
-    return { ok: false, issues: [{ message: `Plan is not valid JSON: ${parsed.message}` }] };
-  }
-  const shape = validatePlanShape(parsed.value);
-  const issues: ExecutionIssue[] = [...shape.issues];
-  if (shape.plan) {
-    if (!control && shape.plan.case.id !== caseId) {
-      issues.push({
-        message: `Case ${caseId}: the plan declares case "${shape.plan.case.id}", which does not match --case ${caseId}`,
-        case: caseId,
-      });
+    const parsed = parseJsonText(bytes.toString('utf-8'));
+    if (!parsed.ok) {
+      return { ok: false, issues: [{ message: `Plan is not valid JSON: ${parsed.message}` }] };
     }
-    issues.push(
-      ...validatePlanAgainstTestcases({ plan: shape.plan, changeName: run.change, cases: casesForPlan(location, control) })
-    );
-  }
-  if (issues.length > 0) {
-    return { ok: false, issues };
-  }
+    const shape = validatePlanShape(parsed.value);
+    const issues: ExecutionIssue[] = [...shape.issues];
+    if (shape.plan) {
+      if (!control && shape.plan.case.id !== caseId) {
+        issues.push({
+          message: `Case ${caseId}: the plan declares case "${shape.plan.case.id}", which does not match --case ${caseId}`,
+          case: caseId,
+        });
+      }
+      issues.push(
+        ...validatePlanAgainstTestcases({ plan: shape.plan, changeName: run.change, cases: casesForPlan(location, control) })
+      );
+    }
+    if (issues.length > 0) {
+      return { ok: false, issues };
+    }
 
-  const planPath = path.join('plans', `${key}.json`);
-  writeNewFile(path.join(location.runDir, planPath), bytes, `The plan for case ${key}`);
-  const storedAt = nowIso();
-  const planSha256 = hashPlanBytes(bytes);
-  const current = run.cases[key] ?? freshCase('pending');
-  run.cases[key] = {
-    ...current,
-    status: 'planned',
-    plan: { path: planPath, sha256: planSha256, storedAt },
-  };
-  writeRun(location.runDir, run);
-  return { ok: true, caseKey: key, path: planPath, planSha256, storedAt };
+    const planPath = path.join('plans', `${key}.json`);
+    writeNewFile(path.join(location.runDir, planPath), bytes, `The plan for case ${key}`);
+    const storedAt = nowIso();
+    const planSha256 = hashPlanBytes(bytes);
+    const current = run.cases[key] ?? freshCase('pending');
+    run.cases[key] = {
+      ...current,
+      status: 'planned',
+      plan: { path: planPath, sha256: planSha256, storedAt },
+    };
+    writeRun(location.runDir, run);
+    return { ok: true, caseKey: key, path: planPath, planSha256, storedAt };
+  });
 }
 
 function parseStoredPlan(bytes: Buffer, key: string): ExecutionPlan {
@@ -772,12 +929,30 @@ function parseStoredPlan(bytes: Buffer, key: string): ExecutionPlan {
 
 /**
  * Evaluates observations against the stored plan copy. A first failed or incomplete verdict returns
- * retry; a second one marks the case needs-triage and adds a candidate line to the ledger. A
- * needs-human verdict is final at once and adds no candidate. Observations that do not fit the
- * stored plan are refused without using an attempt.
+ * retry; a second one marks the case needs-triage and adds a candidate line to the ledger. A control
+ * case has no retry: its first failed or incomplete verdict is needs-triage at once. A needs-human
+ * verdict is final at once and adds no candidate. Observations that do not fit the stored plan are
+ * refused without using an attempt.
  */
 export function recordObservations(location: RunLocation, caseArg: string, bytes: Buffer): RecordOutcome {
   const caseId = parseCaseArg(caseArg);
+  return withRunLock<RecordOutcome>(location.runDir, () => recordObservationsLocked(location, caseId, bytes));
+}
+
+function isControlKey(key: string): boolean {
+  return key === CONTROL_START || key === CONTROL_END;
+}
+
+/** What a verdict means for its case; see RecordStatusOutcome. */
+function outcomeOf(key: string, verdict: CaseVerdict, attempt: number): RecordStatusOutcome {
+  if (verdict === 'passed' || verdict === 'needs-human') {
+    return verdict;
+  }
+  return isControlKey(key) || attempt >= MAX_ATTEMPTS ? 'needs-triage' : 'retry';
+}
+
+/** Records one attempt. The caller holds the run lock, so the run is read and written as one step. */
+function recordObservationsLocked(location: RunLocation, caseId: string, bytes: Buffer): RecordOutcome {
   const run = readRun(location.runDir);
   requireReady(run);
   const key = caseId === CONTROL_ARG ? controlKeyForRecord(run) : caseKeyForRecord(run, caseId);
@@ -828,12 +1003,7 @@ export function recordObservations(location: RunLocation, caseArg: string, bytes
     ...current.attempts,
     { attempt, verdict: evaluation.verdict, observations: observationsPath, result: resultPath, recordedAt },
   ];
-  const outcome: RecordStatusOutcome =
-    evaluation.verdict === 'passed' || evaluation.verdict === 'needs-human'
-      ? evaluation.verdict
-      : attempt < MAX_ATTEMPTS
-        ? 'retry'
-        : 'needs-triage';
+  const outcome = outcomeOf(key, evaluation.verdict, attempt);
   const status: CaseStatus = outcome;
 
   run.cases[key] = { ...current, status, attempts };
@@ -866,6 +1036,11 @@ export function recordObservations(location: RunLocation, caseArg: string, bytes
  * otherwise it is environment-noise and its candidates are kept but marked so they produce no findings.
  */
 export function finishRun(location: RunLocation): FinishOutcome {
+  return withRunLock<FinishOutcome>(location.runDir, () => finishRunLocked(location));
+}
+
+/** Closes the run. The caller holds the run lock, because it rewrites the ledger and the run record. */
+function finishRunLocked(location: RunLocation): FinishOutcome {
   const run = readRun(location.runDir);
   requireReady(run);
   const start = run.cases[CONTROL_START];

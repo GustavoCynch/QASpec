@@ -679,7 +679,9 @@ executeCmd
 
 executeCmd
   .command('record')
-  .description('Evaluate observations against the stored plan of a case: one retry, then needs-triage')
+  .description(
+    'Evaluate observations against the stored plan of a case: failed or incomplete cases get one retry, then needs-triage'
+  )
   .argument('<observations>', 'Observations JSON file')
   .requiredOption('--run <id>', 'Run id printed by execute start')
   .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')

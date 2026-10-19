@@ -2,17 +2,15 @@
  * Environment readiness for /qsx:execute runs (S4, S9).
  *
  * A readiness command comes from the project config and runs from the project root. Its output is
- * not kept or printed, because it can contain environment values. A probe is one HTTP GET whose 2xx
- * answer passes. The recorded probe URL keeps only the origin and path, never a query string.
+ * not kept or printed, because it can contain environment values; the configured command text is kept
+ * with its result. A probe is one HTTP GET whose 2xx answer passes. The recorded probe URL keeps only
+ * the origin and path, never a query string.
  */
 
-import { spawn } from 'node:child_process';
+import { runInProcessGroup, type ProcessGroupResult } from './process-group.js';
 
 export const READINESS_COMMAND_TIMEOUT_MS = 120_000;
 export const PROBE_TIMEOUT_MS = 10_000;
-
-/** Time a timed-out command gets after SIGTERM before its process group is killed. */
-const KILL_GRACE_MS = 2_000;
 
 export interface ReadinessCommand {
   name: string;
@@ -23,6 +21,8 @@ export type ReadinessCheckStatus = 'passed' | 'failed' | 'timed-out';
 
 export interface ReadinessCheckRecord {
   name: string;
+  /** The command text as configured. */
+  command: string;
   status: ReadinessCheckStatus;
   /** Null when the command was stopped by a signal or could not start. */
   exitCode: number | null;
@@ -43,64 +43,39 @@ export interface ReadinessOptions {
 }
 
 /**
- * Runs one readiness command through the shell. On POSIX it leads its own process group, so a
- * timed-out command and the processes it started are stopped together: SIGTERM, then SIGKILL.
+ * Runs one readiness command through the shell, in its own process group on POSIX: a timed-out
+ * command and the processes it started are stopped, and so is any process it leaves running when it
+ * ends. Interrupting QASpec stops the command too.
  */
-export function runReadinessCheck(check: ReadinessCommand, options: ReadinessOptions): Promise<ReadinessCheckRecord> {
-  return new Promise((resolve) => {
-    const started = Date.now();
-    const ownGroup = process.platform !== 'win32';
-    const timeoutMs = options.timeoutMs ?? READINESS_COMMAND_TIMEOUT_MS;
-    let timedOut = false;
-    let settled = false;
-    let timer: NodeJS.Timeout | undefined;
-    let killTimer: NodeJS.Timeout | undefined;
-
-    const finish = (status: ReadinessCheckStatus, exitCode: number | null) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      resolve({ name: check.name, status, exitCode, durationMs: Date.now() - started });
-    };
-
-    // Output is ignored on purpose: nothing from the command reaches the terminal or the run record.
-    const child = spawn(check.command, {
-      cwd: options.projectRoot,
+export async function runReadinessCheck(check: ReadinessCommand, options: ReadinessOptions): Promise<ReadinessCheckRecord> {
+  const started = Date.now();
+  let outcome: ProcessGroupResult;
+  try {
+    outcome = await runInProcessGroup({
+      command: check.command,
       shell: true,
-      stdio: 'ignore',
-      detached: ownGroup,
+      cwd: options.projectRoot,
+      timeoutMs: options.timeoutMs ?? READINESS_COMMAND_TIMEOUT_MS,
+      captureOutput: false,
     });
+  } catch {
+    // The shell could not start the command.
+    return { name: check.name, command: check.command, status: 'failed', exitCode: null, durationMs: Date.now() - started };
+  }
 
-    const signalCommand = (signal: NodeJS.Signals) => {
-      try {
-        if (ownGroup && child.pid !== undefined) {
-          process.kill(-child.pid, signal);
-        } else {
-          child.kill(signal);
-        }
-      } catch {
-        // The command has already exited.
-      }
-    };
-
-    timer = setTimeout(() => {
-      timedOut = true;
-      signalCommand('SIGTERM');
-      killTimer = setTimeout(() => signalCommand('SIGKILL'), KILL_GRACE_MS);
-      killTimer.unref();
-    }, timeoutMs);
-
-    child.on('error', () => finish('failed', null));
-    child.on('exit', (exitCode) => {
-      if (timedOut) {
-        finish('timed-out', exitCode);
-      } else {
-        finish(exitCode === 0 ? 'passed' : 'failed', exitCode);
-      }
-    });
-  });
+  let status: ReadinessCheckStatus = 'failed';
+  if (outcome.timedOut) {
+    status = 'timed-out';
+  } else if (outcome.exitCode === 0) {
+    status = 'passed';
+  }
+  return {
+    name: check.name,
+    command: check.command,
+    status,
+    exitCode: outcome.exitCode,
+    durationMs: Date.now() - started,
+  };
 }
 
 /** Keeps the origin and path of a URL; the query string and fragment can carry secrets. */
