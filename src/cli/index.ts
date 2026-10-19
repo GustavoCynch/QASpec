@@ -39,6 +39,7 @@ import { approveCommand } from '../commands/approve.js';
 import { validateCasesCommand } from '../commands/validate-cases.js';
 import { publishGateCommand } from '../commands/publish-gate.js';
 import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
+import { executeLoginCommand } from '../commands/execute.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -557,6 +558,27 @@ tcmsCmd
   .action(async (options: { change: string; json?: boolean }) => {
     try {
       await tcmsShowCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Execute — support commands for agent-driven browser runs of approved test cases
+const executeCmd = program
+  .command('execute')
+  .description('Prepare agent-driven browser runs of approved test cases');
+
+executeCmd
+  .command('login')
+  .description(
+    'Run the configured login script and save the browser session (the agent never receives the credentials)'
+  )
+  .option('--json', 'Output as JSON')
+  .action(async (options: { json?: boolean }) => {
+    try {
+      await executeLoginCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
