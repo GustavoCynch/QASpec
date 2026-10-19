@@ -21,6 +21,21 @@ import {
   type ExecutionPlan,
 } from '../core/execution-plan.js';
 import { validateChangeExists } from './workflow/shared.js';
+import type { ReadinessCheckRecord } from '../core/execution-readiness.js';
+import {
+  confirmRun,
+  describeRunStatus,
+  findRun,
+  finishRun,
+  listRuns,
+  recordObservations,
+  startRun,
+  storePlan,
+  type LedgerCounts,
+  type RunLocation,
+  type RunRecord,
+  type StartBlocker,
+} from '../core/execution-run.js';
 
 export interface ExecuteLoginCommandOptions {
   json?: boolean;
@@ -238,5 +253,350 @@ export async function executeCheckCommand(
   } catch (error) {
     spinner?.stop();
     throw error;
+  }
+}
+
+/* Run lifecycle (T6): start, confirm, plan, record, finish and status. Gate failures print nothing else. */
+
+export interface ExecuteStartCommandOptions {
+  change: string;
+  json?: boolean;
+}
+
+export interface ExecuteRunCommandOptions {
+  run: string;
+  json?: boolean;
+}
+
+export interface ExecuteCaseCommandOptions extends ExecuteRunCommandOptions {
+  case: string;
+}
+
+export interface ExecuteStatusOptions {
+  run?: string;
+  change?: string;
+  json?: boolean;
+}
+
+/** Reads an input file as raw bytes: a stored plan or observation keeps exactly what the file held. */
+function readInputBytes(filePath: string, label: string): Buffer {
+  try {
+    return fs.readFileSync(path.resolve(filePath));
+  } catch (error) {
+    const reason = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'file not found' : (error as Error).message;
+    throw new Error(`Cannot read ${label} "${filePath}": ${reason}`);
+  }
+}
+
+function resolveRun(runId: string): RunLocation {
+  return findRun(resolveCurrentPlanningHomeSync().changesDir, runId);
+}
+
+function printReadinessCheck(record: ReadinessCheckRecord): void {
+  const seconds = (record.durationMs / 1000).toFixed(1);
+  if (record.status === 'passed') {
+    console.log(chalk.green(`  ✓ ${record.name} (exit 0, ${seconds} s)`));
+  } else if (record.status === 'timed-out') {
+    console.log(chalk.red(`  ✗ ${record.name} (timed out after ${seconds} s)`));
+  } else {
+    console.log(chalk.red(`  ✗ ${record.name} (exit ${record.exitCode ?? 'unknown'}, ${seconds} s)`));
+  }
+}
+
+function printBlockers(blockers: StartBlocker[]): void {
+  for (const blocker of blockers) {
+    console.log(chalk.red(`  • ${blocker.message}`));
+    console.log(`    Resolve: ${blocker.resolve}`);
+  }
+}
+
+function printStarted(run: RunRecord, dataTag: string, runFolder: string): void {
+  console.log(chalk.green(`✓ Run ${run.id} started for change "${run.change}"`));
+  console.log(`  Data tag: ${dataTag}`);
+  if (run.controlCase) {
+    console.log(`  Control case: ${run.controlCase.source}`);
+  }
+  console.log(`  Run folder: ${runFolder}`);
+  if (run.readiness.probe) {
+    const { probe } = run.readiness;
+    const result = probe.ok ? `answered ${probe.httpStatus}` : probe.httpStatus ? `HTTP ${probe.httpStatus}` : probe.error;
+    console.log(`  Probe ${probe.url}: ${result}`);
+  }
+  if (run.state === 'awaiting-confirmation') {
+    console.log(
+      chalk.yellow(
+        `Ask the user to confirm the app serves this change's code, then run: qaspec execute confirm --run ${run.id}`
+      )
+    );
+  } else if (run.state === 'ready') {
+    console.log(`Ready. Store the control case plan first: qaspec execute plan --run ${run.id} --case control <plan.json>`);
+  } else if (run.state === 'blocked-by-environment') {
+    console.log(chalk.red('Blocked by the environment: cases are not run. Fix it, then start a new run.'));
+  }
+}
+
+/** Starts a run after the approval, cases, execution, git and control gates; readiness runs here. */
+export async function executeStartCommand(options: ExecuteStartCommandOptions): Promise<void> {
+  const planningHome = resolveCurrentPlanningHomeSync();
+  const changeName = await validateChangeExists(options.change, planningHome.root, planningHome.changesDir);
+  const changeDir = getChangeDir(planningHome, changeName);
+
+  const outcome = await startRun({
+    changeName,
+    changeDir,
+    projectRoot: planningHome.root,
+    hooks: options.json
+      ? undefined
+      : {
+          beforeReadinessCheck: (check) => console.log(`Running readiness check "${check.name}": ${check.command}`),
+          afterReadinessCheck: printReadinessCheck,
+        },
+  });
+
+  if (!outcome.started) {
+    if (options.json) {
+      console.log(JSON.stringify({ started: false, blockers: outcome.blockers }, null, 2));
+    } else {
+      console.log(chalk.red(`✗ Cannot start a run for change "${changeName}"`));
+      printBlockers(outcome.blockers);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const { run, runDir, dataTag } = outcome;
+  const runFolder = path.relative(planningHome.root, runDir);
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: run.id,
+          change: changeName,
+          state: run.state,
+          dataTag,
+          runDir: runFolder,
+          controlCase: run.controlCase?.source ?? null,
+          readiness: run.readiness,
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    printStarted(run, dataTag, runFolder);
+  }
+  if (run.state === 'blocked-by-environment') {
+    process.exitCode = 1;
+  }
+}
+
+export async function executeConfirmCommand(options: ExecuteRunCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const run = confirmRun(location);
+  if (options.json) {
+    console.log(JSON.stringify({ run: run.id, state: run.state, confirmedAt: run.readiness.confirmedAt }, null, 2));
+    return;
+  }
+  console.log(chalk.green(`✓ Run ${run.id} is ready: the user confirmed the app serves this change's code`));
+  console.log(`Store the control case plan first: qaspec execute plan --run ${run.id} --case control <plan.json>`);
+}
+
+function printReportedIssues(issues: ExecutionIssue[], json: boolean | undefined, headline: string): void {
+  if (json) {
+    console.log(JSON.stringify({ valid: false, errors: issues }, null, 2));
+  } else {
+    console.log(chalk.red(`✗ ${headline}`));
+    printIssues(issues);
+  }
+  process.exitCode = 1;
+}
+
+/** Stores the plan for one case (or the control case) before the case runs. Plans cannot be replaced. */
+export async function executePlanCommand(planPath: string, options: ExecuteCaseCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = storePlan(location, options.case, readInputBytes(planPath, 'plan file'));
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Plan "${planPath}" was not stored for case ${options.case}`);
+    return;
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: location.run.id,
+          case: outcome.caseKey,
+          path: outcome.path,
+          planSha256: outcome.planSha256,
+          storedAt: outcome.storedAt,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  console.log(chalk.green(`✓ Plan stored for case ${outcome.caseKey}`));
+  console.log(`sha256: ${outcome.planSha256}`);
+}
+
+function printRecordedChecks(evaluation: CaseEvaluation): void {
+  for (const check of evaluation.checks) {
+    const reason = check.reason ? `: ${check.reason}` : '';
+    if (check.status === 'passed') {
+      console.log(chalk.green(`  ✓ ${check.id} (step ${check.step})`));
+    } else if (check.status === 'failed') {
+      console.log(chalk.red(`  ✗ ${check.id} (step ${check.step})${reason}`));
+    } else {
+      console.log(chalk.yellow(`  ! ${check.id} (step ${check.step}, ${check.status})${reason}`));
+    }
+  }
+  for (const item of evaluation.needsHuman) {
+    console.log(chalk.yellow(`  ? step ${item.step} needs a person: ${item.reason}`));
+  }
+}
+
+/**
+ * Evaluates observations against the stored plan. A failed or incomplete verdict asks for one retry
+ * and the second marks the case needs-triage; needs-human is final at once. Exit code 1 for any
+ * verdict other than passed.
+ */
+export async function executeRecordCommand(observationsPath: string, options: ExecuteCaseCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = recordObservations(location, options.case, readInputBytes(observationsPath, 'observations file'));
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Observations were not recorded for case ${options.case}`);
+    return;
+  }
+
+  const { caseKey, attempt, verdict, evaluation } = outcome;
+  const next = outcome.outcome;
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: location.run.id,
+          case: caseKey,
+          attempt,
+          verdict,
+          outcome: next,
+          planSha256: outcome.planSha256,
+          observationsSha256: outcome.observationsSha256,
+          checks: evaluation.checks,
+          needsHuman: evaluation.needsHuman,
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    printRecordedChecks(evaluation);
+    const headline = `Case ${caseKey} attempt ${attempt}: ${verdict}`;
+    console.log(verdict === 'passed' ? chalk.green(headline) : chalk.red(headline));
+    if (next === 'retry') {
+      console.log(chalk.yellow('Outcome: retry. Run the case once more from a clean state, then record attempt 2.'));
+    } else if (next === 'needs-triage') {
+      console.log(chalk.red('Outcome: needs-triage. A candidate line was added to ledger.jsonl.'));
+    } else if (next === 'needs-human') {
+      console.log(chalk.yellow('Outcome: needs-human. A person must judge the steps listed above; no retry.'));
+    }
+  }
+  if (verdict !== 'passed') {
+    process.exitCode = 1;
+  }
+}
+
+/** Closes the run: completed when the control case passed at the start and the end, otherwise environment-noise. */
+export async function executeFinishCommand(options: ExecuteRunCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = finishRun(location);
+  if (options.json) {
+    console.log(JSON.stringify({ run: location.run.id, state: outcome.state, reasons: outcome.reasons }, null, 2));
+  } else if (outcome.state === 'completed') {
+    console.log(chalk.green(`✓ Run ${location.run.id} completed: the control case passed at the start and at the end`));
+  } else {
+    console.log(chalk.red(`✗ Run ${location.run.id} is environment-noise: its candidates produce no findings`));
+    for (const reason of outcome.reasons) {
+      console.log(chalk.red(`  • ${reason}`));
+    }
+  }
+  if (outcome.state !== 'completed') {
+    process.exitCode = 1;
+  }
+}
+
+function printRunStatus(run: RunRecord, ledger: LedgerCounts): void {
+  console.log(`Run ${run.id} (change "${run.change}"): ${run.state}`);
+  console.log(`  Data tag: ${run.dataTag}`);
+  const checks = run.readiness.checks.map((check) => `${check.name} ${check.status}`).join(', ');
+  console.log(`  Readiness (${run.readiness.mode}): ${checks || 'no readiness commands'}`);
+  if (run.readiness.probe) {
+    const { probe } = run.readiness;
+    console.log(`  Probe ${probe.url}: ${probe.ok ? 'ok' : 'failed'} (${probe.httpStatus ?? probe.error})`);
+  }
+  if (run.controlCase) {
+    const start = run.cases['control-start']?.status ?? 'missing';
+    const end = run.cases['control-end']?.status ?? 'missing';
+    console.log(`  Control case: start ${start}, end ${end}`);
+  }
+  console.log('  Cases:');
+  for (const [key, record] of Object.entries(run.cases)) {
+    if (key.startsWith('control-')) {
+      continue;
+    }
+    const verdicts = record.attempts.map((attempt) => attempt.verdict).join(', ') || '-';
+    console.log(`    ${key}  ${record.status}  attempts: ${verdicts}`);
+  }
+  console.log(`  Ledger: ${ledger.candidates} candidate(s), ${ledger.environmentNoise} marked environment-noise`);
+}
+
+/** Shows one run (--run) or lists the runs of a change (--change). */
+export async function executeStatusCommand(options: ExecuteStatusOptions): Promise<void> {
+  if (!options.run && !options.change) {
+    throw new Error('Missing required option --run or --change');
+  }
+
+  if (options.run) {
+    const { run, ledger } = describeRunStatus(resolveRun(options.run));
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            run: run.id,
+            change: run.change,
+            state: run.state,
+            dataTag: run.dataTag,
+            createdAt: run.createdAt,
+            finishedAt: run.finishedAt ?? null,
+            finishReasons: run.finishReasons ?? [],
+            readiness: run.readiness,
+            controlCase: run.controlCase ?? null,
+            cases: run.cases,
+            ledger,
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      printRunStatus(run, ledger);
+    }
+    return;
+  }
+
+  const planningHome = resolveCurrentPlanningHomeSync();
+  const changeName = await validateChangeExists(options.change, planningHome.root, planningHome.changesDir);
+  const runs = listRuns(getChangeDir(planningHome, changeName)).map((entry) => ({
+    run: entry.id,
+    state: entry.state,
+    createdAt: entry.createdAt,
+  }));
+  if (options.json) {
+    console.log(JSON.stringify({ change: changeName, runs }, null, 2));
+  } else if (runs.length === 0) {
+    console.log(`No runs for change "${changeName}"`);
+  } else {
+    for (const entry of runs) {
+      console.log(`${entry.run}  ${entry.state}  ${entry.createdAt}`);
+    }
   }
 }

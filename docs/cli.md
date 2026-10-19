@@ -810,6 +810,107 @@ Operator notes: `equals`, `contains` and `matches` compare the text form of the 
 
 The text output lists each check and the verdict. With `--json` the output is `{ valid, errors, verdict, case, planSha256, checks, needsHuman }`; on validation errors it is `{ valid: false, errors, planSha256 }`, without a verdict. The exit code is 1 for any verdict other than `passed` and for validation errors.
 
+### `qaspec execute start`
+
+Start a run of `/qsx:execute` for a change. A run keeps the plans, observations and results of one execution, so a later step can prove what was stored before each case ran.
+
+```
+qaspec execute start --change <name> [--json]
+```
+
+The command creates nothing unless every gate passes:
+
+- the analyze approval is valid and `qaspec validate cases` passes for the change (the same checks as publish; no TCMS target is needed);
+- `qaspec/config.yaml` has an `execution` block with `app.url` and `app.readiness` (`manual` or `probe`); `probe` also needs `app.probeUrl`;
+- when `execution.auth` is set, `envFile` and `storageState` are set, git confirms that both are ignored and not tracked, and the session file exists (otherwise run `qaspec execute login`);
+- `execution.controlCase` is set and the file exists: a run cannot finish without its control case.
+
+A failed gate prints each problem with the command or setting that resolves it and exits 1. With `--json` it prints `{ started: false, blockers: [{ code, message, resolve }] }`.
+
+A run gets an id: a UTC timestamp plus six random hexadecimal characters, such as `20261019T163000Z-3f9a1c`. Its data tag is `<execution.dataPrefix or QASPEC>-<run-id>`, which marks test data the agent creates.
+
+Readiness runs in this order:
+
+1. Each `execution.readinessChecks` command runs from the project root, one after another. The command line is printed before it runs. A command that runs longer than 120 seconds gets SIGTERM, then SIGKILL two seconds later. Its output is neither printed nor stored: the run keeps only the name, exit code and duration.
+2. With `probe`, one HTTP GET to `execution.app.probeUrl` must answer 2xx within 10 seconds. The run keeps only the origin and path of the URL, never its query string.
+3. With `manual`, the run waits for the user. The agent must ask the user to confirm that the app serves the change's code, then run `qaspec execute confirm`.
+
+A failed readiness command, a timeout or a failed probe still creates the run, with state `blocked-by-environment`, and marks every case `blocked-by-environment`: these cases are not failed and are not run. The command exits 1.
+
+The control case file is copied into the run when it starts, so the run keeps the control case it began with. On success the command prints the run id, the data tag, the control case path and the run folder. With `--json` it prints `{ run, change, state, dataTag, runDir, controlCase, readiness }`.
+
+### `qaspec execute confirm`
+
+```
+qaspec execute confirm --run <id> [--json]
+```
+
+Moves a run from `awaiting-confirmation` to `ready` once the user confirmed that the app serves the change's code. Any other state is refused.
+
+### `qaspec execute plan`
+
+```
+qaspec execute plan --run <id> --case <case-id|control> <plan.json> [--json]
+```
+
+Validates the plan with the rules of `qaspec execute validate-plan`, against the change's `testcases.md` or, for `control`, against the control case snapshot. Then it stores a copy of the exact file bytes, with its SHA-256 and timestamp, in `plans/<case>.json` before the case runs. A stored plan is never replaced: a second plan for the same case is refused. The plan's `change` must match the run's change. For a testcase, its `case.id` must match `--case`; for `control`, its `case.id` must be a case of the control case file, and the message "is not in testcases.md" then refers to that file.
+
+The order of the run is fixed:
+
+- the control case runs at the start, before any other case, and it needs a verdict before another case can be planned;
+- the control case runs again at the end, only after every planned case has a final verdict; no case can be planned after it.
+
+### `qaspec execute record`
+
+```
+qaspec execute record --run <id> --case <case-id|control> <observations.json> [--json]
+```
+
+Evaluates the observations with the rules of `qaspec execute check`, against the stored copy of the plan: the plan file is not read again. Each attempt stores its observations in `observations/<case>-<attempt>.json` and its result in `results/<case>-<attempt>.json`. Observations that the stored plan does not declare are refused and use no attempt.
+
+| Verdict of the attempt | Case status | Next step |
+|------------------------|-------------|-----------|
+| `passed` | `passed` | Final |
+| `needs-human` | `needs-human` | Final at once, no retry; a person judges the listed steps |
+| `failed` or `incomplete`, first attempt | `retry` | Run the case again from a clean state and record attempt 2 |
+| `failed` or `incomplete`, second attempt | `needs-triage` | Final; a `candidate` line is added to `ledger.jsonl` |
+
+A third record for a case is refused. The command exits 0 only for a `passed` verdict; `needs-human`, `retry`, `needs-triage` and validation errors exit 1, and the output names the outcome.
+
+### `qaspec execute finish`
+
+```
+qaspec execute finish --run <id> [--json]
+```
+
+Closes the run. It requires a verdict for the control case at the start and at the end, each final (`passed`, `needs-human` or `needs-triage`); a missing verdict is an error that changes nothing. When both control runs passed, the run is `completed` and the command exits 0. Otherwise the run is `environment-noise` and the command exits 1: its candidate lines stay in `ledger.jsonl` marked `environmentNoise: true`, so triage produces no findings for them.
+
+### Run states and refusals
+
+`plan` and `record` need a `ready` run, and `confirm` and `finish` each need their own state. Any other state is refused, and the error names it: `awaiting-confirmation` (confirm first), `blocked-by-environment` (fix the environment and start a new run), or `completed` and `environment-noise` (already finished).
+
+### `qaspec execute status`
+
+```
+qaspec execute status --run <id> [--json]
+qaspec execute status --change <name> [--json]
+```
+
+`--run` shows the run state, readiness results, control case verdicts, the status and attempts of every case, and the ledger counts. `--change` lists the runs of a change with their state and creation time. The run id is found among the changes of the planning home. Run ids must match `<UTC timestamp>-<six hex characters>` and case ids must be a testcase id such as `1.1`, or `control`; any other value is refused before it names a file.
+
+Run states: `awaiting-confirmation`, `ready`, `blocked-by-environment`, `completed`, `environment-noise`. Case statuses: `pending`, `planned`, `retry`, `passed`, `needs-human`, `needs-triage`, `blocked-by-environment`.
+
+Each run is stored in `qaspec/changes/<change>/runs/<run-id>/`:
+
+```
+run.json                    run state, readiness, control case, status of every case
+control/testcases.md        control case snapshot taken at start
+plans/<case>.json           stored plan copies; control plans are control-start.json and control-end.json
+observations/<case>-<n>.json
+results/<case>-<n>.json
+ledger.jsonl                one candidate line per case that needed triage
+```
+
 ### Browser server for `/qsx:execute`
 
 When `qaspec/config.yaml` has an `execution` block, `qaspec init` and `qaspec update` write a Playwright MCP server named `qaspec-playwright` into the project-level MCP file of Claude Code (`.mcp.json`) and Cursor (`.cursor/mcp.json`). QASpec manages that server: edits made to it by hand are replaced on the next run. They change only that server: other servers and keys keep their values, although the file is rewritten as two-space-indented JSON. When the server has to be written, a file that is not valid JSON with an `mcpServers` object is skipped with a warning, and a file that cannot be written is reported without stopping the command. QASpec never writes through a symbolic link: an MCP file that is a symlink, or a `.cursor` folder that resolves outside the project, is reported instead. Paths in the `execution` block cannot contain `$`, because the agent tools expand `${...}` in these arguments. The server is removed again when `qaspec/config.yaml` no longer has a valid `execution` block; nothing changes when the config file is missing or cannot be read. `qaspec update` does this even when skills are up to date, so run it after editing the `execution` block.

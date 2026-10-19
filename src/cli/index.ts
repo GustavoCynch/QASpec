@@ -41,7 +41,13 @@ import { publishGateCommand } from '../commands/publish-gate.js';
 import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
 import {
   executeCheckCommand,
+  executeConfirmCommand,
+  executeFinishCommand,
   executeLoginCommand,
+  executePlanCommand,
+  executeRecordCommand,
+  executeStartCommand,
+  executeStatusCommand,
   executeValidatePlanCommand,
 } from '../commands/execute.js';
 const program = new Command();
@@ -615,6 +621,103 @@ executeCmd
   .action(async (plan: string, observations: string, options: { json?: boolean }) => {
     try {
       await executeCheckCommand(plan, observations, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('start')
+  .description(
+    'Start an execution run for a change: checks approval, cases, config, git guards, readiness and the control case'
+  )
+  .requiredOption('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change: string; json?: boolean }) => {
+    try {
+      await executeStartCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('confirm')
+  .description('Record that the user confirmed the app serves the change (manual readiness)')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await executeConfirmCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('plan')
+  .description('Store the execution plan for one case before it runs (a stored plan cannot be replaced)')
+  .argument('<plan>', 'Execution plan JSON file')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')
+  .option('--json', 'Output as JSON')
+  .action(async (plan: string, options: { run: string; case: string; json?: boolean }) => {
+    try {
+      await executePlanCommand(plan, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('record')
+  .description('Evaluate observations against the stored plan of a case: one retry, then needs-triage')
+  .argument('<observations>', 'Observations JSON file')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')
+  .option('--json', 'Output as JSON')
+  .action(async (observations: string, options: { run: string; case: string; json?: boolean }) => {
+    try {
+      await executeRecordCommand(observations, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('finish')
+  .description('Close a run: completed when the control case passed at the start and the end, otherwise environment-noise')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await executeFinishCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('status')
+  .description('Show one run (--run) or list the runs of a change (--change)')
+  .option('--run <id>', 'Run id printed by execute start')
+  .option('--change <id>', 'Change name, to list its runs')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run?: string; change?: string; json?: boolean }) => {
+    try {
+      await executeStatusCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
