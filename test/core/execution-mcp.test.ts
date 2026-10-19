@@ -166,6 +166,36 @@ execution:
     expect(await readJson(path.join('.cursor', 'mcp.json'))).toEqual({ mcpServers: [] });
   });
 
+  it.skipIf(process.platform === 'win32')(
+    'reports a file it cannot write instead of failing',
+    async () => {
+      await write(path.join('qaspec', 'config.yaml'), EXECUTION_CONFIG);
+      await write('.mcp.json', JSON.stringify({ mcpServers: { github: { command: 'gh-mcp' } } }));
+      await fs.chmod(path.join(projectRoot, '.mcp.json'), 0o444);
+      await write('.cursor', 'not a directory');
+
+      const results = await syncExecutionMcpEntries(projectRoot, ['claude', 'cursor']);
+
+      expect(results.map(({ toolId, status }) => ({ toolId, status }))).toEqual([
+        { toolId: 'claude', status: 'error' },
+        { toolId: 'cursor', status: 'error' },
+      ]);
+      expect(results[0].detail).toMatch(/EACCES/);
+      expect(await readJson('.mcp.json')).toEqual({ mcpServers: { github: { command: 'gh-mcp' } } });
+    }
+  );
+
+  it('keeps its server when qaspec/config.yaml cannot be read', async () => {
+    await write(path.join('qaspec', 'config.yaml'), 'schema: [unclosed\n');
+    const existing = JSON.stringify({ mcpServers: { [QASPEC_PLAYWRIGHT_MCP_SERVER]: { command: 'npx' } } });
+    await write('.mcp.json', existing);
+
+    const results = await syncExecutionMcpEntries(projectRoot, ['claude']);
+
+    expect(results).toEqual([]);
+    expect(await fs.readFile(path.join(projectRoot, '.mcp.json'), 'utf-8')).toBe(existing);
+  });
+
   it('ignores tools that have no project-level MCP file', async () => {
     await write(path.join('qaspec', 'config.yaml'), EXECUTION_CONFIG);
 
@@ -179,7 +209,12 @@ execution:
       'Playwright MCP server "qaspec-playwright" written to .mcp.json'
     );
     expect(formatExecutionMcpResult({ toolId: 'claude', file: '.mcp.json', status: 'removed' })).toBe(
-      'Playwright MCP server "qaspec-playwright" removed from .mcp.json (no execution block in qaspec/config.yaml)'
+      'Playwright MCP server "qaspec-playwright" removed from .mcp.json (no valid execution block in qaspec/config.yaml)'
+    );
+    expect(
+      formatExecutionMcpResult({ toolId: 'claude', file: '.mcp.json', status: 'error', detail: 'EACCES: permission denied' })
+    ).toBe(
+      'Could not update .mcp.json (EACCES: permission denied). Add the "qaspec-playwright" server manually (see docs/cli.md).'
     );
     expect(formatExecutionMcpResult({ toolId: 'claude', file: '.mcp.json', status: 'invalid' })).toBe(
       'Skipped .mcp.json: it is not valid JSON with an mcpServers object. Add the "qaspec-playwright" server manually (see docs/cli.md).'

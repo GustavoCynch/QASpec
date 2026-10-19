@@ -56,6 +56,7 @@ import { getAvailableTools } from './available-tools.js';
 import { scaffoldQaspecReferences, migrateReferenceFilenames } from './reference-scaffold.js';
 import {
   formatExecutionMcpResult,
+  isExecutionMcpWarning,
   syncExecutionMcpEntries,
   type ExecutionMcpResult,
 } from './execution-mcp.js';
@@ -678,7 +679,7 @@ export class InitCommand {
 
     for (const result of mcpResults) {
       const message = formatExecutionMcpResult(result);
-      console.log(result.status === 'invalid' ? chalk.yellow(message) : message);
+      console.log(isExecutionMcpWarning(result) ? chalk.yellow(message) : message);
     }
 
     // Getting started (task 7.6: show propose if in profile)
