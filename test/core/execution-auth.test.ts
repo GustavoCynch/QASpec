@@ -179,6 +179,88 @@ execution:
     await expect(executeLogin(projectRoot, { timeoutMs: 300 })).rejects.toThrow(/timed out/);
   });
 
+  it('stops a login script that ignores the termination signal', async () => {
+    await setUpProject({ script: `process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);` });
+    const started = Date.now();
+
+    await expect(executeLogin(projectRoot, { timeoutMs: 300 })).rejects.toThrow(/timed out/);
+    expect(Date.now() - started).toBeLessThan(8_000);
+  }, 15_000);
+
+  it.skipIf(process.platform === 'win32')(
+    'stops waiting when a process started by the login script keeps its output open',
+    async () => {
+      await setUpProject({
+        script: `import { spawn } from 'node:child_process';
+spawn('sleep', ['12'], { stdio: 'inherit' });
+setInterval(() => {}, 1000);`,
+      });
+      const started = Date.now();
+
+      await expect(executeLogin(projectRoot, { timeoutMs: 300 })).rejects.toThrow(/timed out/);
+      expect(Date.now() - started).toBeLessThan(8_000);
+    },
+    15_000
+  );
+
+  it('removes the session when the login script fails after writing it', async () => {
+    await setUpProject({
+      script: `import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
+process.exit(3);`,
+    });
+
+    await expect(executeLogin(projectRoot)).rejects.toThrow(/exited with code 3/);
+    expect(existsSync(sessionPath())).toBe(false);
+  });
+
+  it('does not accept a session left by an earlier login', async () => {
+    await setUpProject({ script: `console.log('done');` });
+    await write(
+      path.join('.qaspec', 'auth', 'storage-state.json'),
+      JSON.stringify({ cookies: [], origins: [] })
+    );
+
+    await expect(executeLogin(projectRoot)).rejects.toThrow(/did not write a valid storage state/);
+    expect(existsSync(sessionPath())).toBe(false);
+  });
+
+  it('refuses to run when the session file is tracked by git', async () => {
+    await setUpProject();
+    await write(path.join('.qaspec', 'auth', 'storage-state.json'), '{}');
+    git('add', '--force', '.qaspec/auth/storage-state.json');
+
+    await expect(executeLogin(projectRoot)).rejects.toThrow(/storage-state\.json is tracked by git/);
+    expect(loginRan()).toBe(false);
+  });
+
+  it('refuses a session path that points at the credentials file', async () => {
+    await setUpProject({
+      config: AUTH_CONFIG.replace('.qaspec/auth/storage-state.json', './.env.qa'),
+    });
+
+    await expect(executeLogin(projectRoot)).rejects.toThrow(
+      /storageState must not be the same file as execution\.auth\.envFile/
+    );
+    expect(await fs.readFile(path.join(projectRoot, '.env.qa'), 'utf-8')).toContain(PASSWORD);
+    expect(loginRan()).toBe(false);
+  });
+
+  it('redacts credentials the login script prints in escaped form', async () => {
+    const password = 'p"ss\\word';
+    await setUpProject({
+      env: `QA_USERNAME=${USERNAME}\nQA_PASSWORD='${password}'\n`,
+      script: `import { writeFileSync } from 'node:fs';
+console.log(JSON.stringify({ password: process.env.QA_PASSWORD }));
+writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));`,
+    });
+
+    const result = await executeLogin(projectRoot);
+
+    expect(result.output).toContain('{"password":"[redacted]"}');
+    expect(result.output).not.toContain('ss\\\\word');
+  });
+
   it('rejects login scripts that node cannot run', async () => {
     await setUpProject({ config: AUTH_CONFIG.replace('scripts/login.mjs', 'scripts/login.sh') });
 
