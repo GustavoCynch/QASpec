@@ -48,6 +48,8 @@ These commands support `--json` output for programmatic use by AI agents and scr
 | `qaspec templates` | Find template paths | `--json` for path resolution |
 | `qaspec schemas` | List available schemas | `--json` for schema discovery |
 | `qaspec execute login` | Save the browser session for `/qsx:execute` | `--json` for the session path and redacted script output |
+| `qaspec execute validate-plan` | Check an execution plan against its case in `testcases.md` | `--json` for the errors and the plan hash |
+| `qaspec execute check` | Evaluate captured observations and print the case verdict | `--json` for per-check results and the verdict |
 | `qaspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
 | `qaspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
 | `qaspec workspace link` | Link a repo or folder | `--json` for structured link output |
@@ -710,6 +712,103 @@ Reads `execution.auth` from `qaspec/config.yaml`:
 | `storageState` | Where the browser session is saved |
 
 Before running the script, the command stops when the project is not a git repository, when `envFile` or `storageState` is tracked by git or not ignored by it, or when both settings point at the same file. The script runs from the project root with the `envFile` variables, plus `QASPEC_STORAGE_STATE` (absolute path where it must save the session, e.g. with Playwright's `context.storageState({ path })`) and `QASPEC_APP_URL` (`execution.app.url`, when set). It must finish within 120 seconds; after that it receives SIGTERM, then SIGKILL two seconds later. On POSIX the script runs in its own process group, and any process it leaves running is stopped when the command finishes. On POSIX, if the command is interrupted (SIGINT such as Ctrl+C, SIGTERM or SIGHUP) while the script runs, it stops the script and its processes, removes the session file when it can and exits with that signal. On Windows, an interrupted command may leave a partly written session file behind. Credential values of four or more characters are replaced with `[redacted]` in the script output, both as written and as they appear inside a JSON string. The command fails when the script exits non-zero, times out or does not write a valid storage state, and removes any session file in those cases. On POSIX the session file is created readable only by its owner before the script runs (inside a new directory, that directory too), and it stays that way as long as the script writes into the existing file, as Playwright's `context.storageState({ path })` does.
+
+### `qaspec execute validate-plan`
+
+Check the execution plan that the agent writes for one case before it acts on that case. Nothing is executed.
+
+```
+qaspec execute validate-plan --change <name> <plan.json> [--json]
+```
+
+The plan (`schema: "qaspec.execution-plan/v1"`) names the case and, for each step of its Steps table, the checks that decide the Expected result:
+
+```json
+{
+  "schema": "qaspec.execution-plan/v1",
+  "change": "billing-export",
+  "case": { "id": "1.1", "title": "Export totals" },
+  "steps": [
+    {
+      "n": 2,
+      "checks": [
+        {
+          "id": "banner",
+          "source": { "kind": "dom", "target": "status banner text" },
+          "op": "equals",
+          "value": "Saved"
+        }
+      ]
+    },
+    { "n": 3, "checks": [], "needsHuman": "The chart colours cannot be read as a value" }
+  ]
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `n` | Value of the `#` column of a Steps row (a whole number from 1) |
+| `checks` | Checks for the step; may be empty when `needsHuman` is set |
+| `needsHuman` | Reason a person must judge the step, for an Expected result that no check can express |
+| `source.kind` | `dom`, `network`, `console` or `url` |
+| `source.target` | Free text: what the agent reads |
+| `op` | One of the operators below |
+| `negate` | Optional `true` inverts a passed or failed result |
+
+| `op` | Fields | Passes when |
+|------|--------|-------------|
+| `equals` | `value` (text, number or boolean) | the observed value has the same text as `value` |
+| `contains` | `value` (non-empty text) | the observed text contains `value` |
+| `matches` | `pattern` (regex, at most 500 characters) | the observed text matches `pattern` |
+| `compare` | `comparator` (`gt`, `gte`, `lt`, `lte`), `value` (number) | the observed number compares as stated |
+| `delta` | `by` (number) | the observed `after` minus `before` equals `by` |
+
+The checks of a plan have unique `id`s, and a plan must declare at least one check or one `needsHuman` reason, so it can never pass without verifying anything. Validation checks that the plan belongs to `--change`, that the case id exists exactly once in `testcases.md`, that every plan step has a row in that case's Steps table, that every row with an Expected cell has a check or a `needsHuman` reason, that no step or check id repeats, and that every regex compiles. Unknown keys are errors, so a misspelt option never passes silently. Errors name the case, step and check. The exit code is 1 when there are errors.
+
+With `--json` the output is `{ change, plan, planSha256, valid, errors }`. `planSha256` is the SHA-256 of the exact file bytes.
+
+### `qaspec execute check`
+
+Evaluate the observations that the agent captured while it ran a case, and print the case verdict. The decision is made by the CLI, not by the agent.
+
+```
+qaspec execute check <plan.json> <observations.json> [--json]
+```
+
+Observations (`schema: "qaspec.execution-observations/v1"`) hold one entry per check that was observed:
+
+```json
+{
+  "schema": "qaspec.execution-observations/v1",
+  "observations": [
+    { "check": "banner", "after": "Saved" },
+    { "check": "total", "before": 10, "after": 12 }
+  ]
+}
+```
+
+Each value is text, a finite number or a boolean. An observation for a check that the plan does not declare, or a second observation for the same check, is an error. Validation errors print no verdict, because the plan or the observations cannot be evaluated.
+
+Each check gets one status:
+
+| Status | When |
+|--------|------|
+| `passed` / `failed` | The operator decided the check (`negate` already applied) |
+| `missing` | No observation was recorded for the check |
+| `invalid` | The operator cannot read the value: a non-numeric value for `compare` or `delta`, a `delta` without `before`, a `matches` value over 10,000 characters, or a `matches` check that runs longer than one second |
+
+The case verdict applies these rules in order:
+
+| Verdict | When |
+|---------|------|
+| `failed` | Any check failed |
+| `needs-human` | A step has a `needsHuman` reason |
+| `incomplete` | A check is `missing` or `invalid` |
+| `passed` | Every check passed and no step needs a person |
+
+Operator notes: `equals`, `contains` and `matches` compare the text form of the observed value, so `3` and `"3"` are equal. `compare` and `delta` accept numbers and text that is exactly a decimal number, ignoring surrounding spaces. `delta` allows a relative rounding error of 1e-9. A `matches` check that runs longer than one second, for example a pattern that backtracks catastrophically, is stopped and reported as `invalid`.
+
+The text output lists each check and the verdict. With `--json` the output is `{ valid, errors, verdict, case, planSha256, checks, needsHuman }`; on validation errors it is `{ valid: false, errors, planSha256 }`, without a verdict. The exit code is 1 for any verdict other than `passed` and for validation errors.
 
 ### Browser server for `/qsx:execute`
 

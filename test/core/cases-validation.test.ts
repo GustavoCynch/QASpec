@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
-import { validateCases, toRequirementSlug } from '../../src/core/cases-validation.js';
+import { parseTestcaseDetails, toRequirementSlug, validateCases } from '../../src/core/cases-validation.js';
 
 const VALID_CASE_BLOCK = `
   <!-- req: billing-export/totals -->
@@ -209,5 +209,193 @@ describe('cases-validation', () => {
     const result = validateCases(changeDir);
     expect(result.valid).toBe(true);
     expect(result.warnings.some((w) => w.code === 'uncovered-scenario')).toBe(true);
+  });
+
+  it('keeps the validateCases result unchanged for a fixture-style input', async () => {
+    await writeSpec(`## ADDED Requirements
+
+### Requirement: Export totals
+`);
+    await writeTestcases(`## Suite: Export
+
+- [ ] 1.1 Happy path export
+  <!-- req: billing-export/export-totals -->
+
+  **Preconditions:**
+  1. Setup
+
+  **Steps:**
+  | # | Action | Expected |
+  |---|--------|----------|
+  | 1 | Act | Result |
+`);
+
+    expect(validateCases(changeDir)).toEqual({
+      valid: true,
+      errors: [],
+      warnings: [],
+      requirements: [
+        {
+          capability: 'billing-export',
+          slug: 'export-totals',
+          key: 'billing-export/export-totals',
+          requirementName: 'Export totals',
+          specPath: expect.stringContaining(path.join('specs', 'billing-export', 'spec.md')),
+          scenarios: [],
+        },
+      ],
+      cases: [
+        {
+          line: 3,
+          title: '1.1 Happy path export',
+          checked: false,
+          reqAnnotation: 'billing-export/export-totals',
+          hasPreconditions: true,
+          hasSteps: true,
+          stepsTableValid: true,
+          formatIssues: [],
+        },
+      ],
+      coverage: {
+        totalRequirements: 1,
+        coveredRequirements: 1,
+        byCapability: { 'billing-export': { total: 1, covered: 1 } },
+      },
+    });
+  });
+
+  describe('parseTestcaseDetails', () => {
+    const CASE_HEAD = ['## Suite: Export', '', '- [ ] 1.1 Export totals', '  <!-- req: billing-export/export-totals -->', ''];
+
+    it('reads the case id and every Steps row, keeping empty Expected cells', async () => {
+      await writeTestcases(
+        [
+          ...CASE_HEAD,
+          '  **Preconditions:**',
+          '  1. Setup',
+          '',
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | 1 | Navigate to the report |  |',
+          '  | 2 | Click save | Saved banner shown |',
+          '',
+        ].join('\n')
+      );
+
+      expect(parseTestcaseDetails(changeDir)).toEqual({
+        path: path.join(changeDir, 'testcases.md'),
+        cases: [
+          {
+            id: '1.1',
+            title: '1.1 Export totals',
+            line: 3,
+            steps: [
+              { n: 1, action: 'Navigate to the report', expected: '', line: 12 },
+              { n: 2, action: 'Click save', expected: 'Saved banner shown', line: 13 },
+            ],
+            stepIssues: [],
+          },
+        ],
+      });
+    });
+
+    it('leaves the id undefined when the title has no leading number', async () => {
+      await writeTestcases(
+        [
+          '## Suite: Export',
+          '',
+          '- [ ] Export totals',
+          '  <!-- req: billing-export/export-totals -->',
+          '',
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | 1 | Act | Result |',
+        ].join('\n')
+      );
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.id).toBeUndefined();
+      expect(only.title).toBe('Export totals');
+    });
+
+    it('keeps an escaped pipe inside its cell', async () => {
+      await writeTestcases(
+        [
+          ...CASE_HEAD,
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | 1 | Type a \\| b | Field shows a \\| b |',
+        ].join('\n')
+      );
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.steps).toEqual([{ n: 1, action: 'Type a | b', expected: 'Field shows a | b', line: 9 }]);
+      expect(only.stepIssues).toEqual([]);
+    });
+
+    it('reports a Steps row without a step number and keeps the other rows', async () => {
+      await writeTestcases(
+        [
+          ...CASE_HEAD,
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | first | Navigate |  |',
+          '  | 2 | Click save | Saved banner shown |',
+        ].join('\n')
+      );
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.stepIssues).toEqual(['Steps row at line 9 has no step number in the # column']);
+      expect(only.steps).toEqual([{ n: 2, action: 'Click save', expected: 'Saved banner shown', line: 10 }]);
+    });
+
+    it('reports a row that does not have three columns', async () => {
+      await writeTestcases(
+        [
+          ...CASE_HEAD,
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | 1 | Act | Result | extra |',
+        ].join('\n')
+      );
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.stepIssues).toEqual(['Steps row at line 9 must have three columns (#, Action, Expected)']);
+      expect(only.steps).toEqual([]);
+    });
+
+    it('reports a case without a Steps block', async () => {
+      await writeTestcases([...CASE_HEAD, '  **Preconditions:**', '  1. Setup'].join('\n'));
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.stepIssues).toEqual(['Missing **Steps:** block']);
+      expect(only.steps).toEqual([]);
+    });
+
+    it('reports a repeated step number and keeps the first row', async () => {
+      await writeTestcases(
+        [
+          ...CASE_HEAD,
+          '  **Steps:**',
+          '  | # | Action | Expected |',
+          '  |---|--------|----------|',
+          '  | 1 | Navigate |  |',
+          '  | 1 | Click save | Saved banner shown |',
+        ].join('\n')
+      );
+
+      const [only] = parseTestcaseDetails(changeDir).cases;
+      expect(only.stepIssues).toEqual(['Steps table repeats step number 1 at line 10']);
+      expect(only.steps).toEqual([{ n: 1, action: 'Navigate', expected: '', line: 9 }]);
+    });
+
+    it('returns no path and no cases when testcases.md is missing', () => {
+      expect(parseTestcaseDetails(changeDir)).toEqual({ path: null, cases: [] });
+    });
   });
 });
