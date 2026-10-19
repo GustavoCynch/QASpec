@@ -1,7 +1,7 @@
 # Feature: /qsx:execute — agent-driven browser execution of approved test cases
 
 Objective: add an `execute` phase that runs a change's approved `testcases.md` in a real browser through an agent, decides pass/fail with deterministic checks, and surfaces only app defects to the human; the core stays project-agnostic.
-Branch: `feat/qsx-execute`, stacked on `chore/adopt-odd` · Delivery: `ask-on-risk` · Test runner: `pnpm test` (vitest) · Status: implementation authorized (L11); in progress.
+Branch: `feat/qsx-execute`, stacked on `chore/adopt-odd` · Delivery: `single-pr` (`size:exception` accepted, L18) · Test runner: `pnpm test` (vitest) · Status: implementation authorized (L11); in progress.
 
 ## Specs
 
@@ -76,8 +76,9 @@ Branch: `feat/qsx-execute`, stacked on `chore/adopt-odd` · Delivery: `ask-on-ri
 | T2 | S5 | Auth bootstrap: run the configured login script, write the storage state, gitignore guard | inline | done | `3b6412c`, `12b8f1b`, `a0a0581`, `afa5fef`, `5d78209` |
 | T2-F1 | S5 | Follow-up: print a stderr hint when the interrupt cleanup cannot remove the session file (review `review-6dfa7c00a992738b` suggestion) | inline | pending | — |
 | T3 | S3, S5, S6 | Playwright MCP entry for Claude Code and Cursor generated on `init`/`update`, launch arguments derived from config, manual-setup docs for other tools (D1) | inline | done | `2528b16`, `a593962`, `8c4a892` |
-| T4 | S7 | Execution plan format and validator, JSON checks with fixed operators (D2) | inline | pending | — |
-| T5 | S7 | Deterministic check evaluator command (D2) | inline | pending | — |
+| T4 | S7 | Execution plan format and validator, JSON checks with fixed operators (D2) | delegated (context backstop) | done | `e2a2a51` |
+| T5 | S7 | Deterministic check evaluator command (D2) | delegated (context backstop) | done | `e2a2a51` |
+| T5-F1 | — | Follow-up outside this feature: `validateCases` rejects Steps rows with an empty Expected cell (the transition form the template documents), so publish-gate fails on them; pre-existing at `3c164d1`, would change `validate cases` output | — | pending (needs user decision) | — |
 | T6 | S8, S9, S12, S13 | Run lifecycle: run directory, control case, readiness checks, single retry, ledger, run status command | inline | pending | — |
 | T7 | S10 | Judge protocol in a subagent, fail closed without one, findings as sense-check questions (D4) | inline | pending | — |
 | T8 | S11 | Results gate, TCMS run recording through MCP, per-run title → ID mapping (D3) | inline | pending | — |
@@ -123,4 +124,8 @@ Risk forecast: T2 and T6 handle credentials and session files (high-risk item 2)
   - **Observations** (captured by the agent while executing): JSON with `schema: "qaspec.execution-observations/v1"` and `observations[]` of `{ check, after, before? }`, where values are strings, numbers or booleans; `delta` requires numeric `before` and `after`.
   - **Evaluation** (deterministic, in the CLI): per check `passed` | `failed` | `missing` (no observation) | `invalid` (type mismatch, e.g. non-numeric for compare/delta); per case `passed` only when every check passed and no step needs a human; `needs-human` when any step has a `needsHuman` reason and nothing failed; `failed` when any check failed; `incomplete` when a check is missing or invalid and nothing failed. The result includes the plan's sha256 so the run lifecycle (T6) can prove the plan was saved before execution. Regex matching runs on values capped in length, to bound evaluation time.
   - **CLI**: `qaspec execute validate-plan --change <name> <plan.json> [--json]` and `qaspec execute check <plan.json> <observations.json> [--json]`; exit code 1 on validation errors or when the case verdict is not `passed`, with the verdict printed either way. Docs in `docs/cli.md` next to `qaspec execute login`.
-- **Next:** T4 + T5 per L17.
+- **L18** (T4 + T5, `e2a2a51`): delegated writer implemented L17: `src/core/execution-plan.ts` (plan schema, shape and testcases.md validation, SHA-256 of exact bytes), `src/core/execution-check.ts` (observations, operators with `negate`, verdicts), additive `parseTestcaseDetails` in `src/core/cases-validation.ts`, `qaspec execute validate-plan` and `qaspec execute check` with docs. RED via stubs and the base CLI; GREEN 84/84 focused. Differential (base `3c164d1`): 16 paired runs of `validate cases` and `publish-gate` (text and `--json`) identical; `--help` identical except the two new `execute` rows. Interpretations accepted by the parent: needs-human outranks incomplete; validation errors print no verdict; extra rules (plan `change` must equal `--change`, unique case ids and step numbers, empty `contains`/`matches` rejected, unknown keys rejected).
+  - Parent fixes before commit: a plan with no check and no needsHuman reason passed vacuously, contradicting S7 → now a validation error (RED reproduced); regex backtracking was unbounded (RED: 96 s on `(a+)+$`) → `matches` runs a fixed QASpec script in a `node:vm` context with a 1 s timeout and reports `invalid`, pattern and value passed as data. Full suite 1613/1613. Risk: none (shared testcases parser unchanged per characterization test and differential). RDD assessment against `8c4a892`: medium, `under_budget`.
+  - Delivery (2026-10-19, user): asked for the chain strategy once the branch exceeded the 400-line budget (should have been asked after T2); user answered "PR unica" → `single-pr`, `size:exception` accepted by the maintainer; the single PR from `feat/qsx-execute` also carries the `chore/adopt-odd` commits.
+  - Open follow-up T5-F1 (pre-existing `validateCases` defect on empty Expected cells). T6 must run `validate-plan` before `check`, since `check` takes no `--change`.
+- **Next:** T6 (run lifecycle; readiness checks run project-configured commands, so it is reviewed as high risk).
