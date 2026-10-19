@@ -144,7 +144,11 @@ function runLoginScript(
     const onParentSignal = (signal: NodeJS.Signals) => {
       removeSignalForwarding();
       signalScript('SIGKILL');
-      onInterrupt();
+      try {
+        onInterrupt();
+      } catch {
+        // The cleanup is best effort; ending with the received signal must still happen.
+      }
       process.kill(process.pid, signal);
     };
     const removeSignalForwarding = () => {
