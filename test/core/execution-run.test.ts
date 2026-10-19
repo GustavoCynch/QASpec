@@ -902,4 +902,73 @@ describe('execution run lifecycle', () => {
       });
     });
   });
+
+  describe('evidence in status', () => {
+    const evidenceRoot = (runId: string) => path.join(locate(runId).runDir, 'evidence');
+
+    const writeEvidence = async (runId: string, relativePath: string) => {
+      const target = path.join(evidenceRoot(runId), relativePath);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, 'evidence');
+    };
+
+    /** A passing control case, then case 1.1 failed twice: two recorded attempts. */
+    const runWithTwoAttempts = async () => {
+      const runId = await startConfirmed();
+      storePlan(locate(runId), 'control', planBytes(CONTROL_PLAN));
+      recordObservations(locate(runId), 'control', obsBytes(CONTROL_PASS));
+      storePlan(locate(runId), '1.1', planBytes(CASE_PLAN));
+      recordObservations(locate(runId), '1.1', obsBytes(CASE_FAIL));
+      recordObservations(locate(runId), '1.1', obsBytes(CASE_FAIL));
+      return runId;
+    };
+
+    it('lists the regular evidence files of each attempt, relative to the run', async () => {
+      const runId = await runWithTwoAttempts();
+      await writeEvidence(runId, path.join('1.1-1', 'console.log'));
+      await writeEvidence(runId, path.join('1.1-1', 'network', 'requests.json'));
+
+      const attempts = describeRunStatus(locate(runId)).cases['1.1'].attempts;
+
+      expect(attempts).toMatchObject([{ attempt: 1, verdict: 'failed' }, { attempt: 2, verdict: 'failed' }]);
+      expect(attempts.map((attempt) => attempt.evidence)).toEqual([
+        [path.join('evidence', '1.1-1', 'console.log'), path.join('evidence', '1.1-1', 'network', 'requests.json')],
+        [],
+      ]);
+    });
+
+    it('never lists a symbolic link, even one that points outside the run', async () => {
+      const runId = await runWithTwoAttempts();
+      const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-run-outside-'));
+      try {
+        await fs.writeFile(path.join(outside, 'secret.txt'), 'outside the run');
+        await writeEvidence(runId, path.join('1.1-1', 'shot.png'));
+        await fs.symlink(path.join(outside, 'secret.txt'), path.join(evidenceRoot(runId), '1.1-1', 'leaked.txt'));
+        await fs.symlink(outside, path.join(evidenceRoot(runId), '1.1-1', 'linked-folder'));
+        await fs.symlink(outside, path.join(evidenceRoot(runId), '1.1-2'));
+
+        const attempts = describeRunStatus(locate(runId)).cases['1.1'].attempts;
+
+        expect(attempts.map((attempt) => attempt.evidence)).toEqual([[path.join('evidence', '1.1-1', 'shot.png')], []]);
+      } finally {
+        await fs.rm(outside, { recursive: true, force: true });
+      }
+    });
+
+    it('lists nothing when the evidence folder itself is a symbolic link', async () => {
+      const runId = await runWithTwoAttempts();
+      const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-run-outside-'));
+      try {
+        await fs.mkdir(path.join(outside, '1.1-1'));
+        await fs.writeFile(path.join(outside, '1.1-1', 'shot.png'), 'outside the run');
+        await fs.symlink(outside, evidenceRoot(runId));
+
+        const attempts = describeRunStatus(locate(runId)).cases['1.1'].attempts;
+
+        expect(attempts.map((attempt) => attempt.evidence)).toEqual([[], []]);
+      } finally {
+        await fs.rm(outside, { recursive: true, force: true });
+      }
+    });
+  });
 });

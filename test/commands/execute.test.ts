@@ -838,6 +838,315 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
     expect(result.stdout).toContain('Ledger: 0 candidate(s), 0 marked environment-noise');
   });
 
+  const runFolder = (run: string) => path.join(workDir, 'qaspec', 'changes', 'pr-1', 'runs', run);
+
+  /** A confirmed run whose control case passed and whose case 1.1 failed twice, so it needs triage. */
+  const runNeedingTriage = async (): Promise<string> => {
+    const run = await startConfirmedRun();
+    await writeJson('control-plan.json', CONTROL_PLAN);
+    await writeJson('control-pass.json', CONTROL_PASS);
+    await writeJson('case-plan.json', CASE_PLAN);
+    await writeJson('case-fail.json', CASE_FAIL);
+    await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+    await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+    await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+    await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+    await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+    return run;
+  };
+
+  const ledgerText = (run: string) => readFileSync(path.join(runFolder(run), 'ledger.jsonl'), 'utf-8');
+
+  it('triages a failed case, answers its finding and shows the evidence in status', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+    await write(path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'evidence', '1.1-2', 'console.log'), 'TypeError');
+
+    const context = await cli(['triage-context', '--run', run, '--case', '1.1', '--json']);
+    expect(context.exitCode).toBe(0);
+    expect(JSON.parse(context.stdout)).toMatchObject({
+      schema: 'qaspec.execution-triage-context/v1',
+      run,
+      case: '1.1',
+      caseStatus: 'needs-triage',
+      testcase: { id: '1.1', title: 'Export totals' },
+      attempts: [
+        { attempt: 1, verdict: 'failed', evidence: [] },
+        { attempt: 2, verdict: 'failed', evidence: [path.join('evidence', '1.1-2', 'console.log')] },
+      ],
+    });
+
+    const judged = await cli([
+      'triage',
+      '--run',
+      run,
+      '--case',
+      '1.1',
+      '--classification',
+      'app',
+      '--rationale',
+      'The banner reports an error after a valid save',
+      '--expected',
+      'Saved banner shown',
+      '--observed',
+      'Error banner shown',
+      '--json',
+    ]);
+    expect(judged.exitCode).toBe(0);
+    expect(JSON.parse(judged.stdout)).toMatchObject({
+      run,
+      case: '1.1',
+      classification: 'app',
+      finding: {
+        id: 'F1',
+        case: '1.1',
+        question: 'Case 1.1 expects: Saved banner shown. The run observed: Error banner shown. Is this intended?',
+      },
+    });
+
+    const answered = await cli([
+      'answer',
+      '--run',
+      run,
+      '--finding',
+      'F1',
+      '--intended',
+      'no',
+      '--note',
+      'The banner must say Saved',
+      '--json',
+    ]);
+    expect(answered.exitCode).toBe(0);
+    expect(JSON.parse(answered.stdout)).toMatchObject({
+      run,
+      finding: 'F1',
+      intended: 'no',
+      stage: 'confirmed',
+      note: 'The banner must say Saved',
+      secondsToAnswer: expect.any(Number),
+    });
+
+    const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+    expect(status.cases['1.1'].status).toBe('needs-triage');
+    expect(status.ledger).toEqual({ candidates: 1, environmentNoise: 0 });
+    expect(ledgerText(run).trim().split('\n').map((line) => JSON.parse(line).stage)).toEqual([
+      'candidate',
+      'judged',
+      'reported',
+      'confirmed',
+    ]);
+    expect(readFileSync(path.join(runFolder(run), 'findings.md'), 'utf-8')).toContain('Is this intended?');
+  }, 60_000);
+
+  it('triage-context exits 1 with the reason when the case does not need triage', async () => {
+    await setUp();
+    const run = await startConfirmedRun();
+    await writeJson('control-plan.json', CONTROL_PLAN);
+    await writeJson('control-pass.json', CONTROL_PASS);
+    await writeJson('case-plan.json', CASE_PLAN);
+    await writeJson('case-fail.json', CASE_FAIL);
+    await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+    await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+    await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+    await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+
+    const result = await cli(['triage-context', '--run', run, '--case', '1.1', '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toEqual({
+      valid: false,
+      errors: [{ message: 'Case 1.1 is retry: only a case that needs triage can be triaged', case: '1.1' }],
+    });
+  }, 60_000);
+
+  it('triage exits 1, names the missing --expected, and records nothing', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+
+    const result = await cli([
+      'triage',
+      '--run',
+      run,
+      '--case',
+      '1.1',
+      '--classification',
+      'app',
+      '--rationale',
+      'Banner',
+      '--observed',
+      'Error banner shown',
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}${result.stderr}`).toContain('An app judgement needs --expected');
+    expect(existsSync(path.join(runFolder(run), 'findings.json'))).toBe(false);
+    expect(ledgerText(run)).not.toContain('"judged"');
+  }, 60_000);
+
+  it('triage exits 1 when --expected is given for an agent judgement', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+
+    const result = await cli([
+      'triage',
+      '--run',
+      run,
+      '--case',
+      '1.1',
+      '--classification',
+      'agent',
+      '--rationale',
+      'Mis-click',
+      '--expected',
+      'Saved banner shown',
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}${result.stderr}`).toContain('--expected and --observed apply only to app judgements');
+    expect(ledgerText(run)).not.toContain('"judged"');
+  }, 60_000);
+
+  it('answer exits 1 for a second answer and for an unknown finding, and keeps the first answer', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+    await cli([
+      'triage',
+      '--run',
+      run,
+      '--case',
+      '1.1',
+      '--classification',
+      'app',
+      '--rationale',
+      'Banner',
+      '--expected',
+      'Saved banner shown',
+      '--observed',
+      'Error banner shown',
+    ]);
+    expect((await cli(['answer', '--run', run, '--finding', 'F1', '--intended', 'yes'])).exitCode).toBe(0);
+
+    const again = await cli(['answer', '--run', run, '--finding', 'F1', '--intended', 'no']);
+    const unknown = await cli(['answer', '--run', run, '--finding', 'F7', '--intended', 'no']);
+
+    expect(again.exitCode).toBe(1);
+    expect(`${again.stdout}${again.stderr}`).toContain('was already answered');
+    expect(unknown.exitCode).toBe(1);
+    expect(`${unknown.stdout}${unknown.stderr}`).toContain('Finding F7 does not exist');
+    expect(ledgerText(run).split('\n').filter((line) => line.includes('"dismissed"') || line.includes('"confirmed"'))).toHaveLength(1);
+  }, 60_000);
+
+  it('status --json lists the evidence files of each attempt and never a symbolic link', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+    await write(path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'evidence', '1.1-1', 'console.log'), 'log');
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-execute-outside-'));
+    try {
+      await fs.writeFile(path.join(outside, 'secret.txt'), 'outside the run');
+      await fs.symlink(path.join(outside, 'secret.txt'), path.join(runFolder(run), 'evidence', '1.1-1', 'secret.txt'));
+
+      const status = await cli(['status', '--run', run, '--json']);
+
+      expect(status.exitCode).toBe(0);
+      expect(JSON.parse(status.stdout).cases['1.1'].attempts.map((attempt: { evidence: string[] }) => attempt.evidence)).toEqual([
+        [path.join('evidence', '1.1-1', 'console.log')],
+        [],
+      ]);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('keeps both findings when two triage commands run at the same time on one run', async () => {
+    await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+    const run = await startConfirmedRun();
+    await writeJson('control-plan.json', CONTROL_PLAN);
+    await writeJson('control-pass.json', CONTROL_PASS);
+    await writeJson('case-plan.json', CASE_PLAN);
+    await writeJson('case-fail.json', CASE_FAIL);
+    await writeJson('second-case-plan.json', SECOND_CASE_PLAN);
+    await writeJson('second-case-fail.json', observed([{ check: 'date-shown', after: 'Yesterday' }]));
+    await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+    await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+    await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+    await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+    await cli(['record', '--run', run, '--case', '1.1', 'case-fail.json']);
+    await cli(['plan', '--run', run, '--case', '1.2', 'second-case-plan.json']);
+    await cli(['record', '--run', run, '--case', '1.2', 'second-case-fail.json']);
+    await cli(['record', '--run', run, '--case', '1.2', 'second-case-fail.json']);
+
+    const judged = await Promise.all([
+      cli([
+        'triage',
+        '--run',
+        run,
+        '--case',
+        '1.1',
+        '--classification',
+        'app',
+        '--rationale',
+        'Banner',
+        '--expected',
+        'Saved banner shown',
+        '--observed',
+        'Error banner shown',
+      ]),
+      cli([
+        'triage',
+        '--run',
+        run,
+        '--case',
+        '1.2',
+        '--classification',
+        'app',
+        '--rationale',
+        'Date',
+        '--expected',
+        'Today',
+        '--observed',
+        'Yesterday',
+      ]),
+    ]);
+
+    expect(judged.map((result) => result.exitCode)).toEqual([0, 0]);
+    const findings = JSON.parse(readFileSync(path.join(runFolder(run), 'findings.json'), 'utf-8'));
+    expect(findings.map((finding: { id: string }) => finding.id).sort()).toEqual(['F1', 'F2']);
+    expect(findings.map((finding: { case: string }) => finding.case).sort()).toEqual(['1.1', '1.2']);
+    const stages = ledgerText(run)
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line).stage);
+    expect(stages.filter((stage) => stage === 'judged')).toHaveLength(2);
+    expect(stages.filter((stage) => stage === 'reported')).toHaveLength(2);
+  }, 60_000);
+
+  it('triage and triage-context exit 1 with environment-noise once the run finished as environment-noise', async () => {
+    await setUp();
+    const run = await runNeedingTriage();
+    await writeJson('control-fail.json', CONTROL_FAIL);
+    await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+    await cli(['record', '--run', run, '--case', 'control', 'control-fail.json']);
+    expect((await cli(['finish', '--run', run])).exitCode).toBe(1);
+
+    const context = await cli(['triage-context', '--run', run, '--case', '1.1', '--json']);
+    const judged = await cli(['triage', '--run', run, '--case', '1.1', '--classification', 'agent', '--rationale', 'x']);
+
+    expect(context.exitCode).toBe(1);
+    expect(JSON.parse(context.stdout).errors[0].message).toContain('environment-noise');
+    expect(judged.exitCode).toBe(1);
+    expect(`${judged.stdout}${judged.stderr}`).toContain('environment-noise');
+    expect(ledgerText(run)).not.toContain('"judged"');
+  }, 60_000);
+
+  it('lists the triage and answer subcommands in help', async () => {
+    const result = await runCLI(['execute', '--help']);
+
+    expect(result.exitCode).toBe(0);
+    for (const name of ['triage-context', 'triage', 'answer']) {
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${name}\\s`, 'm'));
+    }
+  });
+
   it('lists the run lifecycle subcommands in help', async () => {
     const result = await runCLI(['execute', '--help']);
 

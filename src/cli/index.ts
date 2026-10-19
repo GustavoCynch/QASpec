@@ -40,6 +40,7 @@ import { validateCasesCommand } from '../commands/validate-cases.js';
 import { publishGateCommand } from '../commands/publish-gate.js';
 import { tcmsSetCommand, tcmsShowCommand } from '../commands/tcms.js';
 import {
+  executeAnswerCommand,
   executeCheckCommand,
   executeConfirmCommand,
   executeFinishCommand,
@@ -48,6 +49,8 @@ import {
   executeRecordCommand,
   executeStartCommand,
   executeStatusCommand,
+  executeTriageCommand,
+  executeTriageContextCommand,
   executeValidatePlanCommand,
 } from '../commands/execute.js';
 const program = new Command();
@@ -720,6 +723,70 @@ executeCmd
   .action(async (options: { run?: string; change?: string; json?: boolean }) => {
     try {
       await executeStatusCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('triage-context')
+  .description('Show the judge input for a case that needs triage: case text, stored plan, attempts, evidence, readiness')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')
+  .option('--json', 'Output the full judge input as JSON')
+  .action(async (options: { run: string; case: string; json?: boolean }) => {
+    try {
+      await executeTriageContextCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+executeCmd
+  .command('triage')
+  .description('Record the judge classification of a case that needs triage (once per case; app creates a finding)')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')
+  .requiredOption('--classification <kind>', 'agent, environment or app')
+  .requiredOption('--rationale <text>', 'Why the judge chose this classification')
+  .option('--expected <text>', 'What the case expects (app only, required)')
+  .option('--observed <text>', 'What the run observed (app only, required)')
+  .option('--json', 'Output as JSON')
+  .action(
+    async (options: {
+      run: string;
+      case: string;
+      classification: string;
+      rationale: string;
+      expected?: string;
+      observed?: string;
+      json?: boolean;
+    }) => {
+      try {
+        await executeTriageCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    }
+  );
+
+executeCmd
+  .command('answer')
+  .description('Record the answer to a finding: --intended yes dismisses it, --intended no confirms it (once)')
+  .requiredOption('--run <id>', 'Run id printed by execute start')
+  .requiredOption('--finding <id>', 'Finding id such as F1')
+  .requiredOption('--intended <yes|no>', 'Whether the behavior is intended')
+  .option('--note <text>', 'Optional note from the person')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; finding: string; intended: string; note?: string; json?: boolean }) => {
+    try {
+      await executeAnswerCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
