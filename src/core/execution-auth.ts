@@ -8,7 +8,7 @@
  */
 
 import { execFile, spawn } from 'child_process';
-import { existsSync, promises as fs } from 'fs';
+import { existsSync, promises as fs, rmSync } from 'fs';
 import path from 'path';
 import { parseEnv } from 'util';
 import { readProjectConfig } from './project-config.js';
@@ -96,11 +96,15 @@ interface LoginScriptOutcome {
   timedOut: boolean;
 }
 
+/** Signals that would end QASpec while the script runs; on POSIX they no longer reach the script. */
+const FORWARDED_SIGNALS: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+
 function runLoginScript(
   projectRoot: string,
   scriptPath: string,
   env: NodeJS.ProcessEnv,
-  timeoutMs: number
+  timeoutMs: number,
+  onInterrupt: () => void
 ): Promise<LoginScriptOutcome> {
   return new Promise((resolve, reject) => {
     // On POSIX the script leads its own process group, so the processes it starts can be
@@ -135,12 +139,32 @@ function runLoginScript(
       }
     };
 
+    // A detached script does not get the terminal's Ctrl+C or hangup, so QASpec stops it, runs
+    // the interrupt cleanup and then ends with the same signal it received.
+    const onParentSignal = (signal: NodeJS.Signals) => {
+      removeSignalForwarding();
+      signalScript('SIGKILL');
+      onInterrupt();
+      process.kill(process.pid, signal);
+    };
+    const removeSignalForwarding = () => {
+      for (const signal of FORWARDED_SIGNALS) {
+        process.removeListener(signal, onParentSignal);
+      }
+    };
+    if (ownGroup) {
+      for (const signal of FORWARDED_SIGNALS) {
+        process.on(signal, onParentSignal);
+      }
+    }
+
     // Processes the script leaves running are stopped, so none can rewrite the session later.
     const finish = (exitCode: number | null) => {
       if (settled) {
         return;
       }
       settled = true;
+      removeSignalForwarding();
       clearTimeout(timer);
       clearTimeout(killTimer);
       clearTimeout(exitGraceTimer);
@@ -157,6 +181,7 @@ function runLoginScript(
 
     child.on('error', (error) => {
       settled = true;
+      removeSignalForwarding();
       clearTimeout(timer);
       clearTimeout(killTimer);
       clearTimeout(exitGraceTimer);
@@ -256,7 +281,8 @@ export async function executeLogin(
       QASPEC_STORAGE_STATE: storageStatePath,
       ...(execution?.app?.url ? { QASPEC_APP_URL: execution.app.url } : {}),
     },
-    timeoutMs
+    timeoutMs,
+    () => rmSync(storageStatePath, { force: true })
   );
   const output = redact(outcome.output, secrets);
 
