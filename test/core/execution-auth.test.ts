@@ -5,6 +5,15 @@ import os from 'os';
 import path from 'path';
 import { executeLogin } from '../../src/core/execution-auth.js';
 
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const USERNAME = 'qa-user@example.test';
 const PASSWORD = 'S3cret-Pa55word';
 
@@ -259,6 +268,96 @@ writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], or
 
     expect(result.output).toContain('{"password":"[redacted]"}');
     expect(result.output).not.toContain('ss\\\\word');
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'keeps the session owner-only while the login script writes it',
+    async () => {
+      await setUpProject({
+        script: `import { statSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+const file = process.env.QASPEC_STORAGE_STATE;
+const modes = { file: statSync(file).mode & 0o777, dir: statSync(dirname(file)).mode & 0o777 };
+writeFileSync(file, JSON.stringify({ cookies: [], origins: [], modes }));`,
+      });
+
+      await executeLogin(projectRoot);
+
+      const session = JSON.parse(await fs.readFile(sessionPath(), 'utf-8'));
+      expect(session.modes).toEqual({ file: 0o600, dir: 0o700 });
+    }
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'succeeds without waiting for a process the login script leaves running, and stops it',
+    async () => {
+      await setUpProject({
+        script: `import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+const helper = spawn('sleep', ['12'], { stdio: 'inherit' });
+helper.unref();
+writeFileSync('helper.pid', String(helper.pid));
+writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));`,
+      });
+      const started = Date.now();
+
+      const result = await executeLogin(projectRoot);
+
+      expect(Date.now() - started).toBeLessThan(8_000);
+      expect(result.storageStatePath).toBe(sessionPath());
+      const helperPid = Number(await fs.readFile(path.join(projectRoot, 'helper.pid'), 'utf-8'));
+      expect(isAlive(helperPid)).toBe(false);
+    },
+    15_000
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'stops processes started by a login script that times out',
+    async () => {
+      await setUpProject({
+        script: `import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+const helper = spawn('sleep', ['30'], { stdio: 'ignore' });
+writeFileSync('helper.pid', String(helper.pid));
+setInterval(() => {}, 1000);`,
+      });
+
+      await expect(executeLogin(projectRoot, { timeoutMs: 500 })).rejects.toThrow(/timed out/);
+
+      const helperPid = Number(await fs.readFile(path.join(projectRoot, 'helper.pid'), 'utf-8'));
+      expect(isAlive(helperPid)).toBe(false);
+    },
+    15_000
+  );
+
+  it('redacts a non-ASCII credential split across output chunks', async () => {
+    const password = 'contraseña-ñandú';
+    await setUpProject({
+      env: `QA_USERNAME=${USERNAME}\nQA_PASSWORD=${password}\n`,
+      script: `import { writeFileSync } from 'node:fs';
+const bytes = Buffer.from('pw=' + process.env.QA_PASSWORD + '\\n');
+const split = bytes.indexOf(Buffer.from('ñ')) + 1;
+process.stdout.write(bytes.subarray(0, split));
+setTimeout(() => {
+  process.stdout.write(bytes.subarray(split));
+  writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
+}, 200);`,
+    });
+
+    const result = await executeLogin(projectRoot);
+
+    expect(result.output).toBe('pw=[redacted]\n');
+  });
+
+  it('treats an absolute credentials path as a missing setting', async () => {
+    await setUpProject({
+      config: AUTH_CONFIG.replace('envFile: .env.qa', `envFile: ${path.join(projectRoot, '.env.qa')}`),
+    });
+
+    await expect(executeLogin(projectRoot)).rejects.toThrow(
+      /Missing settings in qaspec\/config\.yaml: execution\.auth\.envFile/
+    );
+    expect(loginRan()).toBe(false);
   });
 
   it('rejects login scripts that node cannot run', async () => {

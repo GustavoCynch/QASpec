@@ -21,6 +21,9 @@ export const DEFAULT_LOGIN_TIMEOUT_MS = 120_000;
 /** Time a timed-out script gets to exit after SIGTERM before it is killed. */
 const KILL_GRACE_MS = 2_000;
 
+/** Time allowed for remaining output to drain after the script exits. */
+const EXIT_GRACE_MS = 500;
+
 /** Shorter values are not redacted: masking them would corrupt ordinary output. */
 const MIN_REDACTED_LENGTH = 4;
 
@@ -100,20 +103,39 @@ function runLoginScript(
   timeoutMs: number
 ): Promise<LoginScriptOutcome> {
   return new Promise((resolve, reject) => {
+    // On POSIX the script leads its own process group, so the processes it starts can be
+    // stopped with it. Windows has no process groups to signal; only the script is stopped.
+    const ownGroup = process.platform !== 'win32';
     const child = spawn(process.execPath, [scriptPath], {
       cwd: projectRoot,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      detached: ownGroup,
     });
     let output = '';
     let timedOut = false;
     let settled = false;
     let killTimer: NodeJS.Timeout | undefined;
-    child.stdout.on('data', (chunk) => (output += chunk));
-    child.stderr.on('data', (chunk) => (output += chunk));
+    let exitGraceTimer: NodeJS.Timeout | undefined;
+    // Decoding per stream keeps a multi-byte character split across chunks intact for redaction.
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => (output += chunk));
+    child.stderr.on('data', (chunk: string) => (output += chunk));
 
-    // 'close' waits for every output pipe, which a process started by the script can keep
-    // open after the script exits; once timed out, the script's own exit is enough.
+    const signalScript = (signal: NodeJS.Signals) => {
+      try {
+        if (ownGroup && child.pid !== undefined) {
+          process.kill(-child.pid, signal);
+        } else {
+          child.kill(signal);
+        }
+      } catch {
+        // Already gone.
+      }
+    };
+
+    // Processes the script leaves running are stopped, so none can rewrite the session later.
     const finish = (exitCode: number | null) => {
       if (settled) {
         return;
@@ -121,29 +143,32 @@ function runLoginScript(
       settled = true;
       clearTimeout(timer);
       clearTimeout(killTimer);
+      clearTimeout(exitGraceTimer);
+      signalScript('SIGKILL');
       child.stdout.destroy();
       child.stderr.destroy();
       resolve({ exitCode, output, timedOut });
     };
     const timer = setTimeout(() => {
       timedOut = true;
-      if (child.exitCode !== null || child.signalCode !== null) {
-        finish(child.exitCode);
-        return;
-      }
-      child.kill('SIGTERM');
-      killTimer = setTimeout(() => child.kill('SIGKILL'), KILL_GRACE_MS);
+      signalScript('SIGTERM');
+      killTimer = setTimeout(() => signalScript('SIGKILL'), KILL_GRACE_MS);
     }, timeoutMs);
 
     child.on('error', (error) => {
       settled = true;
       clearTimeout(timer);
       clearTimeout(killTimer);
+      clearTimeout(exitGraceTimer);
       reject(error);
     });
+    // 'close' waits for every output pipe, which a process started by the script can keep
+    // open after the script exits; the script's own exit decides once remaining output drains.
     child.on('exit', (exitCode) => {
       if (timedOut) {
         finish(exitCode);
+      } else {
+        exitGraceTimer = setTimeout(() => finish(exitCode), EXIT_GRACE_MS);
       }
     });
     child.on('close', (exitCode) => finish(exitCode));
@@ -214,9 +239,12 @@ export async function executeLogin(
     .flatMap(secretForms)
     .sort((a, b) => b.length - a.length);
 
-  await fs.mkdir(path.dirname(storageStatePath), { recursive: true });
+  await fs.mkdir(path.dirname(storageStatePath), { recursive: true, mode: 0o700 });
   // A session left by an earlier login must not pass validation if this login fails to write one.
   await fs.rm(storageStatePath, { force: true });
+  // Created owner-only before the script runs: writing into an existing file keeps its mode,
+  // so the session is not readable by other users while it is written.
+  await fs.writeFile(storageStatePath, '', { mode: 0o600 });
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_LOGIN_TIMEOUT_MS;
   const outcome = await runLoginScript(
