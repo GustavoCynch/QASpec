@@ -717,6 +717,12 @@ export async function startRun(input: StartRunInput): Promise<StartOutcome> {
   for (const folder of ['plans', 'observations', 'results']) {
     mkdirSync(path.join(runDir, folder), { recursive: true });
   }
+  // Runs hold captured app data and evidence, which stay out of git (S13, L22). An existing file
+  // is left as the team wrote it.
+  const runsIgnoreFile = path.join(input.changeDir, RUNS_DIRNAME, '.gitignore');
+  if (!existsSync(runsIgnoreFile)) {
+    writeFileSync(runsIgnoreFile, '*\n');
+  }
   if (controlCase && controlBytes) {
     mkdirSync(path.join(runDir, CONTROL_DIR), { recursive: true });
     writeFileSync(path.join(runDir, controlCase.snapshot), controlBytes, { flag: 'wx' });

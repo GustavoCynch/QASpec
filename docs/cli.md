@@ -903,6 +903,8 @@ qaspec execute status --change <name> [--json]
 
 Run states: `awaiting-confirmation`, `ready`, `blocked-by-environment`, `completed`, `environment-noise`. Case statuses: `pending`, `planned`, `retry`, `passed`, `needs-human`, `needs-triage`, `blocked-by-environment`.
 
+Runs stay out of git: `qaspec execute start` writes `qaspec/changes/<change>/runs/.gitignore` containing `*` when that file does not exist yet, so captured app data and evidence are never committed. An existing `runs/.gitignore` is left unchanged.
+
 Each run is stored in `qaspec/changes/<change>/runs/<run-id>/`:
 
 ```
