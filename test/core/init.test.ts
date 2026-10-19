@@ -36,6 +36,8 @@ describe('InitCommand', () => {
     configTempDir = path.join(os.tmpdir(), `openspec-config-init-${Date.now()}`);
     await fs.mkdir(configTempDir, { recursive: true });
     process.env.XDG_CONFIG_HOME = configTempDir;
+    // The Codex adapter writes global prompts; keep them out of the real home directory.
+    process.env.CODEX_HOME = path.join(configTempDir, 'codex');
 
     // Mock console.log to suppress output during tests
     vi.spyOn(console, 'log').mockImplementation(() => { });
