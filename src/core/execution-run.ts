@@ -12,6 +12,7 @@ import { randomBytes } from 'node:crypto';
 import {
   appendFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -45,6 +46,8 @@ import { readProjectConfig } from './project-config.js';
 
 export const RUN_SCHEMA = 'qaspec.execution-run/v1';
 export const RUNS_DIRNAME = 'runs';
+/** Folder of the evidence the agent saved for each attempt (T7), under the run folder. */
+export const EVIDENCE_DIRNAME = 'evidence';
 export const DEFAULT_DATA_PREFIX = 'QASPEC';
 /** The case argument that selects the control case (S8). */
 export const CONTROL_ARG = 'control';
@@ -57,7 +60,7 @@ const MAX_ATTEMPTS = 2;
 
 const RUN_FILE = 'run.json';
 const LEDGER_FILE = 'ledger.jsonl';
-const CONTROL_DIR = 'control';
+export const CONTROL_DIR = 'control';
 const RUN_ID_PATTERN = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
 const CASE_ID_PATTERN = /^\d+(?:\.\d+)*$/;
 
@@ -153,10 +156,22 @@ export interface LedgerCounts {
   environmentNoise: number;
 }
 
+/** A recorded attempt with the run-relative paths of the evidence files saved for it. */
+export interface CaseAttemptView extends CaseAttemptRecord {
+  evidence: string[];
+}
+
+/** A case as `status` shows it: the stored record, with each attempt's evidence files. */
+export interface CaseView extends Omit<CaseRecord, 'attempts'> {
+  attempts: CaseAttemptView[];
+}
+
 export interface RunStatus {
   run: RunRecord;
   runDir: string;
   ledger: LedgerCounts;
+  /** Every case of the run; the stored run record itself is not changed. */
+  cases: Record<string, CaseView>;
 }
 
 export interface RunTarget {
@@ -245,13 +260,18 @@ function isFinal(record: CaseRecord | undefined): boolean {
   return record?.status === 'passed' || record?.status === 'needs-human' || record?.status === 'needs-triage';
 }
 
-function writeJsonAtomic(filePath: string, value: unknown): void {
+/** Writes a file through a temporary sibling and a rename, so a reader sees the old file or the new one. */
+export function writeFileAtomic(filePath: string, text: string): void {
   const temp = `${filePath}.${randomBytes(4).toString('hex')}.tmp`;
-  writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+  writeFileSync(temp, text, { flag: 'wx' });
   renameSync(temp, filePath);
 }
 
-function readRun(runDir: string): RunRecord {
+function writeJsonAtomic(filePath: string, value: unknown): void {
+  writeFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+export function readRun(runDir: string): RunRecord {
   const file = path.join(runDir, RUN_FILE);
   const run = JSON.parse(readFileSync(file, 'utf-8')) as RunRecord;
   if (run?.schema !== RUN_SCHEMA) {
@@ -260,7 +280,7 @@ function readRun(runDir: string): RunRecord {
   return run;
 }
 
-function writeRun(runDir: string, run: RunRecord): void {
+export function writeRun(runDir: string, run: RunRecord): void {
   writeJsonAtomic(path.join(runDir, RUN_FILE), run);
 }
 
@@ -412,7 +432,7 @@ function releaseRunLock(lockDir: string, token: string): void {
 }
 
 /** Runs one write of a run under its lock; the lock is released even when the write throws. */
-function withRunLock<T>(runDir: string, write: () => T): T {
+export function withRunLock<T>(runDir: string, write: () => T): T {
   const release = acquireRunLock(runDir);
   try {
     return write();
@@ -421,7 +441,7 @@ function withRunLock<T>(runDir: string, write: () => T): T {
   }
 }
 
-function readLedger(runDir: string): Array<Record<string, unknown>> {
+export function readLedger(runDir: string): Array<Record<string, unknown>> {
   const file = path.join(runDir, LEDGER_FILE);
   if (!existsSync(file)) {
     return [];
@@ -440,18 +460,17 @@ export function countLedger(runDir: string): LedgerCounts {
   };
 }
 
-/** Keeps every candidate line and marks it, so triage produces no findings for a noisy run. */
-function markCandidatesAsNoise(runDir: string): void {
-  const marked = readLedger(runDir).map((entry) =>
-    entry.stage === 'candidate' ? { ...entry, environmentNoise: true } : entry
-  );
-  const file = path.join(runDir, LEDGER_FILE);
-  const temp = `${file}.${randomBytes(4).toString('hex')}.tmp`;
-  writeFileSync(temp, marked.map((entry) => `${JSON.stringify(entry)}\n`).join(''), { flag: 'wx' });
-  renameSync(temp, file);
+/**
+ * Keeps every ledger line and marks it, so an environment-noise run produces no findings: its candidates,
+ * and the judgements, reports and answers that triage added before the run finished.
+ */
+function markLedgerAsNoise(runDir: string): void {
+  const marked = readLedger(runDir).map((entry) => ({ ...entry, environmentNoise: true }));
+  writeFileAtomic(path.join(runDir, LEDGER_FILE), marked.map((entry) => `${JSON.stringify(entry)}\n`).join(''));
 }
 
-function appendCandidate(runDir: string, entry: Record<string, unknown>): void {
+/** Appends one line to ledger.jsonl. Every stage of a case uses it: candidate, judged, reported, confirmed, dismissed. */
+export function appendLedgerEntry(runDir: string, entry: Record<string, unknown>): void {
   appendFileSync(path.join(runDir, LEDGER_FILE), `${JSON.stringify(entry)}\n`);
 }
 
@@ -928,6 +947,18 @@ function parseStoredPlan(bytes: Buffer, key: string): ExecutionPlan {
 }
 
 /**
+ * Reads a stored plan copy and checks its exact bytes against the SHA-256 recorded when it was stored,
+ * so no step relies on a plan that changed after it was saved.
+ */
+export function readStoredPlan(runDir: string, key: string, stored: CasePlanRecord): ExecutionPlan {
+  const bytes = readFileSync(path.join(runDir, stored.path));
+  if (hashPlanBytes(bytes) !== stored.sha256) {
+    throw new Error(`The stored plan for case ${key} does not match its recorded SHA-256; the run cannot be trusted`);
+  }
+  return parseStoredPlan(bytes, key);
+}
+
+/**
  * Evaluates observations against the stored plan copy. A first failed or incomplete verdict returns
  * retry; a second one marks the case needs-triage and adds a candidate line to the ledger. A control
  * case has no retry: its first failed or incomplete verdict is needs-triage at once. A needs-human
@@ -958,11 +989,7 @@ function recordObservationsLocked(location: RunLocation, caseId: string, bytes: 
   const key = caseId === CONTROL_ARG ? controlKeyForRecord(run) : caseKeyForRecord(run, caseId);
   const current = run.cases[key];
   const stored = current.plan as CasePlanRecord;
-  const planBytes = readFileSync(path.join(location.runDir, stored.path));
-  if (hashPlanBytes(planBytes) !== stored.sha256) {
-    throw new Error(`The stored plan for case ${key} does not match its recorded SHA-256; the run cannot be trusted`);
-  }
-  const plan = parseStoredPlan(planBytes, key);
+  const plan = readStoredPlan(location.runDir, key, stored);
 
   const parsed = parseJsonText(bytes.toString('utf-8'));
   if (!parsed.ok) {
@@ -1008,7 +1035,7 @@ function recordObservationsLocked(location: RunLocation, caseId: string, bytes: 
 
   run.cases[key] = { ...current, status, attempts };
   if (status === 'needs-triage') {
-    appendCandidate(location.runDir, {
+    appendLedgerEntry(location.runDir, {
       stage: 'candidate',
       case: key,
       attempts: attempts.length,
@@ -1068,13 +1095,77 @@ function finishRunLocked(location: RunLocation): FinishOutcome {
   }
   const state = reasons.length === 0 ? 'completed' : 'environment-noise';
   if (state === 'environment-noise') {
-    markCandidatesAsNoise(location.runDir);
+    markLedgerAsNoise(location.runDir);
   }
   writeRun(location.runDir, { ...run, state, finishedAt: nowIso(), finishReasons: reasons });
   return { state, reasons };
 }
 
+/** Whether a path is a real folder. A symbolic link to a folder is not, so it is never followed. */
+function isRealDirectory(dirPath: string): boolean {
+  try {
+    return lstatSync(dirPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lists the regular files under one folder of the run, relative to the run, sorted by name at each level.
+ * Dirent types describe the entry itself, so a symbolic link is neither a folder nor a file and is skipped.
+ */
+function collectRegularFiles(runDir: string, relativeDir: string, files: string[]): void {
+  const entries = readdirSync(path.join(runDir, relativeDir), { withFileTypes: true }).sort((a, b) =>
+    a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+  );
+  for (const entry of entries) {
+    const relativePath = path.join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      collectRegularFiles(runDir, relativePath, files);
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+}
+
+/**
+ * Run-relative paths of the evidence files that the agent saved for one attempt, in
+ * evidence/<case>-<attempt>/. Nothing outside the run is listed: a symbolic link, to a file or a folder,
+ * is skipped, and so is an evidence folder or attempt folder that is itself a link.
+ */
+export function listAttemptEvidence(runDir: string, caseKey: string, attempt: number): string[] {
+  const evidenceDir = path.join(runDir, EVIDENCE_DIRNAME);
+  const attemptFolder = path.join(EVIDENCE_DIRNAME, `${caseKey}-${attempt}`);
+  if (!isRealDirectory(evidenceDir) || !isRealDirectory(path.join(runDir, attemptFolder))) {
+    return [];
+  }
+  const files: string[] = [];
+  collectRegularFiles(runDir, attemptFolder, files);
+  return files;
+}
+
+/** Every case of the run with the evidence files of each recorded attempt. */
+function casesWithEvidence(runDir: string, cases: Record<string, CaseRecord>): Record<string, CaseView> {
+  return Object.fromEntries(
+    Object.entries(cases).map(([key, record]) => [
+      key,
+      {
+        ...record,
+        attempts: record.attempts.map((attempt) => ({
+          ...attempt,
+          evidence: listAttemptEvidence(runDir, key, attempt.attempt),
+        })),
+      },
+    ])
+  );
+}
+
 export function describeRunStatus(location: RunLocation): RunStatus {
   const run = readRun(location.runDir);
-  return { run, runDir: location.runDir, ledger: countLedger(location.runDir) };
+  return {
+    run,
+    runDir: location.runDir,
+    ledger: countLedger(location.runDir),
+    cases: casesWithEvidence(location.runDir, run.cases),
+  };
 }

@@ -36,6 +36,7 @@ import {
   type RunRecord,
   type StartBlocker,
 } from '../core/execution-run.js';
+import { answerFinding, triageCase, triageContext, type TriageContext } from '../core/execution-triage.js';
 
 export interface ExecuteLoginCommandOptions {
   json?: boolean;
@@ -585,7 +586,7 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
   }
 
   if (options.run) {
-    const { run, ledger } = describeRunStatus(resolveRun(options.run));
+    const { run, ledger, cases } = describeRunStatus(resolveRun(options.run));
     if (options.json) {
       console.log(
         JSON.stringify(
@@ -599,7 +600,7 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
             finishReasons: run.finishReasons ?? [],
             readiness: run.readiness,
             controlCase: run.controlCase ?? null,
-            cases: run.cases,
+            cases,
             ledger,
           },
           null,
@@ -628,4 +629,117 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
       console.log(`${entry.run}  ${entry.state}  ${entry.createdAt}`);
     }
   }
+}
+
+/* Triage (T7): the judge's input, one judgement per case, and the person's answers to the findings. */
+
+export interface ExecuteTriageOptions extends ExecuteCaseCommandOptions {
+  classification: string;
+  rationale: string;
+  expected?: string;
+  observed?: string;
+}
+
+export interface ExecuteAnswerOptions extends ExecuteRunCommandOptions {
+  finding: string;
+  intended: string;
+  note?: string;
+}
+
+function printTriageSummary(context: TriageContext): void {
+  console.log(`Case ${context.case} of run ${context.run} needs triage: "${context.testcase.title}"`);
+  for (const attempt of context.attempts) {
+    console.log(`  attempt ${attempt.attempt}: ${attempt.verdict}, ${attempt.evidence.length} evidence file(s)`);
+  }
+  console.log('Print the full judge input with --json.');
+}
+
+/** Prints the judge's input for a case that needs triage: the full input as JSON, a summary otherwise. */
+export async function executeTriageContextCommand(options: ExecuteCaseCommandOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = triageContext(location, options.case);
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Triage context not shown for case ${options.case}`);
+    return;
+  }
+  if (options.json) {
+    console.log(JSON.stringify(outcome.context, null, 2));
+    return;
+  }
+  printTriageSummary(outcome.context);
+}
+
+/** Records the judge's classification of one case, once. Only app creates a finding. */
+export async function executeTriageCommand(options: ExecuteTriageOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = triageCase(location, options.case, {
+    classification: options.classification,
+    rationale: options.rationale,
+    expected: options.expected,
+    observed: options.observed,
+  });
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Judgement not recorded for case ${options.case}`);
+    return;
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: location.run.id,
+          case: outcome.caseKey,
+          classification: outcome.classification,
+          rationale: outcome.rationale,
+          judgedAt: outcome.judgedAt,
+          finding: outcome.finding ?? null,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  console.log(chalk.green(`✓ Case ${outcome.caseKey} judged as ${outcome.classification}`));
+  if (outcome.finding) {
+    console.log(chalk.yellow(`Finding ${outcome.finding.id}: ${outcome.finding.question}`));
+    console.log(
+      `Ask the person, then run: qaspec execute answer --run ${location.run.id} --finding ${outcome.finding.id} --intended yes|no`
+    );
+  } else {
+    console.log('No finding: this classification is not reported as an app defect.');
+  }
+}
+
+/** Records the person's answer to one finding, once: yes (intended) dismisses it, no confirms it. */
+export async function executeAnswerCommand(options: ExecuteAnswerOptions): Promise<void> {
+  const location = resolveRun(options.run);
+  const outcome = answerFinding(location, {
+    finding: options.finding,
+    intended: options.intended,
+    note: options.note,
+  });
+  if (!outcome.ok) {
+    printReportedIssues(outcome.issues, options.json, `Answer not recorded for finding ${options.finding}`);
+    return;
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: location.run.id,
+          finding: outcome.finding,
+          intended: outcome.intended,
+          stage: outcome.stage,
+          note: outcome.note ?? null,
+          answeredAt: outcome.answeredAt,
+          secondsToAnswer: outcome.secondsToAnswer,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  const meaning = outcome.intended === 'yes' ? 'intended (dismissed)' : 'not intended (confirmed)';
+  console.log(chalk.green(`✓ Finding ${outcome.finding} recorded: ${meaning}, ${outcome.secondsToAnswer} s after it was reported`));
 }

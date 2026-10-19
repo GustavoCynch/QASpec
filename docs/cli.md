@@ -884,7 +884,7 @@ A third record for a case is refused. A control plan takes one record only, beca
 qaspec execute finish --run <id> [--json]
 ```
 
-Closes the run. It requires a verdict for the control case at the start and at the end, each final (`passed`, `needs-human` or `needs-triage`); a missing verdict is an error that changes nothing. When both control runs passed, the run is `completed` and the command exits 0. Otherwise the run is `environment-noise` and the command exits 1: its candidate lines stay in `ledger.jsonl` marked `environmentNoise: true`, so triage produces no findings for them.
+Closes the run. It requires a verdict for the control case at the start and at the end, each final (`passed`, `needs-human` or `needs-triage`); a missing verdict is an error that changes nothing. When both control runs passed, the run is `completed` and the command exits 0. Otherwise the run is `environment-noise` and the command exits 1: every line of `ledger.jsonl` stays there marked `environmentNoise: true`, including any judgement, finding or answer that triage recorded before the finish, so those produce no findings.
 
 ### Run states and refusals
 
@@ -899,7 +899,7 @@ qaspec execute status --run <id> [--json]
 qaspec execute status --change <name> [--json]
 ```
 
-`--run` shows the run state, readiness results (each with its command text), control case verdicts, the status and attempts of every case, and the ledger counts. `--change` lists the runs of a change with their state and creation time. The run id is found among the changes of the planning home. Run ids must match `<UTC timestamp>-<six hex characters>` and case ids must be a testcase id such as `1.1`, or `control`; any other value is refused before it names a file.
+`--run` shows the run state, readiness results (each with its command text), control case verdicts, the status and attempts of every case, and the ledger counts. With `--json`, each attempt also lists `evidence`: the run-relative paths of the regular files that the agent saved in `evidence/<case>-<n>/` for that attempt. Symbolic links are never followed, so a link to a file or a folder, inside or outside the run, is not listed. `--change` lists the runs of a change with their state and creation time. The run id is found among the changes of the planning home. Run ids must match `<UTC timestamp>-<six hex characters>` and case ids must be a testcase id such as `1.1`, or `control`; any other value is refused before it names a file.
 
 Run states: `awaiting-confirmation`, `ready`, `blocked-by-environment`, `completed`, `environment-noise`. Case statuses: `pending`, `planned`, `retry`, `passed`, `needs-human`, `needs-triage`, `blocked-by-environment`.
 
@@ -911,8 +911,35 @@ control/testcases.md        control case snapshot taken at start
 plans/<case>.json           stored plan copies; control plans are control-start.json and control-end.json
 observations/<case>-<n>.json
 results/<case>-<n>.json
-ledger.jsonl                one candidate line per case that needed triage
+evidence/<case>-<n>/        evidence the agent saved for an attempt: screenshots, console and network logs, snapshots
+ledger.jsonl                one line per candidate, judgement, reported finding and answer
+findings.json               app findings in creation order: F1, F2, ...
+findings.md                 the same findings, one sense-check question each
 ```
+
+### `qaspec execute triage-context`
+
+```
+qaspec execute triage-context --run <id> --case <case-id|control> [--json]
+```
+
+Prints the judge's input for a case that needs triage (`needs-triage`). With `--json` it is the full input: the case text as written in `testcases.md` (for `control`, the control case snapshot), the stored plan with its SHA-256, each attempt's observations, results and evidence files, and the run's readiness results. Before it prints, the stored plan is checked against its recorded SHA-256. Without `--json` it prints a short summary. A case in any other status, and any run that finished as `environment-noise`, is refused: the command exits 1 and names the reason. The judge subagent and its prompt belong to the workflow template, not to this command.
+
+### `qaspec execute triage`
+
+```
+qaspec execute triage --run <id> --case <case-id|control> --classification agent|environment|app --rationale "<text>" [--expected "<text>" --observed "<text>"] [--json]
+```
+
+Records the judge's classification of a case that needs triage, once per case, as a `judged` ledger line with the classification and rationale. `--rationale` is required. `app` requires `--expected` (what the case expects) and `--observed` (what the run observed); `agent` and `environment` refuse both. An `app` classification creates the next finding (`F1`, `F2`, ...) in `findings.json`, regenerates `findings.md`, and adds a `reported` ledger line. Each finding is one sense-check question: `Case 1.1 expects: <expected>. The run observed: <observed>. Is this intended?` `agent` and `environment` create no finding. A control case cannot take `app`, because a failed control case makes its run `environment-noise`, which produces no findings. A case that was already judged is refused, and so is an environment-noise run. Any refusal exits 1 and writes nothing. Triage does not change the case status: the case stays `needs-triage`, and `finish` is not affected.
+
+### `qaspec execute answer`
+
+```
+qaspec execute answer --run <id> --finding <finding-id> --intended yes|no [--note "<text>"] [--json]
+```
+
+Records the person's answer to one finding, once. `--intended no` (the behavior is not intended) adds a `confirmed` ledger line, and `--intended yes` (the behavior is intended) adds a `dismissed` line. Each line holds the finding id, the answer, the optional note, the time of the answer, and `secondsToAnswer`: the seconds from the finding's report to the answer. An unknown finding, a second answer to the same finding, and an answer in an environment-noise run are refused, and the command exits 1. Findings of a run that finishes as `environment-noise` are void.
 
 ### Browser server for `/qsx:execute`
 
