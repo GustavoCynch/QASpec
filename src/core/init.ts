@@ -55,8 +55,7 @@ import {
 import { getAvailableTools } from './available-tools.js';
 import { scaffoldQaspecReferences, migrateReferenceFilenames } from './reference-scaffold.js';
 import {
-  formatExecutionMcpResult,
-  isExecutionMcpWarning,
+  printExecutionMcpResults,
   syncExecutionMcpEntries,
   type ExecutionMcpResult,
 } from './execution-mcp.js';
@@ -677,10 +676,7 @@ export class InitCommand {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
     }
 
-    for (const result of mcpResults) {
-      const message = formatExecutionMcpResult(result);
-      console.log(isExecutionMcpWarning(result) ? chalk.yellow(message) : message);
-    }
+    printExecutionMcpResults(mcpResults);
 
     // Getting started (task 7.6: show propose if in profile)
     const globalCfg = getGlobalConfig();

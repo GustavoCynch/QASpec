@@ -2,11 +2,12 @@
  * Playwright MCP server entry for /qsx:execute.
  *
  * `qaspec init` and `qaspec update` write one server, named by QASPEC_PLAYWRIGHT_MCP_SERVER, into
- * the project-level MCP file of the agent tools listed in EXECUTION_MCP_CONFIG_FILES. The entry is
+ * the project-level MCP file of the agent tools listed in EXECUTION_MCP_TOOLS. The entry is
  * built from the `execution` block of qaspec/config.yaml. Only that server is ever changed: other
  * servers and keys in the file are kept, and a file that is not valid JSON is left untouched.
  */
 
+import chalk from 'chalk';
 import { existsSync, promises as fs } from 'fs';
 import { isDeepStrictEqual } from 'util';
 import path from 'path';
@@ -19,20 +20,22 @@ export const QASPEC_PLAYWRIGHT_MCP_SERVER = 'qaspec-playwright';
 /** Pinned so every project starts the browser server version QASpec was tested with. */
 export const PLAYWRIGHT_MCP_PACKAGE = '@playwright/mcp@0.0.83';
 
-/** Project-level MCP file per agent tool; other tools get documented manual setup (docs/cli.md). */
-export const EXECUTION_MCP_CONFIG_FILES: Readonly<Record<string, string>> = {
-  claude: '.mcp.json',
-  cursor: path.join('.cursor', 'mcp.json'),
-};
+interface ExecutionMcpTool {
+  /** Project-level MCP file, relative to the project root. */
+  file: string;
+  /** How the tool refers to the project root inside MCP args. */
+  projectRoot: string;
+}
 
 /**
- * How each tool refers to the project root inside MCP args. Claude Code expands `${VAR:-default}`
- * from its own environment, where CLAUDE_PROJECT_DIR is not set, so the documented default `.`
- * (the project directory the server starts in) applies. Cursor resolves `${workspaceFolder}`.
+ * Agent tools whose project-level MCP file QASpec writes; other tools get documented manual setup
+ * (docs/cli.md). Claude Code expands `${VAR:-default}` from its own environment, where
+ * CLAUDE_PROJECT_DIR is not set, so the documented default `.` (the project directory the server
+ * starts in) applies. Cursor resolves `${workspaceFolder}`.
  */
-const PROJECT_ROOT_REFERENCE: Readonly<Record<string, string>> = {
-  claude: '${CLAUDE_PROJECT_DIR:-.}',
-  cursor: '${workspaceFolder}',
+export const EXECUTION_MCP_TOOLS: Readonly<Record<string, ExecutionMcpTool>> = {
+  claude: { file: '.mcp.json', projectRoot: '${CLAUDE_PROJECT_DIR:-.}' },
+  cursor: { file: path.join('.cursor', 'mcp.json'), projectRoot: '${workspaceFolder}' },
 };
 
 export type ExecutionMcpStatus = 'written' | 'removed' | 'invalid' | 'error';
@@ -52,10 +55,14 @@ interface McpServerEntry {
 }
 
 export function buildPlaywrightMcpEntry(toolId: string, execution: ExecutionConfig): McpServerEntry {
+  const tool = EXECUTION_MCP_TOOLS[toolId];
+  if (!tool) {
+    throw new Error(`Tool "${toolId}" has no project-level MCP file that QASpec writes`);
+  }
   const args = ['-y', PLAYWRIGHT_MCP_PACKAGE, '--isolated'];
   const storageState = execution.auth?.storageState;
   if (storageState) {
-    args.push('--storage-state', `${PROJECT_ROOT_REFERENCE[toolId]}/${storageState.split('\\').join('/')}`);
+    args.push('--storage-state', `${tool.projectRoot}/${storageState.split('\\').join('/')}`);
   }
   const blockedOrigins = execution.network?.blockedOrigins ?? [];
   if (blockedOrigins.length > 0) {
@@ -89,6 +96,34 @@ async function readMcpFile(filePath: string): Promise<McpFileState> {
   }
 }
 
+function isInside(root: string, target: string): boolean {
+  return target === root || target.startsWith(root + path.sep);
+}
+
+/**
+ * A cloned repository could ship the MCP file, or its `.cursor` folder, as a symlink to a user-level
+ * config. QASpec only writes a regular file whose folder resolves inside the project.
+ */
+async function assertSafeToWrite(projectRoot: string, file: string): Promise<void> {
+  const filePath = path.join(projectRoot, file);
+  const folder = path.dirname(filePath);
+  if (existsSync(folder)) {
+    const realRoot = await fs.realpath(projectRoot);
+    if (!isInside(realRoot, await fs.realpath(folder))) {
+      throw new Error(`${path.dirname(file)} points outside the project`);
+    }
+  }
+  const stats = await fs.lstat(filePath).catch(() => undefined);
+  if (stats?.isSymbolicLink()) {
+    throw new Error(`${file} is a symbolic link; QASpec only writes regular files inside the project`);
+  }
+}
+
+async function writeMcpFile(projectRoot: string, file: string, content: unknown): Promise<void> {
+  await assertSafeToWrite(projectRoot, file);
+  await FileSystemUtils.writeFile(path.join(projectRoot, file), `${JSON.stringify(content, null, 2)}\n`);
+}
+
 async function syncToolEntry(
   projectRoot: string,
   toolId: string,
@@ -103,10 +138,7 @@ async function syncToolEntry(
       return null;
     }
     const { [QASPEC_PLAYWRIGHT_MCP_SERVER]: _removed, ...servers } = state.servers;
-    await FileSystemUtils.writeFile(
-      filePath,
-      `${JSON.stringify({ ...state.content, mcpServers: servers }, null, 2)}\n`
-    );
+    await writeMcpFile(projectRoot, file, { ...state.content, mcpServers: servers });
     return { toolId, file, status: 'removed' };
   }
 
@@ -119,10 +151,10 @@ async function syncToolEntry(
   if (isDeepStrictEqual(servers[QASPEC_PLAYWRIGHT_MCP_SERVER], entry)) {
     return null;
   }
-  await FileSystemUtils.writeFile(
-    filePath,
-    `${JSON.stringify({ ...content, mcpServers: { ...servers, [QASPEC_PLAYWRIGHT_MCP_SERVER]: entry } }, null, 2)}\n`
-  );
+  await writeMcpFile(projectRoot, file, {
+    ...content,
+    mcpServers: { ...servers, [QASPEC_PLAYWRIGHT_MCP_SERVER]: entry },
+  });
   return { toolId, file, status: 'written' };
 }
 
@@ -142,7 +174,7 @@ export async function syncExecutionMcpEntries(
   }
   const results: ExecutionMcpResult[] = [];
   for (const toolId of toolIds) {
-    const file = EXECUTION_MCP_CONFIG_FILES[toolId];
+    const file = EXECUTION_MCP_TOOLS[toolId]?.file;
     if (!file) {
       continue;
     }
@@ -158,9 +190,13 @@ export async function syncExecutionMcpEntries(
   return results;
 }
 
-/** Whether a result needs the user's attention rather than just reporting a change. */
-export function isExecutionMcpWarning(result: ExecutionMcpResult): boolean {
-  return result.status === 'invalid' || result.status === 'error';
+/** Prints one line per result for init and update; results that need attention are highlighted. */
+export function printExecutionMcpResults(results: readonly ExecutionMcpResult[]): void {
+  for (const result of results) {
+    const message = formatExecutionMcpResult(result);
+    const needsAttention = result.status === 'invalid' || result.status === 'error';
+    console.log(needsAttention ? chalk.yellow(message) : message);
+  }
 }
 
 export function formatExecutionMcpResult(result: ExecutionMcpResult): string {

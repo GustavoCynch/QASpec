@@ -693,6 +693,21 @@ tcms:
         }
       });
 
+      it('should reject paths containing a variable reference', () => {
+        writeConfig(`execution:
+  auth:
+    storageState: '.qaspec/\${HOME}/storage-state.json'
+    envFile: .env.qa
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({ auth: { envFile: '.env.qa' } });
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'execution.auth.storageState'")
+        );
+      });
+
       it('should keep valid list entries and warn about invalid ones', () => {
         writeConfig(`execution:
   auth:

@@ -5,6 +5,7 @@ import path from 'path';
 import {
   PLAYWRIGHT_MCP_PACKAGE,
   QASPEC_PLAYWRIGHT_MCP_SERVER,
+  buildPlaywrightMcpEntry,
   formatExecutionMcpResult,
   syncExecutionMcpEntries,
 } from '../../src/core/execution-mcp.js';
@@ -80,7 +81,7 @@ describe('execution-mcp', () => {
     expect(server.args).toContain('${workspaceFolder}/.qaspec/auth/storage-state.json');
   });
 
-  it('starts an isolated browser only when there is no session or blocked origin to pass', async () => {
+  it('emits only the base arguments when there is no session or blocked origin to pass', async () => {
     await write(
       path.join('qaspec', 'config.yaml'),
       `schema: qaspec-pr-review
@@ -166,7 +167,7 @@ execution:
     expect(await readJson(path.join('.cursor', 'mcp.json'))).toEqual({ mcpServers: [] });
   });
 
-  it.skipIf(process.platform === 'win32')(
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
     'reports a file it cannot write instead of failing',
     async () => {
       await write(path.join('qaspec', 'config.yaml'), EXECUTION_CONFIG);
@@ -184,6 +185,39 @@ execution:
       expect(await readJson('.mcp.json')).toEqual({ mcpServers: { github: { command: 'gh-mcp' } } });
     }
   );
+
+  it.skipIf(process.platform === 'win32')(
+    'refuses to write through a symlink that leads outside the project',
+    async () => {
+      const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-execution-mcp-outside-'));
+      try {
+        const userConfig = JSON.stringify({ mcpServers: { personal: { command: 'mine' } } });
+        await fs.writeFile(path.join(outside, 'claude.json'), userConfig);
+        await fs.mkdir(path.join(outside, 'cursor'));
+        await fs.writeFile(path.join(outside, 'cursor', 'mcp.json'), userConfig);
+        await write(path.join('qaspec', 'config.yaml'), EXECUTION_CONFIG);
+        await fs.symlink(path.join(outside, 'claude.json'), path.join(projectRoot, '.mcp.json'));
+        await fs.symlink(path.join(outside, 'cursor'), path.join(projectRoot, '.cursor'));
+
+        const results = await syncExecutionMcpEntries(projectRoot, ['claude', 'cursor']);
+
+        expect(results.map(({ toolId, status }) => ({ toolId, status }))).toEqual([
+          { toolId: 'claude', status: 'error' },
+          { toolId: 'cursor', status: 'error' },
+        ]);
+        expect(results[0].detail).toMatch(/symbolic link/);
+        expect(results[1].detail).toMatch(/outside the project/);
+        expect(await fs.readFile(path.join(outside, 'claude.json'), 'utf-8')).toBe(userConfig);
+        expect(await fs.readFile(path.join(outside, 'cursor', 'mcp.json'), 'utf-8')).toBe(userConfig);
+      } finally {
+        await fs.rm(outside, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it('rejects building an entry for a tool without a project-level MCP file', () => {
+    expect(() => buildPlaywrightMcpEntry('windsurf', {})).toThrow(/no project-level MCP file/);
+  });
 
   it('keeps its server when qaspec/config.yaml cannot be read', async () => {
     await write(path.join('qaspec', 'config.yaml'), 'schema: [unclosed\n');
