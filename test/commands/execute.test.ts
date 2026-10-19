@@ -114,6 +114,42 @@ setInterval(() => {}, 1000);`
     20_000
   );
 
+  it.skipIf(process.platform === 'win32')(
+    'still exits with the interrupt signal when the session cannot be removed',
+    async () => {
+      await ensureCliBuilt();
+      await write('.gitignore', '.env.qa\n.qaspec/auth/\n');
+      await write(
+        path.join('scripts', 'login.mjs'),
+        `import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+rmSync(process.env.QASPEC_STORAGE_STATE, { force: true });
+mkdirSync(process.env.QASPEC_STORAGE_STATE);
+writeFileSync('script.pid', String(process.pid));
+setInterval(() => {}, 1000);`
+      );
+      const cli = spawn(process.execPath, [CLI_ENTRY, 'execute', 'login'], {
+        cwd: projectRoot,
+        stdio: 'ignore',
+      });
+      const exited = new Promise<NodeJS.Signals | null>((resolve) =>
+        cli.on('exit', (_code, signal) => resolve(signal))
+      );
+      const pidFile = path.join(projectRoot, 'script.pid');
+      const deadline = Date.now() + 10_000;
+      while (!existsSync(pidFile) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const scriptPid = Number(await fs.readFile(pidFile, 'utf-8'));
+
+      cli.kill('SIGINT');
+
+      expect(await exited).toBe('SIGINT');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(isAlive(scriptPid)).toBe(false);
+    },
+    20_000
+  );
+
   it('exits with code 1 when the credentials file is not ignored by git', async () => {
     await write('.gitignore', '.qaspec/auth/\n');
 
