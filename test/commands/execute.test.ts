@@ -22,6 +22,27 @@ const isAlive = (pid: number): boolean => {
   }
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Polls until the process is gone; false when it still runs after the timeout. */
+async function waitUntilStopped(pid: number, timeoutMs = 5_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (isAlive(pid)) {
+    if (Date.now() >= deadline) {
+      return false;
+    }
+    await sleep(50);
+  }
+  return true;
+}
+
+/** Stops a process a test left running, so a failed assertion does not leak it. */
+function stopIfAlive(pid: number): void {
+  if (isAlive(pid)) {
+    process.kill(pid, 'SIGKILL');
+  }
+}
+
 describe('qaspec execute login', () => {
   let projectRoot: string;
 
@@ -456,6 +477,33 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
     { check: 'report-title', after: 'Report' },
     { check: 'banner', after: 'Error' },
   ]);
+  /** A second case, so two plan or record commands can target one run at the same time. */
+  const SECOND_CASE = [
+    '- [ ] 1.2 Export by date',
+    '  <!-- req: billing-export/export-totals -->',
+    '',
+    '  **Preconditions:**',
+    '  1. Setup',
+    '',
+    '  **Steps:**',
+    '  | # | Action | Expected |',
+    '  |---|--------|----------|',
+    '  | 1 | Pick a date | Date shown |',
+    '',
+  ].join('\n');
+  const TWO_CASES = [CASES, SECOND_CASE].join('\n');
+  const SECOND_CASE_PLAN = {
+    schema: 'qaspec.execution-plan/v1',
+    change: 'pr-1',
+    case: { id: '1.2', title: 'Export by date' },
+    steps: [
+      {
+        n: 1,
+        checks: [{ id: 'date-shown', source: { kind: 'dom', target: 'date field' }, op: 'equals', value: 'Today' }],
+      },
+    ],
+  };
+  const SECOND_CASE_PASS = observed([{ check: 'date-shown', after: 'Today' }]);
 
   const MANUAL_EXECUTION = '  app:\n    url: https://app.example.test/\n    readiness: manual\n  controlCase: qa/smoke/control.md\n';
 
@@ -471,7 +519,7 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
 
   const cli = (args: string[]) => runCLI(['execute', ...args], { cwd: workDir });
 
-  const setUp = async (execution = MANUAL_EXECUTION, { approved = true } = {}) => {
+  const setUp = async (execution = MANUAL_EXECUTION, { approved = true, cases = CASES } = {}) => {
     workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-execute-run-'));
     execFileSync('git', ['init', '-q'], { cwd: workDir });
     await write(path.join('qaspec', 'config.yaml'), `execution:\n${execution}`);
@@ -481,7 +529,7 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
       path.join('qaspec', 'changes', 'pr-1', 'specs', 'billing-export', 'spec.md'),
       '## ADDED Requirements\n\n### Requirement: Export totals\n'
     );
-    await write(path.join('qaspec', 'changes', 'pr-1', 'testcases.md'), CASES);
+    await write(path.join('qaspec', 'changes', 'pr-1', 'testcases.md'), cases);
     const changeDir = path.join(workDir, 'qaspec', 'changes', 'pr-1');
     writeChangeMetadata(changeDir, { schema: 'qaspec-pr-review', created: '2026-10-19' });
     if (approved) {
@@ -578,6 +626,128 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
     });
   });
 
+  it('does not report a blocked run as started and names the readiness check that failed', async () => {
+    await setUp(
+      MANUAL_EXECUTION +
+        `  readinessChecks:\n    - name: backend deployed\n      command: '${JSON.stringify(process.execPath)} -e "process.exit(3)"'\n`
+    );
+
+    const result = await cli(['start', '--change', 'pr-1']);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).not.toContain('started for change');
+    expect(result.stdout).toContain('is blocked-by-environment');
+    expect(result.stdout).toContain('backend deployed');
+  });
+
+  it('stores the configured text of each readiness command in the run and its status', async () => {
+    const command = `${JSON.stringify(process.execPath)} -e "process.exit(0)"`;
+    await setUp(MANUAL_EXECUTION + `  readinessChecks:\n    - name: backend deployed\n      command: '${command}'\n`);
+
+    const started = await cli(['start', '--change', 'pr-1', '--json']);
+    const { run } = JSON.parse(started.stdout);
+    const status = await cli(['status', '--run', run, '--json']);
+
+    expect(JSON.parse(started.stdout).readiness.checks).toEqual([
+      expect.objectContaining({ name: 'backend deployed', command }),
+    ]);
+    expect(JSON.parse(status.stdout).readiness.checks).toEqual([
+      expect.objectContaining({ name: 'backend deployed', command }),
+    ]);
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'stops a readiness command when the start command is interrupted',
+    async () => {
+      await ensureCliBuilt();
+      await setUp(
+        MANUAL_EXECUTION +
+          `  readinessChecks:\n    - name: slow\n      command: '${JSON.stringify(process.execPath)} readiness.cjs'\n`
+      );
+      await write(
+        'readiness.cjs',
+        "require('node:fs').writeFileSync('readiness.pid', String(process.pid));\nsetInterval(() => {}, 1000);\n"
+      );
+      const start = spawn(process.execPath, [CLI_ENTRY, 'execute', 'start', '--change', 'pr-1'], {
+        cwd: workDir,
+        stdio: 'ignore',
+      });
+      const exited = new Promise<NodeJS.Signals | null>((resolve) =>
+        start.on('exit', (_code, signal) => resolve(signal))
+      );
+      const pidFile = path.join(workDir, 'readiness.pid');
+      const deadline = Date.now() + 15_000;
+      while (!existsSync(pidFile) && Date.now() < deadline) {
+        await sleep(50);
+      }
+      const commandPid = Number(await fs.readFile(pidFile, 'utf-8'));
+
+      try {
+        start.kill('SIGINT');
+
+        expect(await exited).toBe('SIGINT');
+        expect(await waitUntilStopped(commandPid)).toBe(true);
+      } finally {
+        stopIfAlive(commandPid);
+      }
+    },
+    30_000
+  );
+
+  it('keeps the plan of every case when two plan commands run at the same time on one run', async () => {
+    await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+    const run = await startConfirmedRun();
+    await writeJson('control-plan.json', CONTROL_PLAN);
+    await writeJson('control-pass.json', CONTROL_PASS);
+    await writeJson('case-plan.json', CASE_PLAN);
+    await writeJson('second-case-plan.json', SECOND_CASE_PLAN);
+    expect((await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json'])).exitCode).toBe(0);
+    expect((await cli(['record', '--run', run, '--case', 'control', 'control-pass.json'])).exitCode).toBe(0);
+
+    const plans = await Promise.all([
+      cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']),
+      cli(['plan', '--run', run, '--case', '1.2', 'second-case-plan.json']),
+    ]);
+
+    expect(plans.map((result) => result.exitCode)).toEqual([0, 0]);
+    const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+    expect(status.cases['1.1']).toMatchObject({ status: 'planned', plan: { path: path.join('plans', '1.1.json') } });
+    expect(status.cases['1.2']).toMatchObject({ status: 'planned', plan: { path: path.join('plans', '1.2.json') } });
+    const runDir = path.join(workDir, 'qaspec', 'changes', 'pr-1', 'runs', run);
+    expect(existsSync(path.join(runDir, 'plans', '1.1.json'))).toBe(true);
+    expect(existsSync(path.join(runDir, 'plans', '1.2.json'))).toBe(true);
+  }, 60_000);
+
+  it('keeps the result of every case when two record commands run at the same time on one run', async () => {
+    await setUp(MANUAL_EXECUTION, { cases: TWO_CASES });
+    const run = await startConfirmedRun();
+    await writeJson('control-plan.json', CONTROL_PLAN);
+    await writeJson('control-pass.json', CONTROL_PASS);
+    await writeJson('case-plan.json', CASE_PLAN);
+    await writeJson('case-pass.json', CASE_PASS);
+    await writeJson('second-case-plan.json', SECOND_CASE_PLAN);
+    await writeJson('second-case-pass.json', SECOND_CASE_PASS);
+    await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
+    await cli(['record', '--run', run, '--case', 'control', 'control-pass.json']);
+    await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
+    await cli(['plan', '--run', run, '--case', '1.2', 'second-case-plan.json']);
+
+    const records = await Promise.all([
+      cli(['record', '--run', run, '--case', '1.1', 'case-pass.json']),
+      cli(['record', '--run', run, '--case', '1.2', 'second-case-pass.json']),
+    ]);
+
+    expect(records.map((result) => result.exitCode)).toEqual([0, 0]);
+    const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+    expect(status.cases['1.1']).toMatchObject({ status: 'passed', attempts: [{ attempt: 1, verdict: 'passed' }] });
+    expect(status.cases['1.2']).toMatchObject({ status: 'passed', attempts: [{ attempt: 1, verdict: 'passed' }] });
+    const runDir = path.join(workDir, 'qaspec', 'changes', 'pr-1', 'runs', run);
+    for (const key of ['1.1', '1.2']) {
+      expect(existsSync(path.join(runDir, 'observations', `${key}-1.json`))).toBe(true);
+      expect(existsSync(path.join(runDir, 'results', `${key}-1.json`))).toBe(true);
+    }
+  }, 60_000);
+
   it('exits 1 with the retry outcome for a first failed verdict', async () => {
     await setUp();
     const run = await startConfirmedRun();
@@ -608,8 +778,9 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
     await cli(['plan', '--run', run, '--case', '1.1', 'case-plan.json']);
     await cli(['record', '--run', run, '--case', '1.1', 'case-pass.json']);
     await cli(['plan', '--run', run, '--case', 'control', 'control-plan.json']);
-    expect((await cli(['record', '--run', run, '--case', 'control', 'control-fail.json'])).exitCode).toBe(1);
-    expect((await cli(['record', '--run', run, '--case', 'control', 'control-fail.json'])).exitCode).toBe(1);
+    const failed = await cli(['record', '--run', run, '--case', 'control', 'control-fail.json', '--json']);
+    expect(failed.exitCode).toBe(1);
+    expect(JSON.parse(failed.stdout)).toMatchObject({ attempt: 1, verdict: 'failed', outcome: 'needs-triage' });
 
     const finished = await cli(['finish', '--run', run, '--json']);
 
