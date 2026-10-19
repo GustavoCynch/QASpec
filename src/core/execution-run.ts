@@ -124,6 +124,13 @@ export interface ControlCaseRecord {
   sha256: string;
 }
 
+/** The results gate of a finished run (T8): its token, and the SHA-256 of the results payload it checked. */
+export interface ResultsGateRecord {
+  token: string;
+  resultsSha256: string;
+  storedAt: string;
+}
+
 export interface RunRecord {
   schema: typeof RUN_SCHEMA;
   id: string;
@@ -136,6 +143,7 @@ export interface RunRecord {
   cases: Record<string, CaseRecord>;
   finishedAt?: string;
   finishReasons?: string[];
+  resultsGate?: ResultsGateRecord;
 }
 
 export interface RunLocation {
@@ -233,6 +241,17 @@ export function generateRunId(now: Date = new Date(), suffix: Uint8Array = rando
 
 export function isValidRunId(runId: string): boolean {
   return RUN_ID_PATTERN.test(runId);
+}
+
+/** The case number that starts a checkbox title, such as "1.1 " in "1.1 Export totals". */
+const CASE_NUMBER_PREFIX = /^\d+(?:\.\d+)*\s+/;
+
+/**
+ * The case title as TCMS matches it (D3): the checkbox text after the case number, exactly as written in
+ * testcases.md. Triage and results both read titles through this function.
+ */
+export function testcaseTitle(checkboxTitle: string): string {
+  return checkboxTitle.replace(CASE_NUMBER_PREFIX, '');
 }
 
 /** A case argument is a testcase id such as 1.1, or the control case. Anything else is refused. */
@@ -431,9 +450,12 @@ function releaseRunLock(lockDir: string, token: string): void {
   }
 }
 
-/** Runs one write of a run under its lock; the lock is released even when the write throws. */
-export function withRunLock<T>(runDir: string, write: () => T): T {
-  const release = acquireRunLock(runDir);
+/**
+ * Runs one write of a run under its lock; the lock is released even when the write throws. The wait is
+ * bounded by timeoutMs, which defaults to RUN_LOCK_TIMEOUT_MS.
+ */
+export function withRunLock<T>(runDir: string, write: () => T, timeoutMs: number = RUN_LOCK_TIMEOUT_MS): T {
+  const release = acquireRunLock(runDir, timeoutMs);
   try {
     return write();
   } finally {

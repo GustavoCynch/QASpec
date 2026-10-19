@@ -943,6 +943,37 @@ qaspec execute answer --run <id> --finding <finding-id> --intended yes|no [--not
 
 Records the person's answer to one finding, once. `--intended no` (the behavior is not intended) adds a `confirmed` ledger line, and `--intended yes` (the behavior is intended) adds a `dismissed` line. Each line holds the finding id, the answer, the optional note, the time of the answer, and `secondsToAnswer`: the seconds from the finding's report to the answer. An unknown finding, a second answer to the same finding, and an answer in an environment-noise run are refused, and the command exits 1. Findings of a run that finishes as `environment-noise` are void.
 
+### `qaspec execute results`
+
+```
+qaspec execute results --run <id> [--json]
+```
+
+Builds the TCMS results of a finished run (`completed` or `environment-noise`): one entry per testcase of the change, in `testcases.md` order. Control cases are not results. Each entry has:
+
+- `case` and `title`. The title is the TCMS match key: the checkbox text after the case number, exactly as written in `testcases.md` (`- [ ] 1.1 Export totals` gives `Export totals`). It is the same text the publish mapping sends as the case title.
+- `status`: `passed` for a passed case; `failed` for a case that needs triage and was judged `app`; `blocked` for a case judged `agent` or `environment`, a case that needs triage and has no judgement yet, a case that needs a person (`needs-human`), and a case without a final verdict; `skipped` for a case that was never planned.
+- `comment`: the verdict and attempt count, then the finding id and its sense-check question for an app defect, or the reason a case is blocked or skipped. Comments never contain observed values.
+- `attempts` and `evidence`: the attempt count, and the run-relative paths of the evidence files saved for every attempt.
+
+An `environment-noise` run reports every case as `blocked`, and each comment gives the reason the run finished that way. A run that is not finished is refused: the command exits 1 and writes nothing. `--json` prints the payload with `schema: "qaspec.execution-results/v1"`, the run id, the change, the run state and its finish reasons.
+
+### `qaspec execute results-gate`
+
+```
+qaspec execute results-gate --run <id> [--json]
+```
+
+Checks that the run can be reported, like `qaspec publish-gate` does for publish. It requires that the run is finished; that, for a `completed` run, every case that needs triage has a judgement (an `environment-noise` run reports all its cases as `blocked`, so its judgements do not change the results); and that the change has a usable TCMS target (`qaspec tcms show`). It also refuses a `testcases.md` that repeats a case title, because results are matched to TCMS cases by title. When every check passes, it prints a token, `results-gate:<8 hex>`, and stores it in the run's `run.json` with the SHA-256 of the results payload. The workflow cites the token in its single confirmation halt before any TCMS write. A failed check lists every failure with the command that resolves it, exits 1, and stores no token. The token is never written to the change's `.qaspec.yaml`.
+
+### `qaspec execute tcms-map`
+
+```
+qaspec execute tcms-map --run <id> --title "<case title>" --tcms-id <id> [--tcms-run <id>] [--json]
+```
+
+Records the TCMS id of one case title in `runs/<run-id>/tcms.json`, and the TCMS run id when `--tcms-run` is given. The title must be the title of exactly one testcase of the change: an unknown title, or one that matches several testcases, is refused. A title keeps the TCMS id it was first given, and a run keeps the TCMS run it was first given; a different value is refused, and repeating the same mapping changes nothing. The write takes the run lock, so mappings recorded at the same time are all kept. `qaspec execute status --run <id> --json` shows the mapping as `tcms`. Publish records no TCMS ids, so this mapping lives only in the run folder. Creating the TCMS run and its results is the workflow's job through the TCMS MCP server; these commands prepare and record it.
+
 ### Browser server for `/qsx:execute`
 
 When `qaspec/config.yaml` has an `execution` block, `qaspec init` and `qaspec update` write a Playwright MCP server named `qaspec-playwright` into the project-level MCP file of Claude Code (`.mcp.json`) and Cursor (`.cursor/mcp.json`). QASpec manages that server: edits made to it by hand are replaced on the next run. They change only that server: other servers and keys keep their values, although the file is rewritten as two-space-indented JSON. When the server has to be written, a file that is not valid JSON with an `mcpServers` object is skipped with a warning, and a file that cannot be written is reported without stopping the command. QASpec never writes through a symbolic link: an MCP file that is a symlink, or a `.cursor` folder that resolves outside the project, is reported instead. Paths in the `execution` block cannot contain `$`, because the agent tools expand `${...}` in these arguments. The server is removed again when `qaspec/config.yaml` no longer has a valid `execution` block; nothing changes when the config file is missing or cannot be read. `qaspec update` does this even when skills are up to date, so run it after editing the `execution` block.
