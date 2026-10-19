@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
+import { ExecutionConfigSchema, parseExecutionConfig } from './execution-config.js';
 import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js';
 
 /**
@@ -62,6 +63,10 @@ export const ProjectConfigSchema = z.object({
   // base URL). The per-change target in the change's .qaspec.yaml wins;
   // publish flows never write this block.
   tcms: TcmsConfigSchema.optional(),
+
+  // Optional: project-specific settings for /qsx:execute (app URL, credentials files,
+  // blocked origins, control case, readiness checks). See execution-config.ts.
+  execution: ExecutionConfigSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
@@ -289,6 +294,14 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
         }
       } else {
         console.warn(`Invalid 'tcms' field in config (must be object)`);
+      }
+    }
+
+    // Parse execution block (resilient per field)
+    if (raw.execution !== undefined) {
+      const execution = parseExecutionConfig(raw.execution);
+      if (execution) {
+        config.execution = execution;
       }
     }
 
