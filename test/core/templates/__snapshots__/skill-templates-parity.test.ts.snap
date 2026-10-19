@@ -9,8 +9,8 @@ exports[`skill templates split parity > preserves QASpec template function paylo
   "getQasArchiveSkillTemplate": "7ce5be39f7d27e00f154651f8d94cd621b72b28840a4e25ac6e11e5d86ead19d",
   "getQasCasesCommandTemplate": "56c513aaac96efd5a554ebd55e73c5a2c1f73304ad9b7cd973879f7ba1ee51b5",
   "getQasCasesSkillTemplate": "da3903082c8f6a81169fc601f0ab0ea7ab909898092aafc4efd7fc827bc6ff62",
-  "getQasExecuteCommandTemplate": "9f2ecc84ad7ab56768ce5e7e4d02328c59aa08c3c5465aa9bf18a6839b46a028",
-  "getQasExecuteSkillTemplate": "06dc2215689a443b3555c10846005e41d1f7862b91ec4ec0e4c75db88eca5d69",
+  "getQasExecuteCommandTemplate": "832dba803a5b373a649ed76b7b9bb46a82a98d2eeb57f6085bb345249a1da11c",
+  "getQasExecuteSkillTemplate": "9ecc7c32600aeb75857f9aeae002516d0627f390177ac80698384a04ce9719b9",
   "getQasPublishCommandTemplate": "b35c63686808845ecbb60953b40794b3cb1e85c58f536ca2bb9dee4d995b5595",
   "getQasPublishSkillTemplate": "2090a9eae78e4d203086e9152f931802831a4074e49c8bc0b73ab252df77979e",
 }
@@ -21,7 +21,7 @@ exports[`skill templates split parity > preserves generated QASpec skill file co
   "qaspec-analyze": "676bb1174ff5e1955a554214da9bac2e1b1958c347ccc2a1a33e386f9b9142f9",
   "qaspec-archive": "bf0dd675e21cd9305bc8984d1060510a66d564297dbe31a00c67a60b86c5c070",
   "qaspec-cases": "76c9ff4860929d7a1e252d2d2af3b21ee538eb03819ebd005f97022a355ffb4a",
-  "qaspec-execute": "3d02aaf7c03708093ca0264d23c1220b51bbbe88e28f34052d854581676a9b3a",
+  "qaspec-execute": "01dea11543edae0f4bfe8d71388dec31acaaca3482d656db0083060d7344333e",
   "qaspec-publish": "3854b2fefafdd959dcb7e5fa3ba83c9d03c04b988cc27b6b5354f5ce2ed8999f",
 }
 `;

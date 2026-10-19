@@ -7,6 +7,7 @@ import { AI_TOOLS } from '../../src/core/config.js';
 import { CommandAdapterRegistry } from '../../src/core/command-generation/index.js';
 import { getToolsWithSkillsDir } from '../../src/core/shared/tool-detection.js';
 import { qaspecSkillDirName } from '../../src/core/qaspec-commands.js';
+import { PLAYWRIGHT_MCP_PACKAGE } from '../../src/core/execution-mcp.js';
 import {
   getQasExecuteSkillTemplate,
   getQasExecuteCommandTemplate,
@@ -76,7 +77,7 @@ describe('/qsx:execute workflow template', () => {
     expect(body).toMatch(/approved/i);
     expect(body).toContain('qaspec-playwright');
     expect(body).toContain('qaspec update');
-    expect(body).toContain('docs/cli.md');
+    expect(body).toMatch(/add it by hand to their agent tool's MCP configuration/);
     expect(body).toMatch(/cannot launch a subagent/i);
   });
 
@@ -101,7 +102,18 @@ describe('/qsx:execute workflow template', () => {
   it('retries a failed case once from a clean state and tags test data with the run data tag', () => {
     expect(body).toMatch(/clean state/i);
     expect(body).toContain('dataTag');
+    expect(body).toMatch(/Put the `<dataTag>` into every record you create/);
     expect(body).toMatch(/evidence\/<case>-<attempt>\//);
+  });
+
+  it('reads record JSON regardless of exit code and tells the judge where evidence paths start', () => {
+    expect(body).toMatch(/`retry`, `needs-human` and `needs-triage` exit 1 by design/);
+    expect(body).toMatch(/evidence paths in the judge input are relative to `<runDir>`/i);
+  });
+
+  it('gives the manual MCP setup inline instead of pointing at a repository docs path', () => {
+    expect(body).not.toContain('docs/cli.md');
+    expect(body).toContain(PLAYWRIGHT_MCP_PACKAGE);
   });
 
   it('judges each needs-triage case in a fresh subagent that did not drive the browser', () => {
@@ -152,6 +164,8 @@ describe('/qsx:execute generated files', () => {
     originalEnv = { ...process.env };
     configTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-execute-config-'));
     process.env.XDG_CONFIG_HOME = configTempDir;
+    // The Codex adapter writes global prompts; keep them out of the real home directory.
+    process.env.CODEX_HOME = path.join(configTempDir, 'codex');
     vi.spyOn(console, 'log').mockImplementation(() => { });
     confirmMock.mockReset();
     confirmMock.mockResolvedValue(true);
