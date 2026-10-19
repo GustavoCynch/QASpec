@@ -44,6 +44,7 @@ import {
 import { getAvailableTools } from './available-tools.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import { migrateReferenceFilenames } from './reference-scaffold.js';
+import { formatExecutionMcpResult, syncExecutionMcpEntries } from './execution-mcp.js';
 import {
   WORKFLOW_TO_SKILL_DIR,
   getCommandConfiguredTools,
@@ -115,6 +116,13 @@ export class UpdateCommand {
       console.log(chalk.yellow('No configured tools found.'));
       console.log(chalk.dim('Run "qaspec init" to set up tools.'));
       return;
+    }
+
+    // 3b. Sync the Playwright MCP server for /qsx:execute unconditionally, like the reference
+    // migration, so it follows the config's execution block even when skills are up to date.
+    for (const result of await syncExecutionMcpEntries(resolvedProjectPath, configuredTools)) {
+      const message = formatExecutionMcpResult(result);
+      console.log(result.status === 'invalid' ? chalk.yellow(message) : message);
     }
 
     const effectiveDelivery = await resolveEffectiveDelivery(

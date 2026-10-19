@@ -54,6 +54,11 @@ import {
 } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { scaffoldQaspecReferences, migrateReferenceFilenames } from './reference-scaffold.js';
+import {
+  formatExecutionMcpResult,
+  syncExecutionMcpEntries,
+  type ExecutionMcpResult,
+} from './execution-mcp.js';
 import { resolveEffectiveDelivery } from './delivery-resolve.js';
 import { WORKFLOW_TO_SKILL_DIR } from './profile-sync-drift.js';
 
@@ -141,8 +146,14 @@ export class InitCommand {
     // Create config.yaml if needed
     const configStatus = await this.createConfig(planningPath, extendMode);
 
+    // Playwright MCP server for /qsx:execute, built from the config's execution block
+    const mcpResults = await syncExecutionMcpEntries(
+      projectPath,
+      validatedTools.map((tool) => tool.value)
+    );
+
     // Display success message
-    this.displaySuccessMessage(projectPath, validatedTools, results, configStatus);
+    this.displaySuccessMessage(projectPath, validatedTools, results, configStatus, mcpResults);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -601,7 +612,8 @@ export class InitCommand {
       removedCommandCount: number;
       removedSkillCount: number;
     },
-    configStatus: 'created' | 'exists' | 'skipped'
+    configStatus: 'created' | 'exists' | 'skipped',
+    mcpResults: ExecutionMcpResult[] = []
   ): void {
     console.log();
     console.log(chalk.bold('QASpec Setup Complete'));
@@ -662,6 +674,11 @@ export class InitCommand {
       console.log(`Config: ${formatPlanningRelativePath(projectPath, configName)} (exists)`);
     } else {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
+    }
+
+    for (const result of mcpResults) {
+      const message = formatExecutionMcpResult(result);
+      console.log(result.status === 'invalid' ? chalk.yellow(message) : message);
     }
 
     // Getting started (task 7.6: show propose if in profile)

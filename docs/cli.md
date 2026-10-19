@@ -709,7 +709,33 @@ Reads `execution.auth` from `qaspec/config.yaml`:
 | `loginScript` | `.js`, `.mjs` or `.cjs` file run with Node.js |
 | `storageState` | Where the browser session is saved |
 
-Before running the script, the command stops when the project is not a git repository, when `envFile` or `storageState` is tracked by git or not ignored by it, or when both settings point at the same file. The script runs from the project root with the `envFile` variables, plus `QASPEC_STORAGE_STATE` (absolute path where it must save the session, e.g. with Playwright's `context.storageState({ path })`) and `QASPEC_APP_URL` (`execution.app.url`, when set). It must finish within 120 seconds; after that it receives SIGTERM, then SIGKILL two seconds later. On POSIX the script runs in its own process group, and any process it leaves running is stopped when the command finishes. On POSIX, if the command is interrupted (SIGINT such as Ctrl+C, SIGTERM or SIGHUP) while the script runs, it stops the script and its processes, removes the session file when it can and exits with that signal. On Windows, an interrupted command may leave a partly written session file behind. Credential values of four or more characters are replaced with `[redacted]` in the script output, both as written and as they appear inside a JSON string. The command fails when the script exits non-zero, times out or does not write a valid storage state, and removes any session file in those cases. On POSIX the session file is created readable only by its owner before the script runs (inside a new directory, that directory too), and it stays that way as long as the script writes into the existing file, as Playwright's `context.storageState({ path })` does.
+Before running the script, the command stops when the project is not a git repository, when `envFile` or `storageState` is tracked by git or not ignored by it, or when both settings point at the same file. The script runs from the project root with the `envFile` variables, plus `QASPEC_STORAGE_STATE` (absolute path where it must save the session, e.g. with Playwright's `context.storageState({ path })`) and `QASPEC_APP_URL` (`execution.app.url`, when set). It must finish within 120 seconds; after that it receives SIGTERM, then SIGKILL two seconds later. On POSIX the script runs in its own process group, and any process it leaves running is stopped when the command finishes. On POSIX, if the command is interrupted (SIGINT such as Ctrl+C, SIGTERM or SIGHUP) while the script runs, it stops the script and its processes, removes the session file when it can and exits with that signal. On Windows, an interrupted command may leave a partly written session file behind.
+
+### Browser server for `/qsx:execute`
+
+When `qaspec/config.yaml` has an `execution` block, `qaspec init` and `qaspec update` write a Playwright MCP server named `qaspec-playwright` into the project-level MCP file of Claude Code (`.mcp.json`) and Cursor (`.cursor/mcp.json`). They change only that server: other servers and keys stay as they are, a file that is not valid JSON with an `mcpServers` object is skipped with a warning, and the server is removed again when the `execution` block is gone. `qaspec update` does this even when skills are up to date, so run it after editing the `execution` block.
+
+The server runs `npx -y @playwright/mcp@0.0.83 --isolated`, plus:
+
+| Setting | Argument |
+|---------|----------|
+| `execution.auth.storageState` | `--storage-state <project root>/<storageState>`; the project root is `${CLAUDE_PROJECT_DIR:-.}` for Claude Code and `${workspaceFolder}` for Cursor |
+| `execution.network.blockedOrigins` | `--blocked-origins <origin>;<origin>` |
+
+Claude Code asks you to approve project servers from `.mcp.json` the first time it starts them.
+
+For other agent tools, add the same server by hand to their MCP configuration, with the session path written relative to the project root or as an absolute path:
+
+```json
+{
+  "mcpServers": {
+    "qaspec-playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.83", "--isolated", "--storage-state", ".qaspec/auth/storage-state.json", "--blocked-origins", "https://production.example.com"]
+    }
+  }
+}
+``` Credential values of four or more characters are replaced with `[redacted]` in the script output, both as written and as they appear inside a JSON string. The command fails when the script exits non-zero, times out or does not write a valid storage state, and removes any session file in those cases. On POSIX the session file is created readable only by its owner before the script runs (inside a new directory, that directory too), and it stays that way as long as the script writes into the existing file, as Playwright's `context.storageState({ path })` does.
 
 ---
 

@@ -65,6 +65,37 @@ describe('InitCommand', () => {
       expect(await directoryExists(path.join(openspecPath, 'changes', 'archive'))).toBe(true);
     });
 
+    it('should write the Playwright MCP server for Claude Code and Cursor when the config has an execution block', async () => {
+      await fs.mkdir(path.join(testDir, 'qaspec'), { recursive: true });
+      await fs.writeFile(
+        path.join(testDir, 'qaspec', 'config.yaml'),
+        `schema: qaspec-pr-review
+execution:
+  app:
+    url: https://app.example.test
+`
+      );
+      const initCommand = new InitCommand({ tools: 'claude,cursor', force: true });
+
+      await initCommand.execute(testDir);
+
+      const claudeMcp = JSON.parse(await fs.readFile(path.join(testDir, '.mcp.json'), 'utf-8'));
+      const cursorMcp = JSON.parse(await fs.readFile(path.join(testDir, '.cursor', 'mcp.json'), 'utf-8'));
+      expect(claudeMcp.mcpServers['qaspec-playwright'].command).toBe('npx');
+      expect(cursorMcp.mcpServers['qaspec-playwright'].command).toBe('npx');
+      const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+      expect(output).toContain('Playwright MCP server "qaspec-playwright" written to .mcp.json');
+    });
+
+    it('should not create MCP files on a fresh init without an execution block', async () => {
+      const initCommand = new InitCommand({ tools: 'claude,cursor', force: true });
+
+      await initCommand.execute(testDir);
+
+      expect(await fileExists(path.join(testDir, '.mcp.json'))).toBe(false);
+      expect(await fileExists(path.join(testDir, '.cursor', 'mcp.json'))).toBe(false);
+    });
+
     it('should print provider-neutral publish copy in getting-started output', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
 

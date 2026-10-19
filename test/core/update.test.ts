@@ -609,6 +609,31 @@ Old instructions content
       consoleSpy.mockRestore();
     });
 
+    it('should sync the Playwright MCP server even when tools are up to date', async () => {
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+      await initCommand.execute(testDir);
+      await fs.writeFile(
+        path.join(testDir, 'qaspec', 'config.yaml'),
+        `schema: qaspec-pr-review
+execution:
+  app:
+    url: https://app.example.test
+`
+      );
+      const consoleSpy = vi.spyOn(console, 'log');
+
+      await updateCommand.execute(testDir);
+
+      const claudeMcp = JSON.parse(await fs.readFile(path.join(testDir, '.mcp.json'), 'utf-8'));
+      expect(claudeMcp.mcpServers['qaspec-playwright'].command).toBe('npx');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('up to date'));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Playwright MCP server "qaspec-playwright" written to .mcp.json')
+      );
+
+      consoleSpy.mockRestore();
+    });
+
     it('should detect update needed when generatedBy is missing', async () => {
       // Set up a configured tool without generatedBy
       const skillsDir = path.join(testDir, '.claude', 'skills');
