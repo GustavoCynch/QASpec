@@ -35,13 +35,15 @@ const PROJECT_ROOT_REFERENCE: Readonly<Record<string, string>> = {
   cursor: '${workspaceFolder}',
 };
 
-export type ExecutionMcpStatus = 'written' | 'removed' | 'invalid';
+export type ExecutionMcpStatus = 'written' | 'removed' | 'invalid' | 'error';
 
 export interface ExecutionMcpResult {
   toolId: string;
   /** MCP file path relative to the project root. */
   file: string;
   status: ExecutionMcpStatus;
+  /** Why the file could not be read or written, for `error`. */
+  detail?: string;
 }
 
 interface McpServerEntry {
@@ -126,25 +128,39 @@ async function syncToolEntry(
 
 /**
  * Brings the Playwright server of each given tool in line with the current `execution` block.
- * Returns only the files that changed or could not be updated.
+ * Returns only the files that changed or could not be updated; a file that cannot be written is
+ * reported rather than failing the command. Nothing changes when qaspec/config.yaml is missing
+ * or cannot be read, so a config typo never removes the server.
  */
 export async function syncExecutionMcpEntries(
   projectRoot: string,
   toolIds: readonly string[]
 ): Promise<ExecutionMcpResult[]> {
-  const execution = readProjectConfig(projectRoot)?.execution;
+  const config = readProjectConfig(projectRoot);
+  if (!config) {
+    return [];
+  }
   const results: ExecutionMcpResult[] = [];
   for (const toolId of toolIds) {
     const file = EXECUTION_MCP_CONFIG_FILES[toolId];
     if (!file) {
       continue;
     }
-    const result = await syncToolEntry(projectRoot, toolId, file, execution);
-    if (result) {
-      results.push(result);
+    try {
+      const result = await syncToolEntry(projectRoot, toolId, file, config.execution);
+      if (result) {
+        results.push(result);
+      }
+    } catch (error) {
+      results.push({ toolId, file, status: 'error', detail: (error as Error).message });
     }
   }
   return results;
+}
+
+/** Whether a result needs the user's attention rather than just reporting a change. */
+export function isExecutionMcpWarning(result: ExecutionMcpResult): boolean {
+  return result.status === 'invalid' || result.status === 'error';
 }
 
 export function formatExecutionMcpResult(result: ExecutionMcpResult): string {
@@ -153,10 +169,15 @@ export function formatExecutionMcpResult(result: ExecutionMcpResult): string {
     case 'written':
       return `Playwright MCP server ${server} written to ${result.file}`;
     case 'removed':
-      return `Playwright MCP server ${server} removed from ${result.file} (no execution block in qaspec/config.yaml)`;
+      return `Playwright MCP server ${server} removed from ${result.file} (no valid execution block in qaspec/config.yaml)`;
     case 'invalid':
       return (
         `Skipped ${result.file}: it is not valid JSON with an mcpServers object. ` +
+        `Add the ${server} server manually (see docs/cli.md).`
+      );
+    case 'error':
+      return (
+        `Could not update ${result.file} (${result.detail}). ` +
         `Add the ${server} server manually (see docs/cli.md).`
       );
   }
