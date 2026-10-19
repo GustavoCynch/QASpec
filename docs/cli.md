@@ -77,7 +77,7 @@ These options work with all commands:
 
 Initialize QASpec in your project. Creates the folder structure and configures AI tool integrations.
 
-Default behavior uses global config defaults: profile `core`, delivery `both`, workflows `analyze`, `cases`, `publish`, `archive`.
+Default behavior uses global config defaults: profile `core`, delivery `both`, workflows `analyze`, `cases`, `publish`, `execute`, `archive`.
 
 ```
 qaspec init [path] [options]

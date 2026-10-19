@@ -9,23 +9,31 @@ import {
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return four QASpec skills when unfiltered', () => {
+    it('should return five QASpec skills when unfiltered', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(4);
+      expect(templates).toHaveLength(5);
     });
 
     it('should return QASpec core skills for CORE_WORKFLOWS', () => {
       const templates = getSkillTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(4);
+      expect(templates).toHaveLength(5);
       const dirNames = templates.map((t) => t.dirName);
       expect(dirNames).toEqual(
         expect.arrayContaining([
           'qaspec-analyze',
           'qaspec-cases',
           'qaspec-publish',
+          'qaspec-execute',
           'qaspec-archive',
         ])
       );
+    });
+
+    it('should return only the execute skill for the execute workflow', () => {
+      const filtered = getSkillTemplates(['execute']);
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].dirName).toBe('qaspec-execute');
+      expect(filtered[0].template.name).toBe('qaspec-execute');
     });
 
     it('should have unique directory names when unfiltered', () => {
@@ -97,16 +105,16 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandTemplates', () => {
-    it('should return four QASpec commands when unfiltered', () => {
+    it('should return five QASpec commands when unfiltered', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(4);
+      expect(templates).toHaveLength(5);
     });
 
-    it('should return four QASpec commands for CORE_WORKFLOWS', () => {
+    it('should return five QASpec commands for CORE_WORKFLOWS', () => {
       const templates = getCommandTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(4);
+      expect(templates).toHaveLength(5);
       expect(templates.map((t) => t.id).sort()).toEqual(
-        ['analyze', 'archive', 'cases', 'publish'].sort()
+        ['analyze', 'archive', 'cases', 'execute', 'publish'].sort()
       );
     });
 
@@ -143,9 +151,17 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandContents', () => {
-    it('should return four command contents when unfiltered', () => {
+    it('should return five command contents when unfiltered', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(4);
+      expect(contents).toHaveLength(5);
+    });
+
+    it('should return the execute command for the execute workflow', () => {
+      const contents = getCommandContents(['execute']);
+      expect(contents).toHaveLength(1);
+      expect(contents[0].id).toBe('execute');
+      expect(contents[0].name).toBe('QAS: Execute');
+      expect(contents[0].body).toContain('qaspec execute start --change');
     });
 
     it('should have valid content structure', () => {

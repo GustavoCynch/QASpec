@@ -361,7 +361,7 @@ describe('workspace command', () => {
     expect(readLocalState(setup.workspace.root).workspace_skills).toEqual(
       expect.objectContaining({
         selected_agents: [],
-        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
+        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'execute', 'archive'],
       })
     );
   });
@@ -412,14 +412,14 @@ describe('workspace command', () => {
       expect.objectContaining({
         profile: 'core',
         delivery: 'commands',
-        workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
+        workflow_ids: ['analyze', 'cases', 'publish', 'execute', 'archive'],
         selected_agents: ['codex'],
         skills_only: true,
         delivery_notice: expect.stringContaining('skills only'),
         refreshed: [
           expect.objectContaining({
             tool_id: 'codex',
-            workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
+            workflow_ids: ['analyze', 'cases', 'publish', 'execute', 'archive'],
           }),
         ],
         removed: [],
@@ -441,7 +441,7 @@ describe('workspace command', () => {
         selected_agents: ['codex'],
         last_applied_profile: 'core',
         last_applied_delivery: 'commands',
-        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'archive'],
+        last_applied_workflow_ids: ['analyze', 'cases', 'publish', 'execute', 'archive'],
       })
     );
 

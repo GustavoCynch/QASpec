@@ -129,11 +129,12 @@ execution:
 
       await initCommand.execute(testDir);
 
-      // Core profile: analyze, matrix, publish, archive
+      // Core profile: analyze, cases, publish, execute, archive
       const coreSkillNames = [
         'qaspec-analyze',
         'qaspec-cases',
         'qaspec-publish',
+        'qaspec-execute',
         'qaspec-archive',
       ];
 
@@ -167,11 +168,12 @@ execution:
 
       await initCommand.execute(testDir);
 
-      // Core profile: analyze, matrix, publish, archive
+      // Core profile: analyze, cases, publish, execute, archive
       const coreCommandNames = [
         'qsx/analyze.md',
         'qsx/cases.md',
         'qsx/publish.md',
+        'qsx/execute.md',
         'qsx/archive.md',
       ];
 
@@ -193,6 +195,16 @@ execution:
         const cmdFile = path.join(testDir, '.claude', 'commands', cmdName);
         expect(await fileExists(cmdFile)).toBe(false);
       }
+    });
+
+    it('should generate the execute skill and command for Claude Code and Cursor', async () => {
+      const initCommand = new InitCommand({ tools: 'claude,cursor', force: true });
+      await initCommand.execute(testDir);
+
+      expect(await fileExists(path.join(testDir, '.claude', 'skills', 'qaspec-execute', 'SKILL.md'))).toBe(true);
+      expect(await fileExists(path.join(testDir, '.claude', 'commands', 'qsx', 'execute.md'))).toBe(true);
+      expect(await fileExists(path.join(testDir, '.cursor', 'skills', 'qaspec-execute', 'SKILL.md'))).toBe(true);
+      expect(await fileExists(path.join(testDir, '.cursor', 'commands', 'qsx-execute.md'))).toBe(true);
     });
 
     it('should not generate opsx-propose command for Cursor on fresh init', async () => {

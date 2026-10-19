@@ -28,10 +28,11 @@ describe('tool-detection', () => {
 
   describe('SKILL_NAMES', () => {
     it('should contain only QASpec core skill directory names', () => {
-      expect(SKILL_NAMES).toHaveLength(4);
+      expect(SKILL_NAMES).toHaveLength(5);
       expect(SKILL_NAMES).toContain('qaspec-analyze');
       expect(SKILL_NAMES).toContain('qaspec-cases');
       expect(SKILL_NAMES).toContain('qaspec-publish');
+      expect(SKILL_NAMES).toContain('qaspec-execute');
       expect(SKILL_NAMES).toContain('qaspec-archive');
     });
   });

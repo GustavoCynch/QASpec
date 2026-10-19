@@ -10,25 +10,27 @@ QASpec treats testing work as **actions**, not rigid phases:
 - Use normal chat for informal exploration before starting analyze
 - Run `/qsx:cases` when you need test cases covering the approved specs
 - Run `/qsx:publish` only after human approval
+- Run `/qsx:execute` after publish to run the approved cases in a real browser and report the results to your TCMS
 - Run `/qsx:archive` when the change is done
 
 You can revisit earlier steps; halts exist where human judgment matters.
 
 ## Core profile (default)
 
-`qaspec init` installs four workflows:
+`qaspec init` installs five workflows:
 
 | Id | Slash command | Output |
 |----|---------------|--------|
 | `analyze` | `/qsx:analyze` | `analysis.md` + delta specs |
 | `cases` | `/qsx:cases` | `testcases.md` (preconditions + steps per case) |
 | `publish` | `/qsx:publish` | In-chat summary, then **TCMS** upload after confirm; checkbox marks in `testcases.md` |
+| `execute` | `/qsx:execute` | Browser run of the approved cases; app findings as questions; TCMS results after confirm |
 | `archive` | `/qsx:archive` | Archived change |
 
 Typical happy path:
 
 ```text
-/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:archive
+/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:execute ──► /qsx:archive
 ```
 
 ### Halts, gates, and prerequisites
@@ -40,12 +42,15 @@ The QA pipeline uses **CLI gates** so critical invariants are mechanically verif
 | After analyze halt | `qaspec approve analyze --change <name> [--head-sha <sha>]` | User approves the digest; records content hash + optional PR head SHA in `.qaspec.yaml` |
 | Before cases halt | `qaspec validate cases --change <name>` | Every requirement has a covering case; every case has a `req` annotation; format lint passes |
 | Before publish upload | `qaspec publish-gate --change <name>` | Approval valid, cases validation passes, usable per-change TCMS target (`qaspec tcms set`); emits `qaspec-gate:<token>` |
+| Before an execute run | `qaspec execute start --change <name>` | Approval valid, cases validation passes, `execution` settings present, and, when `execution.auth` is set, credential and session files git-ignored; creates nothing when a gate fails |
+| Before TCMS results | `qaspec execute results-gate --run <id>` | Run finished, every `needs-triage` case judged, usable TCMS target; emits `results-gate:<token>` |
 
 Check approval state anytime with `qaspec status --change <name> --json` — the `approval` block reports `valid`, `stale`, or `missing` for `qaspec-pr-review` changes.
 
 - **Analyze → cases:** `analysis.md` and co-produced delta specs are the validated source of truth. Cases halts when `approval.analyze` is `stale` or `missing` and asks for re-approval via `/qsx:analyze`. Analyze ends with an **approval digest** (zero to three questions); after approval run `qaspec approve analyze`.
 - **Cases → publish:** Every case requires `<!-- req: capability/slug -->`, `assumption:<id>`, or `gap`. Cases halts only after `qaspec validate cases` passes.
 - **Publish summary → upload:** Run `qaspec publish-gate` before the in-chat summary. Cite the gate token with user confirmation before the first TCMS MCP call. Per case: MCP create → mark `- [x]` in `testcases.md`; on re-run, unchecked cases are reconciled against the TCMS by title before creating — never blind-create.
+- **Execute:** `qaspec execute start` checks the same approval and validation gates as publish. With `execution.app.readiness: manual`, the run then halts once until you confirm that the app serves the change's code. Each failure is judged in a fresh subagent that did not drive the browser; when no subagent can be launched, the workflow stops and never judges in the browsing context. Only app defects become findings, and each is asked as a sense-check question. TCMS results need `qaspec execute results-gate` and one confirmation halt, and they match existing TCMS cases by exact title, so publish the cases first.
 - **Legacy changes:** Changes created before the approval ledger have `approval: missing` — re-run analyze halt and `qaspec approve analyze` rather than failing hard.
 - **Migration:** If you previously edited `publish-plan.md` before confirm, edit `testcases.md` instead. A legacy `publish-log.md` from an earlier QASpec version is ignored. Legacy `execution-context.md` values are surfaced as an alternative in the target halt and, once chosen, persisted per change via `qaspec tcms set`.
 
@@ -90,6 +95,14 @@ Use when a PR or requirement doc needs structured risk analysis before cases are
 
 Use when stakeholders need `analysis.md` before committing to a full case list.
 
+### Browser run of approved cases
+
+```text
+/qsx:publish ──► /qsx:execute ──► (confirm app) ──► run ──► judge ──► (answer findings) ──► (results-gate + confirm) ──► TCMS results
+```
+
+Use when the approved cases should run in a real browser and you want to hear only about application defects. The run needs the `qaspec-playwright` browser server (see [CLI](cli.md#browser-server-for-qsxexecute)) and credentials kept in a git-ignored file.
+
 ### Enriched test cases format
 
 Each case keeps one progress checkbox, with detail nested below:
@@ -116,11 +129,11 @@ Agents build preconditions and steps from `analysis.md`, the diff, requirements,
 ### Custom profile (subset)
 
 ```bash
-qaspec config profile   # Select a subset of the four workflows
+qaspec config profile   # Select a subset of the five workflows
 qaspec update           # Regenerate skills/commands; remove deselected ones
 ```
 
-Custom profiles only include QASpec workflow ids (`analyze`, `cases`, `publish`, `archive`). QASpec does not install legacy `propose`, `apply`, `sync`, or `/opsx:*` commands.
+Custom profiles only include QASpec workflow ids (`analyze`, `cases`, `publish`, `execute`, `archive`). QASpec does not install legacy `propose`, `apply`, `sync`, or `/opsx:*` commands.
 
 ## Custom schemas
 

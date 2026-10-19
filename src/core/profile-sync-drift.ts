@@ -16,6 +16,7 @@ export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
   analyze: qaspecSkillDirName('analyze'),
   cases: qaspecSkillDirName('cases'),
   publish: qaspecSkillDirName('publish'),
+  execute: qaspecSkillDirName('execute'),
   archive: qaspecSkillDirName('archive'),
 };
 
