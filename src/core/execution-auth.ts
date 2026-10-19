@@ -43,7 +43,7 @@ export interface ExecuteLoginResult {
 }
 
 /** Resolves with git's exit code; rejects only when git itself cannot run. */
-function gitExitCode(projectRoot: string, args: string[]): Promise<number> {
+export function gitExitCode(projectRoot: string, args: string[]): Promise<number> {
   return new Promise((resolve, reject) => {
     execFile('git', args, { cwd: projectRoot }, (error) => {
       if (!error) {
@@ -65,7 +65,7 @@ function gitExitCode(projectRoot: string, args: string[]): Promise<number> {
  * Accepts the file only when git ignores it and does not track it. A tracked file is reported
  * separately because git keeps tracking it even after a matching .gitignore entry is added.
  */
-async function assertIgnoredByGit(projectRoot: string, relativePath: string): Promise<void> {
+export async function assertIgnoredByGit(projectRoot: string, relativePath: string): Promise<void> {
   if ((await gitExitCode(projectRoot, ['ls-files', '--error-unmatch', '--', relativePath])) === 0) {
     throw new Error(
       `${relativePath} is tracked by git. Remove it from the index with "git rm --cached ${relativePath}" ` +
