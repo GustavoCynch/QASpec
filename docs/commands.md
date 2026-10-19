@@ -13,9 +13,10 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 | `/qsx:analyze` | Create `analysis.md` and change delta specs (risk, capabilities, dual review) |
 | `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
 | `/qsx:publish` | Publish approved cases to your **TCMS** (any MCP-backed provider) |
+| `/qsx:execute` | Run approved cases in a real browser, judge failures, and report results to your **TCMS** |
 | `/qsx:archive` | Finalize and archive the change |
 
-Workflow ids: `analyze`, `cases`, `publish`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these four).
+Workflow ids: `analyze`, `cases`, `publish`, `execute`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these five).
 
 Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
@@ -103,6 +104,33 @@ tcms:
 ```
 
 Project codes and base URLs often vary per PR or tenant, so the target lives with the change. Teams with one fixed target can uncomment the `tcms` defaults block in `qaspec/config.yaml` (user-managed; publish never writes it). If you previously edited `publish-plan.md` before confirm, edit `testcases.md` or state exclusions in chat instead.
+
+---
+
+## `/qsx:execute`
+
+Run the **approved** cases from `testcases.md` in a real browser, through the `qaspec-playwright` MCP server, and report only application defects.
+
+**Syntax:**
+
+```text
+/qsx:execute [change-name]
+```
+
+**Prerequisites:**
+
+- Approved delta specs from `/qsx:analyze` and valid cases from `/qsx:cases` (`qaspec validate cases` passes)
+- An `execution` block in `qaspec/config.yaml`, and the `qaspec-playwright` server that `qaspec init` or `qaspec update` writes for it (see [CLI](cli.md#browser-server-for-qsxexecute))
+- A subagent-capable agent tool: the judge runs in a fresh subagent, and the command stops when none can be launched
+
+**What it does:**
+
+1. Starts a run with `qaspec execute start`. With `execution.app.readiness: manual`, it halts once and asks you to confirm that the app serves the change's code.
+2. Stores a plan before each case, drives the browser, records the observations, and lets the `qaspec` CLI decide every verdict. A failed case is retried once from a clean state.
+3. Judges each case that still fails in a fresh subagent that did not drive the browser, as `agent`, `environment` or `app`. Only `app` becomes a finding, asked as a sense-check question for you to answer.
+4. Halts once before any TCMS write, showing the results and the gate token from `qaspec execute results-gate`. After you confirm, it records the results in a TCMS run and matches cases by exact title.
+
+Credentials stay in a git-ignored file that the login script reads, so the agent never receives them, and run folders stay out of git.
 
 ---
 

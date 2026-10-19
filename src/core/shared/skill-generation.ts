@@ -11,6 +11,8 @@ import {
   getQasCasesCommandTemplate,
   getQasPublishSkillTemplate,
   getQasPublishCommandTemplate,
+  getQasExecuteSkillTemplate,
+  getQasExecuteCommandTemplate,
   getQasArchiveSkillTemplate,
   getQasArchiveCommandTemplate,
   getFeedbackSkillTemplate,
@@ -42,6 +44,7 @@ const QAS_WORKFLOW_ENTRIES: SkillTemplateEntry[] = [
   { template: getQasAnalyzeSkillTemplate(), dirName: qaspecSkillDirName('analyze'), workflowId: 'analyze' },
   { template: getQasCasesSkillTemplate(), dirName: qaspecSkillDirName('cases'), workflowId: 'cases' },
   { template: getQasPublishSkillTemplate(), dirName: qaspecSkillDirName('publish'), workflowId: 'publish' },
+  { template: getQasExecuteSkillTemplate(), dirName: qaspecSkillDirName('execute'), workflowId: 'execute' },
   { template: getQasArchiveSkillTemplate(), dirName: qaspecSkillDirName('archive'), workflowId: 'archive' },
 ];
 
@@ -49,6 +52,7 @@ const QAS_COMMAND_ENTRIES: CommandTemplateEntry[] = [
   { template: getQasAnalyzeCommandTemplate(), id: 'analyze' },
   { template: getQasCasesCommandTemplate(), id: 'cases' },
   { template: getQasPublishCommandTemplate(), id: 'publish' },
+  { template: getQasExecuteCommandTemplate(), id: 'execute' },
   { template: getQasArchiveCommandTemplate(), id: 'archive' },
 ];
 

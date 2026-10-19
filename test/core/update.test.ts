@@ -162,6 +162,7 @@ Old instructions content
         'qaspec-analyze',
         'qaspec-cases',
         'qaspec-publish',
+        'qaspec-execute',
         'qaspec-archive',
       ];
 
@@ -235,8 +236,8 @@ Old instructions content
 
       await updateCommand.execute(testDir);
 
-      // Verify core profile commands were created (analyze, matrix, publish, archive)
-      const coreCommandIds = ['analyze', 'cases', 'publish', 'archive'];
+      // Verify core profile commands were created (analyze, cases, publish, execute, archive)
+      const coreCommandIds = ['analyze', 'cases', 'publish', 'execute', 'archive'];
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       for (const cmdId of coreCommandIds) {
         const cmdFile = path.join(commandsDir, `${cmdId}.md`);
@@ -1101,6 +1102,35 @@ metadata:
       expect(await FileSystemUtils.fileExists(
         path.join(testDir, '.claude', 'skills', 'openspec-propose', 'SKILL.md')
       )).toBe(false);
+    });
+
+    it('should add the execute workflow to a project generated with the four-workflow set', async () => {
+      // A project installed before execute existed: the custom four-workflow profile.
+      setMockConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['analyze', 'cases', 'publish', 'archive'],
+      });
+      await new InitCommand({ tools: 'claude', force: true }).execute(testDir);
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'skills', 'qaspec-execute', 'SKILL.md')
+      )).toBe(false);
+
+      // The core profile now includes execute; update adds it to the existing project.
+      setMockConfig({
+        featureFlags: {},
+        profile: 'core',
+        delivery: 'both',
+      });
+      await updateCommand.execute(testDir);
+
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'skills', 'qaspec-execute', 'SKILL.md')
+      )).toBe(true);
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'commands', 'qsx', 'execute.md')
+      )).toBe(true);
     });
 
     it('should respect skills-only delivery setting', async () => {

@@ -15,7 +15,7 @@ import {
 describe('profiles', () => {
   describe('CORE_WORKFLOWS', () => {
     it('should contain the default core workflows', () => {
-      expect(CORE_WORKFLOWS).toEqual(['analyze', 'cases', 'publish', 'archive']);
+      expect(CORE_WORKFLOWS).toEqual(['analyze', 'cases', 'publish', 'execute', 'archive']);
     });
 
     it('should be a subset of ALL_WORKFLOWS', () => {
@@ -27,7 +27,8 @@ describe('profiles', () => {
 
   describe('ALL_WORKFLOWS', () => {
     it('should contain all QASpec core workflows', () => {
-      expect(ALL_WORKFLOWS).toHaveLength(4);
+      expect(ALL_WORKFLOWS).toHaveLength(5);
+      expect(ALL_WORKFLOWS).toContain('execute');
     });
 
     it('should match CORE_WORKFLOWS', () => {

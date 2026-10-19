@@ -11,7 +11,7 @@ import type { Profile } from './global-config.js';
  * Core workflows included in the 'core' profile.
  * These provide the streamlined experience for new users.
  */
-export const CORE_WORKFLOWS = ['analyze', 'cases', 'publish', 'archive'] as const;
+export const CORE_WORKFLOWS = ['analyze', 'cases', 'publish', 'execute', 'archive'] as const;
 
 /** Legacy QASpec workflow ids mapped to their new name at resolution (not retired). */
 export const RENAMED_QAS_WORKFLOW_IDS: Record<string, string> = { matrix: 'cases' };
