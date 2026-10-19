@@ -17,6 +17,28 @@ const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 #   project: YOUR_PROJECT_CODE
 #   baseUrl: https://your-tcms.example.com
 #
+# execution — settings for /qsx:execute (agent-driven browser runs). Uncomment and edit.
+# Paths are relative to the project root. Keep envFile and storageState out of git (.gitignore):
+# they hold the test credentials and a logged-in browser session.
+# execution:
+#   app:
+#     url: https://app.example.test          # app under test, serving the change's code
+#     readiness: manual                      # manual: you confirm the app is ready; probe: GET probeUrl must return 2xx
+#     # probeUrl: https://app.example.test/health
+#   auth:
+#     envFile: .env.qa                       # dotenv file with the test credentials
+#     requiredVariables: [QA_USERNAME, QA_PASSWORD]
+#     loginScript: qaspec/scripts/login.mjs  # logs in and writes storageState; the agent never sees the password
+#     storageState: .qaspec/auth/storage-state.json
+#   network:
+#     blockedOrigins:                        # origins the agent's browser must never reach (e.g. production)
+#       - https://production.example.test
+#   controlCase: qaspec/references/control-case.md   # smoke case run at the start and end of every run
+#   readinessChecks:                         # commands that must exit 0 before cases run
+#     - name: backend-deployed
+#       command: ./scripts/check-backend-deployed.sh
+#   dataPrefix: QASPEC                       # prefix for data the agent creates
+#
 # workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
 # workflow.multipleSubagents.cases — dual Task analysts for /qsx:cases (default: false)
 # When false, the orchestrator does the phase with no Task subagents (not a single subagent).

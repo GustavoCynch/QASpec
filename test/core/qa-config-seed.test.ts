@@ -1,13 +1,14 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import {
   getQaspecPrReviewConfigSeed,
   QASPEC_PR_REVIEW_RULE_ARTIFACT_IDS,
 } from '../../src/core/qa-config-seed.js';
 import { serializeConfig } from '../../src/core/config-prompts.js';
-import { validateConfigRules } from '../../src/core/project-config.js';
+import { readProjectConfig, validateConfigRules } from '../../src/core/project-config.js';
 import { resolveSchema } from '../../src/core/artifact-graph/resolver.js';
 
 describe('qa-config-seed', () => {
@@ -96,6 +97,47 @@ describe('qa-config-seed', () => {
     expect(yaml).toMatch(/user-managed defaults/i);
     expect(yaml).toMatch(/qaspec tcms set/);
     expect(yaml).toMatch(/publish never writes this block/i);
+  });
+
+  it('serializeConfig for qaspec-pr-review includes a commented execution example that parses cleanly', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+    const lines = yaml.split('\n');
+    const start = lines.indexOf('# execution:');
+    expect(start).toBeGreaterThan(-1);
+    const end = lines.indexOf('#', start);
+    const example = lines
+      .slice(start, end)
+      .map((line) => line.slice(2))
+      .join('\n');
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-execution-seed-'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fs.mkdirSync(path.join(tempDir, 'qaspec'));
+      fs.writeFileSync(
+        path.join(tempDir, 'qaspec', 'config.yaml'),
+        `schema: qaspec-pr-review\n${example}\n`
+      );
+      const config = readProjectConfig(tempDir);
+
+      expect(config?.execution?.app?.url).toBeDefined();
+      expect(config?.execution?.auth?.storageState).toBeDefined();
+      expect(config?.execution?.network?.blockedOrigins?.length).toBeGreaterThan(0);
+      expect(config?.execution?.controlCase).toBeDefined();
+      expect(config?.execution?.readinessChecks?.length).toBeGreaterThan(0);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serializeConfig for qaspec-pr-review contains no adopter-specific values', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' }).toLowerCase();
+
+    for (const adopterValue of ['cynch', 'orderstorm', 'wsservice']) {
+      expect(yaml).not.toContain(adopterValue);
+    }
   });
 
   it('serializeConfig for qaspec-pr-review is provider-neutral and provider-absent', () => {

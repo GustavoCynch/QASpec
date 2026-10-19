@@ -589,6 +589,173 @@ tcms:
       });
     });
 
+    describe('execution block', () => {
+      const writeConfig = (body: string) => {
+        const configDir = path.join(tempDir, 'qaspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(path.join(configDir, 'config.yaml'), `schema: qaspec-pr-review\n${body}`);
+      };
+
+      it('should parse a complete execution block', () => {
+        writeConfig(`execution:
+  app:
+    url: https://app.example.test
+    readiness: probe
+    probeUrl: https://app.example.test/health
+  auth:
+    envFile: .env.qa
+    requiredVariables: [QA_USERNAME, QA_PASSWORD]
+    loginScript: qaspec/scripts/login.mjs
+    storageState: .qaspec/auth/storage-state.json
+  network:
+    blockedOrigins:
+      - https://production.example.test/
+  controlCase: qaspec/references/control-case.md
+  readinessChecks:
+    - name: backend-deployed
+      command: ./scripts/check-backend-deployed.sh
+  dataPrefix: QA-AGENT
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({
+          app: {
+            url: 'https://app.example.test',
+            readiness: 'probe',
+            probeUrl: 'https://app.example.test/health',
+          },
+          auth: {
+            envFile: '.env.qa',
+            requiredVariables: ['QA_USERNAME', 'QA_PASSWORD'],
+            loginScript: 'qaspec/scripts/login.mjs',
+            storageState: '.qaspec/auth/storage-state.json',
+          },
+          network: { blockedOrigins: ['https://production.example.test'] },
+          controlCase: 'qaspec/references/control-case.md',
+          readinessChecks: [
+            { name: 'backend-deployed', command: './scripts/check-backend-deployed.sh' },
+          ],
+          dataPrefix: 'QA-AGENT',
+        });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should load clean when execution block is missing', () => {
+        writeConfig('');
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toBeUndefined();
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn and omit invalid execution fields while keeping valid siblings', () => {
+        writeConfig(`execution:
+  app:
+    url: not-a-url
+    readiness: sometimes
+  auth:
+    envFile: .env.qa
+  dataPrefix: 42
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({ auth: { envFile: '.env.qa' } });
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'execution.app.url'")
+        );
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'execution.app.readiness'")
+        );
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'execution.dataPrefix'")
+        );
+      });
+
+      it('should reject paths that are absolute or leave the project root', () => {
+        writeConfig(`execution:
+  auth:
+    envFile: ../secrets.env
+    loginScript: 'C:\\scripts\\login.mjs'
+    storageState: /tmp/storage-state.json
+  controlCase: qaspec/references/control-case.md
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({ controlCase: 'qaspec/references/control-case.md' });
+        for (const field of ['envFile', 'loginScript', 'storageState']) {
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            expect.stringContaining(`Invalid 'execution.auth.${field}'`)
+          );
+        }
+      });
+
+      it('should keep valid list entries and warn about invalid ones', () => {
+        writeConfig(`execution:
+  auth:
+    requiredVariables: [QA_USERNAME, '']
+  network:
+    blockedOrigins:
+      - https://production.example.test
+      - not-an-origin
+  readinessChecks:
+    - name: backend-deployed
+      command: ./scripts/check-backend-deployed.sh
+    - name: missing-command
+    - plain string
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({
+          auth: { requiredVariables: ['QA_USERNAME'] },
+          network: { blockedOrigins: ['https://production.example.test'] },
+          readinessChecks: [
+            { name: 'backend-deployed', command: './scripts/check-backend-deployed.sh' },
+          ],
+        });
+        for (const label of [
+          'execution.auth.requiredVariables[1]',
+          'execution.network.blockedOrigins[1]',
+          'execution.readinessChecks[1]',
+          'execution.readinessChecks[2]',
+        ]) {
+          expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining(`Invalid '${label}'`));
+        }
+      });
+
+      it('should warn when readiness is probe without a probeUrl', () => {
+        writeConfig(`execution:
+  app:
+    url: https://app.example.test
+    readiness: probe
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({
+          app: { url: 'https://app.example.test', readiness: 'probe' },
+        });
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("'execution.app.probeUrl' is required")
+        );
+      });
+
+      it('should warn and ignore execution when it is not an object', () => {
+        writeConfig(`execution: [app]
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toBeUndefined();
+        expect(config?.schema).toBe('qaspec-pr-review');
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid 'execution'"));
+      });
+    });
+
     describe('multi-line and special characters', () => {
       it('should preserve multi-line context', () => {
         const configDir = path.join(tempDir, 'qaspec');
