@@ -649,25 +649,6 @@ qaspec tcms show --change <name> [--json]
 
 `set` upserts the provided fields (at least one required) without touching others. `show` prints the resolved target with each field's source (`change` or `config`) and whether it is usable (provider + project present). The `tcms` block in `qaspec/config.yaml` acts only as user-managed defaults — no command or workflow writes it.
 
-### `qaspec execute login`
-
-Run the project's login script and save the browser session that `/qsx:execute` starts from, so the agent never receives the test credentials.
-
-```
-qaspec execute login [--json]
-```
-
-Reads `execution.auth` from `qaspec/config.yaml`:
-
-| Setting | Purpose |
-|---------|---------|
-| `envFile` | Dotenv file with the test credentials |
-| `requiredVariables` | Variables `envFile` must define |
-| `loginScript` | `.js`, `.mjs` or `.cjs` file run with Node.js |
-| `storageState` | Where the browser session is saved |
-
-Before running the script, the command stops when the project is not a git repository, or when `envFile` or `storageState` is tracked by git or not ignored by it. The script runs from the project root with the `envFile` variables, plus `QASPEC_STORAGE_STATE` (absolute path where it must save the session, e.g. with Playwright's `context.storageState({ path })`) and `QASPEC_APP_URL` (`execution.app.url`, when set). It must finish within 120 seconds. Credential values of four or more characters are replaced with `[redacted]` in the script output. The command fails when the script exits non-zero or does not write a valid storage state; on success the session file is readable only by its owner (POSIX).
-
 **Examples:**
 
 ```bash
@@ -710,6 +691,25 @@ Progress: 2/4 artifacts complete
   ]
 }
 ```
+
+### `qaspec execute login`
+
+Run the project's login script and save the browser session that `/qsx:execute` starts from, so the agent never receives the test credentials.
+
+```
+qaspec execute login [--json]
+```
+
+Reads `execution.auth` from `qaspec/config.yaml`:
+
+| Setting | Purpose |
+|---------|---------|
+| `envFile` | Dotenv file with the test credentials |
+| `requiredVariables` | Variables `envFile` must define |
+| `loginScript` | `.js`, `.mjs` or `.cjs` file run with Node.js |
+| `storageState` | Where the browser session is saved |
+
+Before running the script, the command stops when the project is not a git repository, when `envFile` or `storageState` is tracked by git or not ignored by it, or when both settings point at the same file. The script runs from the project root with the `envFile` variables, plus `QASPEC_STORAGE_STATE` (absolute path where it must save the session, e.g. with Playwright's `context.storageState({ path })`) and `QASPEC_APP_URL` (`execution.app.url`, when set). It must finish within 120 seconds; after that it receives SIGTERM, then SIGKILL two seconds later. Credential values of four or more characters are replaced with `[redacted]` in the script output, both as written and as they appear inside a JSON string. The command fails when the script exits non-zero, times out or does not write a valid storage state, and removes any session file in those cases; on success the session file is readable only by its owner (POSIX).
 
 ---
 

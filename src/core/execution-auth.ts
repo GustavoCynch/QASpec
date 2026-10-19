@@ -18,6 +18,9 @@ export const LOGIN_SCRIPT_EXTENSIONS = ['.js', '.mjs', '.cjs'] as const;
 
 export const DEFAULT_LOGIN_TIMEOUT_MS = 120_000;
 
+/** Time a timed-out script gets to exit after SIGTERM before it is killed. */
+const KILL_GRACE_MS = 2_000;
+
 /** Shorter values are not redacted: masking them would corrupt ordinary output. */
 const MIN_REDACTED_LENGTH = 4;
 
@@ -78,6 +81,12 @@ function redact(text: string, secrets: string[]): string {
   return secrets.reduce((current, secret) => current.split(secret).join(REDACTED), text);
 }
 
+/** A secret as written raw and as it appears inside a JSON string (e.g. a logged object). */
+function secretForms(value: string): string[] {
+  const jsonEscaped = JSON.stringify(value).slice(1, -1);
+  return jsonEscaped === value ? [value] : [value, jsonEscaped];
+}
+
 interface LoginScriptOutcome {
   exitCode: number | null;
   output: string;
@@ -98,20 +107,46 @@ function runLoginScript(
     });
     let output = '';
     let timedOut = false;
+    let settled = false;
+    let killTimer: NodeJS.Timeout | undefined;
     child.stdout.on('data', (chunk) => (output += chunk));
     child.stderr.on('data', (chunk) => (output += chunk));
+
+    // 'close' waits for every output pipe, which a process started by the script can keep
+    // open after the script exits; once timed out, the script's own exit is enough.
+    const finish = (exitCode: number | null) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(killTimer);
+      child.stdout.destroy();
+      child.stderr.destroy();
+      resolve({ exitCode, output, timedOut });
+    };
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill();
+      if (child.exitCode !== null || child.signalCode !== null) {
+        finish(child.exitCode);
+        return;
+      }
+      child.kill('SIGTERM');
+      killTimer = setTimeout(() => child.kill('SIGKILL'), KILL_GRACE_MS);
     }, timeoutMs);
+
     child.on('error', (error) => {
+      settled = true;
       clearTimeout(timer);
+      clearTimeout(killTimer);
       reject(error);
     });
-    child.on('close', (exitCode) => {
-      clearTimeout(timer);
-      resolve({ exitCode, output, timedOut });
+    child.on('exit', (exitCode) => {
+      if (timedOut) {
+        finish(exitCode);
+      }
     });
+    child.on('close', (exitCode) => finish(exitCode));
   });
 }
 
@@ -141,6 +176,15 @@ export async function executeLogin(
   const loginScript = auth.loginScript as string;
   const storageState = auth.storageState as string;
 
+  const envFilePath = path.join(projectRoot, envFile);
+  const storageStatePath = path.join(projectRoot, storageState);
+  if (path.resolve(envFilePath) === path.resolve(storageStatePath)) {
+    throw new Error(
+      'execution.auth.storageState must not be the same file as execution.auth.envFile: ' +
+        'saving the session would overwrite the credentials.'
+    );
+  }
+
   if (!(LOGIN_SCRIPT_EXTENSIONS as readonly string[]).includes(path.extname(loginScript))) {
     throw new Error(
       `execution.auth.loginScript must be a .js, .mjs or .cjs file: QASpec runs it with Node.js (got ${loginScript}).`
@@ -156,7 +200,6 @@ export async function executeLogin(
   await assertIgnoredByGit(projectRoot, envFile);
   await assertIgnoredByGit(projectRoot, storageState);
 
-  const envFilePath = path.join(projectRoot, envFile);
   if (!existsSync(envFilePath)) {
     throw new Error(`${envFile} was not found. Create it with the test credentials.`);
   }
@@ -168,9 +211,9 @@ export async function executeLogin(
 
   const secrets = Object.values(credentials)
     .filter((value): value is string => typeof value === 'string' && value.length >= MIN_REDACTED_LENGTH)
+    .flatMap(secretForms)
     .sort((a, b) => b.length - a.length);
 
-  const storageStatePath = path.join(projectRoot, storageState);
   await fs.mkdir(path.dirname(storageStatePath), { recursive: true });
   // A session left by an earlier login must not pass validation if this login fails to write one.
   await fs.rm(storageStatePath, { force: true });
@@ -189,14 +232,19 @@ export async function executeLogin(
   );
   const output = redact(outcome.output, secrets);
 
+  // A failed login must not leave a session behind for a later run to start from.
+  const fail = async (message: string): Promise<never> => {
+    await fs.rm(storageStatePath, { force: true });
+    throw new Error(message);
+  };
   if (outcome.timedOut) {
-    throw new Error(`The login script timed out after ${timeoutMs} ms.\n${output}`.trimEnd());
+    await fail(`The login script timed out after ${timeoutMs} ms.\n${output}`.trimEnd());
   }
   if (outcome.exitCode !== 0) {
-    throw new Error(`The login script exited with code ${outcome.exitCode}.\n${output}`.trimEnd());
+    await fail(`The login script exited with code ${outcome.exitCode}.\n${output}`.trimEnd());
   }
   if (!(await isStorageState(storageStatePath))) {
-    throw new Error(
+    await fail(
       `The login script finished but did not write a valid storage state to ${storageState}. ` +
         "It must save the browser session to the path in QASPEC_STORAGE_STATE (for example with Playwright's " +
         'context.storageState({ path })).'
