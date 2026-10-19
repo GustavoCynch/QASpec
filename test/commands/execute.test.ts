@@ -1,11 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFileSync } from 'child_process';
-import { promises as fs } from 'fs';
+import { execFileSync, spawn } from 'child_process';
+import { existsSync, promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-import { runCLI } from '../helpers/run-cli.js';
+import { fileURLToPath } from 'url';
+import { ensureCliBuilt, runCLI } from '../helpers/run-cli.js';
+
+const CLI_ENTRY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist', 'cli', 'index.js');
 
 const PASSWORD = 'S3cret-Pa55word';
+
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 describe('qaspec execute login', () => {
   let projectRoot: string;
@@ -66,6 +78,41 @@ writeFileSync(process.env.QASPEC_STORAGE_STATE, JSON.stringify({ cookies: [], or
       output: 'password is [redacted]\n',
     });
   });
+
+  it.skipIf(process.platform === 'win32')(
+    'stops the login script and removes the session when the command is interrupted',
+    async () => {
+      await ensureCliBuilt();
+      await write('.gitignore', '.env.qa\n.qaspec/auth/\n');
+      await write(
+        path.join('scripts', 'login.mjs'),
+        `import { writeFileSync } from 'node:fs';
+writeFileSync('script.pid', String(process.pid));
+setInterval(() => {}, 1000);`
+      );
+      const cli = spawn(process.execPath, [CLI_ENTRY, 'execute', 'login'], {
+        cwd: projectRoot,
+        stdio: 'ignore',
+      });
+      const exited = new Promise<NodeJS.Signals | null>((resolve) =>
+        cli.on('exit', (_code, signal) => resolve(signal))
+      );
+      const pidFile = path.join(projectRoot, 'script.pid');
+      const deadline = Date.now() + 10_000;
+      while (!existsSync(pidFile) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const scriptPid = Number(await fs.readFile(pidFile, 'utf-8'));
+
+      cli.kill('SIGINT');
+
+      expect(await exited).toBe('SIGINT');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(isAlive(scriptPid)).toBe(false);
+      expect(existsSync(path.join(projectRoot, '.qaspec', 'auth', 'storage-state.json'))).toBe(false);
+    },
+    20_000
+  );
 
   it('exits with code 1 when the credentials file is not ignored by git', async () => {
     await write('.gitignore', '.qaspec/auth/\n');
