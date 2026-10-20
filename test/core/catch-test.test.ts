@@ -238,6 +238,52 @@ describe('recordTest validation', () => {
     expect(fs.existsSync(path.join(ready.runDir, 'tests'))).toBe(false);
   });
 
+  it('refuses a path that an earlier test of the run already uses, lists every problem, and writes nothing', async () => {
+    const fx = makeProjectFixture({ root: tmp });
+    const ready = await readyRun(fx);
+    const first = await recordTest(
+      testInput(ready, {
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: 'test/catch-currency.spec.ts',
+        content: spec('export const value = 1;'),
+      })
+    );
+    expect(first).toMatchObject({ ok: true, test: { id: 'T1', path: 'test/catch-currency.spec.ts' } });
+    const runsBefore = readRunsLog(fx.recordPath).length;
+
+    // The same file under another spelling, plus a field the kind does not allow: both problems are listed.
+    const duplicate = await recordTest(
+      testInput(ready, {
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: './test/catch-currency.spec.ts',
+        content: spec('export const value = 1;'),
+        mutant: 'M1',
+      })
+    );
+
+    expect(duplicate).toMatchObject({ ok: false });
+    expect((duplicate as { issues: Array<{ code: string }> }).issues.map((issue) => issue.code)).toEqual([
+      'unknown-field',
+      'path-duplicate',
+    ]);
+    expect(readRunsLog(fx.recordPath).length).toBe(runsBefore);
+    expect(ledgerOf(ready.runDir).filter((entry) => entry.stage === 'test')).toHaveLength(1);
+    expect(fs.existsSync(path.join(ready.runDir, 'tests', 'T2.json'))).toBe(false);
+
+    // A path no earlier test uses is still recorded, as the next test of the run.
+    const other = await recordTest(
+      testInput(ready, {
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: 'test/catch-currency-two.spec.ts',
+        content: spec('export const value = 1;'),
+      })
+    );
+    expect(other).toMatchObject({ ok: true, test: { id: 'T2', path: 'test/catch-currency-two.spec.ts' } });
+  });
+
   it('refuses blank content', async () => {
     const ready = await readyRun(makeProjectFixture({ root: tmp }));
 
@@ -362,7 +408,12 @@ describe('recordTest parent gates', () => {
 
     expect(outcome).toMatchObject({
       ok: true,
-      test: { outcome: 'not-caught-by-test', parentOutcomes: ['pass', 'pass'], mutantOutcome: 'pass' },
+      test: {
+        outcome: 'not-caught-by-test',
+        parentOutcomes: ['pass', 'pass'],
+        mutantOutcome: 'pass',
+        reason: 'The test run ended with pass on the mutated parent: the mutant is not caught.',
+      },
     });
     expect(changedInWorktree(ready.worktree, 'src/app.ts')).toBe(false);
   });
@@ -378,7 +429,12 @@ describe('recordTest parent gates', () => {
 
     expect(outcome).toMatchObject({
       ok: true,
-      test: { outcome: 'not-caught-by-test', parentOutcomes: ['pass', 'pass'], mutantOutcome: 'no-build' },
+      test: {
+        outcome: 'not-caught-by-test',
+        parentOutcomes: ['pass', 'pass'],
+        mutantOutcome: 'no-build',
+        reason: 'The test run ended with no-build on the mutated parent: the mutant is not caught.',
+      },
     });
     expect(changedInWorktree(ready.worktree, 'src/app.ts')).toBe(false);
   });

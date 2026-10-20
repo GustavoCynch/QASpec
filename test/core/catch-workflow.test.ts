@@ -219,6 +219,13 @@ describe('/qsx:catch workflow template', () => {
     expect(body).toMatch(/Run `finish` always, also after an error/);
   });
 
+  it('says a finished run takes no more records, except answers to its findings, which the person may give later', () => {
+    expect(body).toContain(
+      'A finished run takes no more records, except answers to its findings, which the person may give later with `qaspec catch answer`.'
+    );
+    expect(body).not.toContain('A finished run takes no more records.');
+  });
+
   it('keeps the wording free of adopter-specific values', () => {
     expect(body).not.toMatch(ADOPTER_DENYLIST);
     expect(getQasCatchCommandTemplate().content).not.toMatch(ADOPTER_DENYLIST);

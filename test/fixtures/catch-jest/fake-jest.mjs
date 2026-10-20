@@ -65,6 +65,8 @@ function writeFixtureReport(name) {
 //   // fake: broken on head  the test does not build: a suite that failed to run, with no assertion
 //   // fake: message on head: connect ECONNREFUSED  the run fails one assertion with this message (one line per message)
 //   // fake: pause on head   the run takes one second longer, then runs as usual
+//   // fake: crash-once on base  the first run of such a test exits 3 without a report; later runs run as usual
+//   // fake: sleep-once on base  the first run of such a test never ends; later runs run as usual
 // Every test run appends the text each named test had at that moment to <record>.runs, one JSON line per run.
 const BASE_MARKER = 'export const value = 1;';
 const HEAD_MARKER = 'export const value = 2;';
@@ -91,7 +93,7 @@ function sideOf(name) {
 function directivesOf(name) {
   const text = fs.readFileSync(name, 'utf8');
   const side = sideOf(name);
-  return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken|pause) on (base|head)\s*$/gm)]
+  return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken|pause|crash-once|sleep-once) on (base|head)\s*$/gm)]
     .filter((match) => match[2] === side)
     .map((match) => match[1]);
 }
@@ -109,9 +111,9 @@ function existingText(name) {
   return fs.existsSync(name) ? fs.readFileSync(name, 'utf8') : null;
 }
 
-/** Counts the runs that carry a flaky directive and returns the count of this one (1, 2, ...). */
-function nextFlakyCount() {
-  const countPath = `${recordPath}.flaky`;
+/** Counts the runs that carry one directive, kept in <record>.<name>, and returns the count of this one (1, 2, ...). */
+function nextRunCount(name) {
+  const countPath = `${recordPath}.${name}`;
   const count = fs.existsSync(countPath) ? Number(fs.readFileSync(countPath, 'utf8')) : 0;
   fs.writeFileSync(countPath, String(count + 1));
   return count + 1;
@@ -149,6 +151,15 @@ function runContracts(variant) {
   const names = tests.map((file) => path.resolve(cwd, file));
   fs.appendFileSync(`${recordPath}.runs`, `${JSON.stringify(names.map((name) => ({ name, text: existingText(name) })))}\n`);
   const directives = names.map((name) => directivesOf(name));
+  if (directives.some((list) => list.includes('crash-once')) && nextRunCount('crash-once') === 1) {
+    process.stderr.write('boom from the runner\n');
+    process.exitCode = 3;
+    return;
+  }
+  if (directives.some((list) => list.includes('sleep-once')) && nextRunCount('sleep-once') === 1) {
+    setInterval(() => {}, 1_000);
+    return;
+  }
   if (directives.some((list) => list.includes('sleep'))) {
     setInterval(() => {}, 1_000);
     return;
@@ -162,7 +173,7 @@ function runContracts(variant) {
     // A run that takes time, then reports as usual: the child phase stamps its classification after the runs.
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000);
   }
-  const oddRun = directives.some((list) => list.includes('flaky')) && nextFlakyCount() % 2 === 1;
+  const oddRun = directives.some((list) => list.includes('flaky')) && nextRunCount('flaky') % 2 === 1;
   let failed = false;
   const testResults = names.map((name, index) => {
     const text = fs.readFileSync(name, 'utf8');

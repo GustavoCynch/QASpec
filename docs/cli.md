@@ -1200,7 +1200,7 @@ intent.json           the intent (not written in degraded mode)
 diff.patch            the PR diff, from the parent to the head
 changed-files.json    changed files, repository-relative
 related-tests.json    existing tests related to the changes, cached on the parent
-baselines.json        related-test outcomes on the unmutated parent, cached per test set
+baselines.json        related-test outcomes on the unmutated parent, cached per test set unless timed out or failed to run
 setup-output.json     tails of the setup output per phase (parent, child), never printed
 ledger.jsonl          one line per stage
 risks/ mutants/ tests/ results/ judges/ runner-output/
@@ -1294,7 +1294,7 @@ qaspec catch status --change <name> [--json]
 
 `--run` shows one run: its state, mode, revisions, worktree, setup results, failure, ledger count per stage, funnel and precision. `--change` narrows the lookup to that change. `--change` alone lists the runs of the change, one block per run.
 
-The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, and findings with their answers (`funnel.findings`: `count`, `confirmed`, `dismissed` and `unanswered`). A corrupt or unreadable record, ledger line, assessment or findings file is left out of its count and counted under `unreadable`, so `status` still succeeds. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
+The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, findings with their answers (`funnel.findings`: `count`, `confirmed`, `dismissed` and `unanswered`), and the tests that `catch landed` recorded (`funnel.landed`). A corrupt or unreadable record, ledger line, assessment or findings file is left out of its count and counted under `unreadable`, so `status` still succeeds. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
 
 **Exit:** 0; 1 when the run or the change is unknown.
 
@@ -1526,7 +1526,7 @@ Before: <before>. Now: <after>. The scenario says: <THEN lines of the risk's sce
 qaspec catch answer --run <id> --finding <id> --intended yes|no [--note-file <file>] [--json]
 ```
 
-Records the answer to one finding, once. `--intended yes` (the behavior is intended) dismisses the finding. `--intended no` (it is not) confirms it. The optional note comes from a UTF-8 text file of at most 64 KB, and `--note-file` is the only way to pass one. Each answer records `secondsToAnswer`, the time from the report to the answer. **Exit:** 0 when recorded; 1 when refused (unknown finding, already answered, or invalid note).
+Records the answer to one finding, once. `--intended yes` (the behavior is intended) dismisses the finding. `--intended no` (it is not) confirms it. The optional note comes from a UTF-8 text file of at most 64 KB, and `--note-file` is the only way to pass one. Each answer records `secondsToAnswer`, the time from the report to the answer. An answer is accepted after `catch finish` too, because the person may answer later, and it still counts in the funnel and the precision. **Exit:** 0 when recorded; 1 when refused (unknown finding, already answered, or invalid note).
 
 ### `qaspec catch land`
 

@@ -16,7 +16,16 @@ import { existsSync, mkdirSync, promises as fs, readFileSync, rmSync, rmdirSync,
 import path from 'node:path';
 import { findIntentRequirement, type CatchIntentArtifact } from './catch-context.js';
 import type { CatchRequirement } from './catch-intent.js';
-import { type CatchMutant, decodeText, replaceOnce, restoreFile, runDetail, sha256 } from './catch-mutant.js';
+import {
+  type CatchMutant,
+  decodeText,
+  isInconclusive,
+  replaceOnce,
+  restoreFile,
+  runDetail,
+  sha256,
+  withDetail,
+} from './catch-mutant.js';
 import {
   type CatchRecordIssue,
   type CatchRunMode,
@@ -25,6 +34,7 @@ import {
   RUNNER_OUTPUT_DIRNAME,
   TESTS_DIRNAME,
   findCatchRun,
+  listRecordIds,
   nextRecordId,
   projectDirInWorktree,
   readCatchRun,
@@ -112,9 +122,6 @@ interface GateVerdict {
   detail?: string;
 }
 
-/** A detail as a record property: present only when the run said something that did not pass. */
-const withDetail = (detail: string | undefined): { detail?: string } => (detail === undefined ? {} : { detail });
-
 type JsonObject = Record<string, unknown>;
 
 /** The fields a test file names, as far as they could be read. */
@@ -145,8 +152,6 @@ function errorText(error: unknown): string {
 
 const nonBlank = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
-
-const isInconclusive = (outcome: RunOutcome): boolean => outcome === 'timeout' || outcome === 'runner-error';
 
 /** The one requirement with this name when it is an added or modified requirement of the intent. */
 function findFunctionalityRequirement(
@@ -327,6 +332,11 @@ async function checkTestPath(
   return { ok: true, relative: placed.relative };
 }
 
+/** The id of an earlier test of the run that writes the given project path, or undefined: each catch test is a new file. */
+function earlierTestAt(testsDir: string, testPath: string): string | undefined {
+  return listRecordIds(testsDir, 'T').find((id) => readRecord<CatchTest>(testsDir, id)?.path === testPath);
+}
+
 /** A mutant applied to its parent file: the file, its original bytes, and the mutated text. */
 interface MutantApplication {
   target: string;
@@ -503,7 +513,7 @@ async function gateCatchingTest(
   }
   return {
     outcome: 'not-caught-by-test',
-    reason: `The test ${result.outcome} on the mutated parent: the mutant is not caught.`,
+    reason: `The test run ended with ${result.outcome} on the mutated parent: the mutant is not caught.`,
     parentOutcomes,
     mutantOutcome: result.outcome,
     ...withDetail(runDetail(result)),
@@ -558,6 +568,13 @@ export async function recordTest(input: RecordTestInput): Promise<RecordTestOutc
         const checkedPath = await checkTestPath(folder, fields.path);
         if (checkedPath.ok) {
           relative = checkedPath.relative;
+          const earlier = earlierTestAt(testsDir, relative);
+          if (earlier !== undefined) {
+            issues.push({
+              code: 'path-duplicate',
+              message: `${relative} is the path of ${earlier}, an earlier test of this run: each catch test is a new file.`,
+            });
+          }
         } else {
           issues.push(checkedPath.issue);
         }

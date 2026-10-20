@@ -356,8 +356,13 @@ describe('prepareLanding', SLOW_RUNS, () => {
   it('refuses every land test that names a path another land test names: one file cannot land twice', async () => {
     const run = await classifiedRun([
       { path: LABEL_PATH, content: LABEL_SPEC },
-      { path: LABEL_PATH, content: CSV_SPEC },
+      { path: CSV_PATH, content: CSV_SPEC },
     ]);
+    // catch test refuses a path an earlier test uses, so the duplicate can only come from a record written another
+    // way (an older run, a hand edit); the landing still refuses it on its own.
+    const recordFile = path.join(run.runDir, 'tests', 'T2.json');
+    const recorded = JSON.parse(fs.readFileSync(recordFile, 'utf8')) as Record<string, unknown>;
+    fs.writeFileSync(recordFile, `${JSON.stringify({ ...recorded, path: LABEL_PATH }, null, 2)}\n`);
 
     const landing = preparedOf(await prepare(run));
 

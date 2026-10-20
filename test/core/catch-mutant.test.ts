@@ -185,6 +185,41 @@ describe('recordMutant gates', () => {
   );
 
   it.each([
+    ['crashes', 'crash-once'],
+    ['times out', 'sleep-once'],
+  ] as const)(
+    'does not cache a baseline that %s, so the next mutant of the same test set runs the baseline again and is gated normally',
+    async (_label, directive) => {
+      const fx = makeProjectFixture({
+        root: tmp,
+        timeoutSeconds: 1,
+        baseFiles: { 'test/app.spec.ts': `// covers: src/app.ts\n// expect: export const value = 1;\n// fake: ${directive} on base\n` },
+      });
+      const ready = await readyRunWithRisk(fx);
+
+      const first = await recordMutant(
+        mutantInput(ready, appMutant("export const label = 'value';", "export const label = 'other';"))
+      );
+      expect(first).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'baseline-not-passing', runOutcome: null } });
+
+      const second = await recordMutant(mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;')));
+      expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'caught-by-existing', runOutcome: 'fail' } });
+      expect(fs.readFileSync(path.join(ready.worktree, 'src', 'app.ts'), 'utf8')).toBe(BASE_APP);
+    }
+  );
+
+  it('caches a stable baseline, so the second mutant of the same test set runs no baseline again', async () => {
+    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp }));
+
+    await recordMutant(mutantInput(ready, appMutant("export const label = 'value';", "export const label = 'other';")));
+    const second = await recordMutant(mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;')));
+
+    expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'caught-by-existing' } });
+    // One run of the baseline and one run per mutant.
+    expect(readRunsLog(ready.fx.recordPath)).toHaveLength(3);
+  });
+
+  it.each([
     ['sleeps', 'sleep', 'timeout', /timed out/],
     ['exits without a report', 'exit3', 'runner-error', /boom|exit|report|3/],
   ] as const)(
