@@ -23,7 +23,7 @@ artifacts:
 
       Fill every section in the template, using N/A when not applicable:
       - Summary, **Affected capabilities** (kebab-case)
-      - Functional intent vs implementation, **Validated clarifications** (N/A until user responds to halt)
+      - Functional intent vs implementation, **Intent class**, **Validated clarifications** (N/A until user responds to halt)
       - **Unvalidated assumptions** (risk-ordered, confidence-marked; empty when none)
       - Functional impact, framework/UI, backend/API, settings/flags
       - Regression signals, responsive/usability, localization, security/data handling
@@ -37,6 +37,11 @@ artifacts:
       change for testable behavior introduced or changed, using the `specs` artifact instructions and
       `templates/spec.md` delta format. Copy the full requirement block from `qaspec/specs/<capability>/spec.md`
       before editing MODIFIED blocks. Encode agreed intent — never document a known defect as accepted SHALL/MUST behavior.
+
+      **Intent class:** write `Intent class: <value>` in **Intent class** with exactly one value consistent with the
+      delta specs: `refactor` (no delta specs), `additive` (only ADDED requirements) or
+      `behavior-change` (any MODIFIED, REMOVED or RENAMED requirement).
+      `/qsx:catch` reads this line; include it in the approval digest.
 
       After the user answers the halt (or requests edits), persist facts the user **explicitly addressed** in
       **Validated clarifications** only; keep unconfirmed inferences in **Unvalidated assumptions**. Adjust

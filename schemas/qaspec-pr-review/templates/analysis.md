@@ -11,6 +11,12 @@
 <!-- Dual source of truth: intended behavior (notes, description) vs what the diff implements -->
 <!-- When PR description and developer notes are missing or non-substantive, write: Functional intent: ABSENT — no independent intent source. Do not reconstruct intent from the diff alone. -->
 
+## Intent class
+
+Intent class: <refactor | additive | behavior-change>
+
+<!-- Exactly one value, consistent with the delta specs: refactor (no delta specs), additive (only ADDED requirements), behavior-change (any MODIFIED, REMOVED or RENAMED requirement). /qsx:catch reads this line. -->
+
 ## Validated clarifications
 
 <!-- Facts the user explicitly addressed after the analyze halt — not assumptions or inferred intent -->

@@ -110,4 +110,35 @@ describe('qas workflow bodies (hardened pipeline)', () => {
 
     expect(fs.existsSync(path.join(templatesDir, 'publish-log.md'))).toBe(false);
   });
+
+  it('analysis template has an Intent class section naming the three classes', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../../..');
+    const analysis = fs.readFileSync(
+      path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'templates', 'analysis.md'),
+      'utf-8'
+    );
+
+    const intentSection = analysis.split(/^## /m).find((section) => section.startsWith('Intent class'));
+    expect(intentSection).toBeDefined();
+    expect(intentSection).toContain('Intent class: <refactor | additive | behavior-change>');
+    expect(analysis.indexOf('## Intent class')).toBeGreaterThan(
+      analysis.indexOf('## Functional intent vs implementation')
+    );
+  });
+
+  it('analyze instructions require one intent class consistent with the delta specs', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../../..');
+    const schema = fs.readFileSync(
+      path.join(repoRoot, 'schemas', 'qaspec-pr-review', 'schema.yaml'),
+      'utf-8'
+    );
+
+    for (const body of [getQasAnalyzeSkillTemplate().instructions, schema]) {
+      expect(body).toMatch(/\*\*Intent class\*\*/);
+      expect(body).toMatch(/`refactor` \(no delta specs\)/);
+      expect(body).toMatch(/`additive` \(only ADDED requirements\)/);
+      expect(body).toMatch(/`behavior-change` \(any MODIFIED, REMOVED or RENAMED requirement\)/);
+    }
+    expect(getQasAnalyzeSkillTemplate().instructions).toMatch(/approval digest\*\* \(intent class,/);
+  });
 });
