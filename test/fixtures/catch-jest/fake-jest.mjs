@@ -49,7 +49,75 @@ function writeFixtureReport(name) {
   fs.writeFileSync(outputFile, text.replaceAll('__PROJECT__', JSON.stringify(cwd).slice(1, -1)));
 }
 
-if (mode.startsWith('report:')) {
+// Contract mode (T7): a spec names the source it covers and the text that source must keep:
+//   // covers: src/app.ts
+//   // expect: export const value = 1;
+// Listing returns the specs that cover a requested source. A run fails an expectation the source no longer keeps,
+// and a source that contains the marker @@BROKEN@@ does not build. Variants: contracts:sleep never ends a run,
+// contracts:exit3 exits 3 with no report, contracts:list-fail exits 2 while listing.
+function coveredSources(text) {
+  return [...text.matchAll(/^\/\/ covers: (.+?)\s*$/gm)].map((match) => match[1]);
+}
+
+function expectations(text) {
+  return [...text.matchAll(/^\/\/ expect: (.+?)\s*$/gm)].map((match) => match[1]);
+}
+
+function runContracts(variant) {
+  if (jestArgs.includes('--listTests')) {
+    if (variant === ':list-fail') {
+      process.stderr.write('fake-jest: the listing failed\n');
+      process.exitCode = 2;
+      return;
+    }
+    const sources = jestArgs.slice(jestArgs.indexOf('--findRelatedTests') + 1);
+    const related = fs
+      .readdirSync(path.join(cwd, 'test'))
+      .filter((name) => name.endsWith('.spec.ts'))
+      .sort()
+      .filter((name) => {
+        const text = fs.readFileSync(path.join(cwd, 'test', name), 'utf8');
+        return coveredSources(text).some((source) => sources.includes(source));
+      });
+    process.stdout.write(related.map((name) => path.join(cwd, 'test', name)).join('\n') + (related.length > 0 ? '\n' : ''));
+    return;
+  }
+  if (variant === ':sleep') {
+    setInterval(() => {}, 1_000);
+    return;
+  }
+  if (variant === ':exit3') {
+    process.stderr.write('boom from the runner\n');
+    process.exitCode = 3;
+    return;
+  }
+  const tests = jestArgs.slice(jestArgs.indexOf('--runTestsByPath') + 1);
+  let failed = false;
+  const testResults = tests.map((file) => {
+    const name = path.resolve(cwd, file);
+    const text = fs.readFileSync(name, 'utf8');
+    const source = fs.readFileSync(path.join(cwd, coveredSources(text)[0]), 'utf8');
+    if (source.includes('@@BROKEN@@')) {
+      failed = true;
+      return { name, status: 'failed', message: 'SyntaxError: the source does not build', startTime: 1_000, endTime: 1_010, assertionResults: [] };
+    }
+    const assertionResults = expectations(text).map((expected) => {
+      const kept = source.includes(expected);
+      if (!kept) {
+        failed = true;
+      }
+      return { title: expected, status: kept ? 'passed' : 'failed', failureMessages: kept ? [] : [`no longer kept: ${expected}`] };
+    });
+    const status = assertionResults.some((assertion) => assertion.status === 'failed') ? 'failed' : 'passed';
+    return { name, status, message: '', startTime: 1_000, endTime: 1_010, assertionResults };
+  });
+  fs.writeFileSync(outputFile, JSON.stringify({ numTotalTestSuites: testResults.length, success: !failed, testResults }));
+  process.exitCode = failed ? 1 : 0;
+}
+
+if (mode === 'contracts' || mode.startsWith('contracts:')) {
+  runContracts(mode.slice('contracts'.length));
+} else if (mode.startsWith('report:')) {
   writeFixtureReport(mode.slice('report:'.length));
 } else if (mode.startsWith('report-exit:')) {
   // A fixture as the report, then the given exit code: a report that passed while the command itself failed.

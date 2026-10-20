@@ -5,6 +5,8 @@ import os from 'os';
 import path from 'path';
 import { stringify } from 'yaml';
 import { runCLI } from '../helpers/run-cli.js';
+import * as fsSync from 'node:fs';
+import { CHANGE, makeProjectFixture, type ProjectFixture } from '../fixtures/catch-jest/catch-project.js';
 
 const ADD_EXPORT = 'add-export';
 
@@ -433,5 +435,210 @@ describe('qaspec catch start, status and finish', () => {
     expect(before.exitCode).toBe(0);
     expect(after.exitCode).toBe(0);
     expect(after.stdout).toBe(before.stdout);
+  });
+});
+
+describe('qaspec catch context, risk, mutant and equivalence (T7)', () => {
+  let tmp: string;
+  let fx: ProjectFixture;
+  const env = () => ({ TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+  const cli = (args: string[]) => runCLI(['catch', ...args], { cwd: fx.project, env: env() });
+
+  /** Writes a JSON input outside the repository and returns its path. */
+  const inputFile = (name: string, value: unknown): string => {
+    const file = path.join(tmp, 'inputs', name);
+    fsSync.mkdirSync(path.dirname(file), { recursive: true });
+    fsSync.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+
+  /** Starts the run through the CLI, approved with its head, and returns its id. */
+  const startRun = async (): Promise<string> => {
+    const started = await cli(['start', '--change', CHANGE, '--json']);
+    expect(started.exitCode).toBe(0);
+    return JSON.parse(started.stdout).run as string;
+  };
+
+  beforeEach(() => {
+    tmp = fsSync.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-cli-parent-'));
+    fx = makeProjectFixture({ root: tmp });
+  });
+
+  afterEach(() => {
+    fsSync.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('catch --help lists context, risk, mutant and equivalence next to the existing commands', async () => {
+    const result = await runCLI(['catch', '--help'], { cwd: fx.project, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    for (const command of ['context', 'risk', 'mutant', 'equivalence']) {
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${command}\\b`, 'm'));
+    }
+  });
+
+  it('catch context prints the run and its related tests, and --json prints the context record', async () => {
+    const runId = await startRun();
+
+    const text = await cli(['context', '--run', runId]);
+    const json = await cli(['context', '--run', runId, '--json']);
+
+    expect(text.exitCode).toBe(0);
+    expect(text.stdout).toContain(`Catch run ${runId}`);
+    expect(text.stdout).toContain('test/app.spec.ts');
+    expect(json.exitCode).toBe(0);
+    expect(JSON.parse(json.stdout)).toMatchObject({
+      schema: 'qaspec.catch-context/v1',
+      run: runId,
+      changedFiles: [{ status: 'M', path: 'src/app.ts' }],
+      relatedTests: { tests: ['test/app.spec.ts'] },
+    });
+  });
+
+  it('catch context exits 1 for a finished run and says why', async () => {
+    const runId = await startRun();
+    expect((await cli(['finish', '--run', runId])).exitCode).toBe(0);
+
+    const result = await cli(['context', '--run', runId]);
+
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}${result.stderr}`).toMatch(/is finished/);
+  });
+
+  it('catch risk records the risk from --input and --json reports its id', async () => {
+    const runId = await startRun();
+    const input = inputFile('risk.json', { requirement: 'Currency', summary: 'The currency code is dropped' });
+
+    const result = await cli(['risk', '--run', runId, '--input', input, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ recorded: true, run: runId, risk: { id: 'R1', requirement: 'Currency' } });
+  });
+
+  it('catch risk refuses an invalid input, lists each error in --json and exits 1', async () => {
+    const runId = await startRun();
+    const input = inputFile('risk.json', { requirement: 'Invented', summary: 'a risk' });
+
+    const result = await cli(['risk', '--run', runId, '--input', input, '--json']);
+
+    expect(result.exitCode).toBe(1);
+    const output = JSON.parse(result.stdout);
+    expect(output).toMatchObject({ recorded: false });
+    expect(output.errors).toEqual([expect.objectContaining({ code: 'requirement-unknown' })]);
+  });
+
+  it('catch risk without --input exits 1', async () => {
+    const runId = await startRun();
+
+    expect((await cli(['risk', '--run', runId])).exitCode).toBe(1);
+  });
+
+  it('catch mutant records the outcome of the gates from --input and exits 0', async () => {
+    const runId = await startRun();
+    expect((await cli(['risk', '--run', runId, '--input', inputFile('risk.json', { requirement: 'Currency', summary: 'x' })])).exitCode).toBe(0);
+    const input = inputFile('mutant.json', {
+      risk: 'R1',
+      file: 'src/app.ts',
+      original: 'export const value = 1;',
+      replacement: 'export const value = 2;',
+    });
+
+    const result = await cli(['mutant', '--run', runId, '--input', input, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ recorded: true, mutant: { id: 'M1', outcome: 'caught-by-existing' } });
+  });
+
+  it('catch mutant refuses an invalid input and exits 1 with the errors', async () => {
+    const runId = await startRun();
+    expect((await cli(['risk', '--run', runId, '--input', inputFile('risk.json', { requirement: 'Currency', summary: 'x' })])).exitCode).toBe(0);
+    const input = inputFile('mutant.json', {
+      risk: 'R1',
+      file: 'src/app.ts',
+      original: 'export const nothing = 0;',
+      replacement: 'x',
+    });
+
+    const result = await cli(['mutant', '--run', runId, '--input', input, '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'original-count' })] });
+  });
+
+  it('catch equivalence records the verdict on a surviving mutant from --input and exits 0', async () => {
+    const runId = await startRun();
+    await cli(['risk', '--run', runId, '--input', inputFile('risk.json', { requirement: 'Currency', summary: 'x' })]);
+    await cli([
+      'mutant',
+      '--run',
+      runId,
+      '--input',
+      inputFile('mutant.json', {
+        risk: 'R1',
+        file: 'src/app.ts',
+        original: "export const label = 'value';",
+        replacement: "export const label = 'other';",
+      }),
+    ]);
+    const verdict = inputFile('verdict.json', { equivalent: false, rationale: 'The label is shown to the user' });
+
+    const result = await cli(['equivalence', '--run', runId, '--mutant', 'M1', '--input', verdict, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ recorded: true, mutant: { id: 'M1', outcome: 'non-equivalent' } });
+  });
+
+  it('catch equivalence without --mutant exits 1', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['equivalence', '--run', runId, '--input', inputFile('verdict.json', { equivalent: true, rationale: 'x' })]);
+
+    expect(result.exitCode).toBe(1);
+  });
+
+  it('catch start --json keeps its record keys (existing command, T7 pin)', async () => {
+    const result = await cli(['start', '--change', CHANGE, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(Object.keys(JSON.parse(result.stdout)).sort()).toEqual(
+      [
+        'started', 'run', 'change', 'state', 'mode', 'lowConfidence', 'baseRef', 'baseSha', 'headSha', 'parentSha',
+        'projectPrefix', 'runDir', 'worktree', 'installedFor', 'setup', 'failure',
+      ].sort()
+    );
+  });
+
+  it('catch status --json keeps its keys and the ledger counts of the parent phase (existing command, T7 pin)', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['status', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(Object.keys(output).sort()).toEqual(
+      [
+        'run', 'change', 'state', 'mode', 'lowConfidence', 'baseRef', 'baseSha', 'headSha', 'parentSha', 'projectPrefix',
+        'worktree', 'installedFor', 'setup', 'failure', 'createdAt', 'updatedAt', 'finishedAt', 'runDir', 'ledger',
+      ].sort()
+    );
+    expect(output.ledger).toEqual({ started: 1, setup: 1, ready: 1 });
+  });
+
+  it('catch finish --json keeps its keys, and a second finish changes nothing (existing command, T7 pin)', async () => {
+    const runId = await startRun();
+
+    const first = await cli(['finish', '--run', runId, '--json']);
+    const second = await cli(['finish', '--run', runId, '--json']);
+
+    expect(first.exitCode).toBe(0);
+    expect(Object.keys(JSON.parse(first.stdout)).sort()).toEqual(['alreadyFinished', 'change', 'run', 'state'].sort());
+    expect(JSON.parse(second.stdout)).toMatchObject({ run: runId, state: 'finished', alreadyFinished: true });
+  });
+
+  it('catch intent --json keeps its keys (existing command, T7 pin)', async () => {
+    const result = await cli(['intent', '--change', CHANGE, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(Object.keys(JSON.parse(result.stdout)).sort()).toEqual(['capabilities', 'change', 'intentClass', 'schema']);
   });
 });

@@ -77,6 +77,11 @@ export interface TestRunnerAdapter {
   relatedTests(ctx: RunnerContext, sourceFiles: readonly string[]): Promise<string[]>;
   /** Runs the given test files and classifies them. Throws for refused paths; runner failures are outcomes. */
   run(ctx: RunnerContext, testFiles: readonly string[]): Promise<RunResult>;
+  /**
+   * The comparable form of a source file for the equivalence filter (S6): two texts with equal forms differ only in
+   * text that cannot change behavior. Pure: it reads no file and runs no command.
+   */
+  normalizeSource(relativePath: string, text: string): string;
 }
 
 /** The project folder as the OS names it (real) and as the configuration spells it (configured). */
@@ -129,6 +134,23 @@ export function createRunnerContext(
     timeoutMs: config.runner.timeoutSeconds * 1000,
     scratchDir: location.scratchDir,
   };
+}
+
+/**
+ * The adapter and the resolved catch block of a run's commands. Refuses a catch block without the adapter id or the
+ * base test command, because no gate can run without them.
+ */
+export function runnerFor(config: ResolvedCatchConfig | undefined): {
+  adapter: TestRunnerAdapter;
+  config: ResolvedCatchConfig;
+} {
+  const adapterId = config?.runner.adapter;
+  if (config === undefined || adapterId === undefined || config.runner.command === undefined) {
+    throw new Error(
+      'The catch block needs runner.adapter and runner.command in qaspec/config.yaml to run the existing tests.'
+    );
+  }
+  return { adapter: getAdapter(adapterId), config };
 }
 
 /** Resolves the project folder and its real path. Throws when the folder does not exist. */

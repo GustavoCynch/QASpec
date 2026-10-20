@@ -424,3 +424,21 @@ describe('quoteShellArgument', () => {
     expect(() => quoteShellArgument('50%', 'win32')).toThrow(/%/);
   });
 });
+
+describe('jestAdapter.normalizeSource (T7, S6)', () => {
+  it('compares TypeScript and JavaScript files by their code: comments and spacing do not count', () => {
+    expect(jestAdapter.normalizeSource('src/app.ts', 'export const value = 1; // note\n')).toBe(
+      'export const value = 1;'
+    );
+    expect(jestAdapter.normalizeSource('src/view.jsx', 'const u = "a//b"; /* c */\n')).toBe('const u = "a//b";');
+    expect(jestAdapter.normalizeSource('lib/a.mjs', 'x  =  1 // y\n')).toBe('x = 1');
+    expect(jestAdapter.normalizeSource('lib/a.cts', 'x = `a // b`; // y\n')).toBe('x = `a // b`;');
+  });
+
+  it('normalizes only whitespace for an unknown extension, so comment text still counts', () => {
+    expect(jestAdapter.normalizeSource('styles/app.css', 'a { color: red; } /* keep */\r\n')).toBe(
+      'a { color: red; } /* keep */'
+    );
+    expect(jestAdapter.normalizeSource('Makefile', 'all:  build  \n')).toBe('all:  build');
+  });
+});

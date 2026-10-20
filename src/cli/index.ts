@@ -57,8 +57,12 @@ import {
   executeValidatePlanCommand,
 } from '../commands/execute.js';
 import {
+  catchContextCommand,
+  catchEquivalenceCommand,
   catchFinishCommand,
   catchIntentCommand,
+  catchMutantCommand,
+  catchRiskCommand,
   catchStartCommand,
   catchStatusCommand,
 } from '../commands/catch.js';
@@ -941,6 +945,78 @@ catchCmd
   .action(async (options: { run: string; json?: boolean }) => {
     try {
       await catchFinishCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('context')
+  .description(
+    'Print what the agent needs to write risks, mutants and tests for a ready run: the intent, the changed files (project-relative), the diff, and the existing tests related to the changes (computed once on the parent and cached in the run)'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchContextCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('risk')
+  .description(
+    'Record a risk of the change from a JSON file (--input): { "requirement", "scenario"?, "summary" } names a preserved, modified or added requirement of the intent; in a degraded run { "file", "summary" } names a changed file'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--input <file>', 'JSON file with the risk (the text is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; input: string; json?: boolean }) => {
+    try {
+      await catchRiskCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('mutant')
+  .description(
+    'Record a mutant from a JSON file (--input): { "risk", "file", "original", "replacement" } replaces the exact original text once in a file of the parent and runs the gates (equivalence by comments, then the related existing tests); the file is restored afterwards'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--input <file>', 'JSON file with the mutant (the text is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; input: string; json?: boolean }) => {
+    try {
+      await catchMutantCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('equivalence')
+  .description(
+    'Record the fresh-context verdict on a surviving mutant from a JSON file (--input): { "equivalent": true | false, "rationale" }; equivalent discards the mutant, once'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--mutant <id>', 'Mutant id printed by catch mutant, such as M1')
+  .requiredOption('--input <file>', 'JSON file with the verdict (the text is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; mutant: string; input: string; json?: boolean }) => {
+    try {
+      await catchEquivalenceCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
