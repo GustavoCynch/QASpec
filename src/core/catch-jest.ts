@@ -8,15 +8,19 @@
  *   relatedTests: --listTests --findRelatedTests <source files>
  *
  * Each suite of Jest's JSON report is one test file:
- *   passed                        -> pass
- *   failed, no test executed      -> no-build (compile, type or import error: "Test suite failed to run")
- *   failed, some test executed    -> fail (the messages are the failed assertions)
+ *   passed, some test executed     -> pass
+ *   passed, no test executed       -> no-tests (all skipped, pending or todo, or none): not a pass
+ *   failed, no test executed       -> no-build (compile, type or import error: "Test suite failed to run")
+ *   failed, some test executed     -> fail (the messages are the failed assertions)
+ * Jest lists a file once per project it ran in: the file takes the worst outcome of its suites, the messages of
+ * the suites that have it, and the sum of their durations.
  *
- * Overall outcome: timeout and runner-error come first and carry no per-file verdicts. Then no-build when any
- * file is no-build: a run that did not build every file is not a clean fail, and the gates need that signal.
- * Then fail when any file fails; otherwise pass. A requested file that the report does not contain was not
- * run: that is runner-error, never a vacuous pass. The report decides when there is one; the exit code only
- * matters when the command was stopped or left no readable report.
+ * Overall outcome: the worst file outcome, in the order of catch-runner.ts (no-build, fail, no-tests, pass), so
+ * a run is pass only when every requested file passed. timeout and runner-error come before any file verdict. A
+ * requested file that the report does not contain was not run: that is runner-error, never a vacuous pass. The
+ * report decides the file outcomes. The exit code matters when the command was stopped, left no readable report,
+ * or exited non-zero after a passing report: a failed globalTeardown or a coverage threshold leaves every suite
+ * passed, so that run is runner-error, with its file outcomes kept.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -25,6 +29,7 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
   type CommandRun,
+  type FileOutcome,
   type FileRunResult,
   MAX_TEXT_BYTES,
   type ProjectFolder,
@@ -42,6 +47,9 @@ import {
 
 /** Failure messages kept per file; the rest are counted in one trailing note. */
 const MAX_MESSAGES_PER_FILE = 10;
+/** Lower is worse: the order of catch-runner.ts. A run takes the worst outcome of its files. */
+const SEVERITY: Record<FileOutcome, number> = { 'no-build': 0, fail: 1, 'no-tests': 2, pass: 3 };
+const NO_TESTS_MESSAGE = 'No test was executed: every test is skipped, pending or todo, or the file has none.';
 
 type JsonObject = Record<string, unknown>;
 
@@ -160,7 +168,12 @@ async function classifyRun(
   if ('error' in mapped) {
     return runnerError(mapped.error, durationMs, outputTail);
   }
-  return { outcome: overallOutcome(mapped.files), files: mapped.files, durationMs, outputTail };
+  const outcome = overallOutcome(mapped.files);
+  if (outcome === 'pass' && execution.exitCode !== 0) {
+    const reason = `The report passed but the command exited with code ${execution.exitCode}.`;
+    return { outcome: 'runner-error', files: mapped.files, durationMs, reason, outputTail };
+  }
+  return { outcome, files: mapped.files, durationMs, outputTail };
 }
 
 async function relatedTests(ctx: RunnerContext, sourceFiles: readonly string[]): Promise<string[]> {
@@ -256,9 +269,9 @@ function parseSuite(value: unknown): JestSuite | undefined {
   };
 }
 
-/** Maps every suite to its project-relative file. A requested file without a suite was not run. */
+/** Maps every suite to its project-relative file, one result per file. A requested file without a suite was not run. */
 function mapReport(suites: readonly JestSuite[], requested: readonly string[], folder: ProjectFolder): Mapped {
-  const byFile = new Map<string, FileRunResult>();
+  const suitesByFile = new Map<string, FileRunResult[]>();
   for (const suite of suites) {
     const file = relativeWithin(folder, suite.name);
     if (file === undefined) {
@@ -268,9 +281,13 @@ function mapReport(suites: readonly JestSuite[], requested: readonly string[], f
     if (result === undefined) {
       return { error: `The report gives ${file} an unknown status.` };
     }
-    byFile.set(file, result);
+    suitesByFile.set(file, [...(suitesByFile.get(file) ?? []), result]);
   }
 
+  const byFile = new Map<string, FileRunResult>();
+  for (const [file, results] of suitesByFile) {
+    byFile.set(file, mergeFile(file, results));
+  }
   const notRun = requested.filter((file) => !byFile.has(file));
   if (notRun.length > 0) {
     return { error: `The runner did not run: ${notRun.join(', ')}.` };
@@ -279,26 +296,44 @@ function mapReport(suites: readonly JestSuite[], requested: readonly string[], f
   return { files: [...requested.map((file) => byFile.get(file) as FileRunResult), ...extra] };
 }
 
+/** The outcome of one suite. Its messages are not bounded yet: mergeFile bounds the ones it keeps. */
 function classifySuite(file: string, suite: JestSuite): FileRunResult | undefined {
   const durationMs =
     suite.startTime !== undefined && suite.endTime !== undefined
       ? Math.max(0, Math.round(suite.endTime - suite.startTime))
       : undefined;
+  const executed = suite.assertions.some(
+    (assertion) => assertion.status === 'passed' || assertion.status === 'failed'
+  );
   if (suite.status === 'passed') {
-    return { file, outcome: 'pass', messages: [], durationMs };
+    return executed
+      ? { file, outcome: 'pass', messages: [], durationMs }
+      : { file, outcome: 'no-tests', messages: [NO_TESTS_MESSAGE], durationMs };
   }
   if (suite.status !== 'failed') {
     return undefined;
   }
-  const executed = suite.assertions.filter(
-    (assertion) => assertion.status === 'passed' || assertion.status === 'failed'
-  );
-  if (executed.length === 0) {
-    return { file, outcome: 'no-build', messages: boundedMessages([suite.message]), durationMs };
+  if (!executed) {
+    return { file, outcome: 'no-build', messages: [suite.message], durationMs };
   }
   const failures = suite.assertions.flatMap((assertion) => assertion.failureMessages);
-  const messages = failures.length > 0 ? failures : [suite.message];
-  return { file, outcome: 'fail', messages: boundedMessages(messages), durationMs };
+  return { file, outcome: 'fail', messages: failures.length > 0 ? failures : [suite.message], durationMs };
+}
+
+/**
+ * One file's result from the suites that Jest reported for it: the worst outcome, the messages of the suites that
+ * have that outcome (bounded here), and the sum of the durations reported.
+ */
+function mergeFile(file: string, results: readonly FileRunResult[]): FileRunResult {
+  const outcome = results.map((result) => result.outcome).reduce(worstOf);
+  const messages = results.filter((result) => result.outcome === outcome).flatMap((result) => result.messages);
+  const durations = results.flatMap((result) => (result.durationMs === undefined ? [] : [result.durationMs]));
+  return {
+    file,
+    outcome,
+    messages: boundedMessages(messages),
+    durationMs: durations.length > 0 ? durations.reduce((total, duration) => total + duration, 0) : undefined,
+  };
 }
 
 function boundedMessages(texts: readonly string[]): string[] {
@@ -310,15 +345,17 @@ function boundedMessages(texts: readonly string[]): string[] {
   return kept;
 }
 
-/** no-build takes precedence over fail: see the module comment. */
-function overallOutcome(files: readonly FileRunResult[]): Extract<RunOutcome, 'pass' | 'fail' | 'no-build'> {
-  if (files.some((file) => file.outcome === 'no-build')) {
-    return 'no-build';
+/** The worse of two file outcomes, by SEVERITY: the module comment gives the order. */
+function worstOf(current: FileOutcome, next: FileOutcome): FileOutcome {
+  return SEVERITY[next] < SEVERITY[current] ? next : current;
+}
+
+/** The worst file outcome of a readable report. A report without files has no passing test, so it is no-tests. */
+function overallOutcome(files: readonly FileRunResult[]): RunOutcome {
+  if (files.length === 0) {
+    return 'no-tests';
   }
-  if (files.some((file) => file.outcome === 'fail')) {
-    return 'fail';
-  }
-  return 'pass';
+  return files.map((file) => file.outcome).reduce(worstOf);
 }
 
 function isObject(value: unknown): value is JsonObject {

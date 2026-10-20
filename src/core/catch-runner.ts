@@ -2,10 +2,16 @@
  * Test-runner adapters for /qsx:catch: the interface every adapter implements, the registry, and the rules
  * they share. The core reads only this module; the first adapter is Jest (catch-jest.ts).
  *
+ * Outcomes. A file passes only when at least one of its tests executed and none failed. A file is pass, fail
+ * (a test failed), no-build (it did not build), or no-tests (it ran, but no test executed: all skipped, pending
+ * or todo, or none at all). A run takes the worst outcome of its files, in this order: no-build, fail, no-tests,
+ * pass. timeout and runner-error come before any file verdict, except that runner-error keeps the file outcomes
+ * when a passing report was followed by a non-zero exit code. Only pass means that tests ran and passed.
+ *
  * Every command runs through runInProcessGroup, in the project folder, with the complete environment from
- * buildChildEnv (never merged with process.env) and the configured timeout. Paths are project-relative and
- * must stay inside the project folder, symlinks included: a path that does not is refused before any command
- * starts. Captured text is bounded to MAX_TEXT_BYTES, and every cut is marked.
+ * buildChildEnv (never merged with process.env) and the configured timeout. Paths are project-relative and must
+ * stay inside the project folder, symlinks included, even for a file that does not exist yet: a path that does
+ * not is refused before any command starts. Captured text is bounded to MAX_TEXT_BYTES, and every cut is marked.
  */
 
 import { promises as fs } from 'node:fs';
@@ -19,10 +25,10 @@ import { runInProcessGroup } from './process-group.js';
 export const TEST_RUNNER_ADAPTER_IDS = ['jest'] as const;
 export type TestRunnerAdapterId = (typeof TEST_RUNNER_ADAPTER_IDS)[number];
 
-/** Overall outcome of one run. */
-export type RunOutcome = 'pass' | 'fail' | 'no-build' | 'timeout' | 'runner-error';
+/** Overall outcome of one run: the worst file outcome, or a run-level outcome. See the module comment. */
+export type RunOutcome = 'pass' | 'fail' | 'no-build' | 'no-tests' | 'timeout' | 'runner-error';
 /** Outcome of one test file. */
-export type FileOutcome = 'pass' | 'fail' | 'no-build';
+export type FileOutcome = 'pass' | 'fail' | 'no-build' | 'no-tests';
 
 /** Everything an adapter needs to run commands for one project folder. */
 export interface RunnerContext {
@@ -42,15 +48,18 @@ export interface FileRunResult {
   /** Project-relative test file. */
   file: string;
   outcome: FileOutcome;
-  /** Bounded failure or build messages; empty when the file passed. */
+  /** Bounded failure, build or no-test messages; empty when the file passed. */
   messages: string[];
-  /** Duration the runner reported for this file, when it reported one. */
+  /** Duration the runner reported for this file, when it reported one: summed over a file listed more than once. */
   durationMs?: number;
 }
 
 export interface RunResult {
   outcome: RunOutcome;
-  /** Per-file outcomes; empty when the runner produced no report. */
+  /**
+   * Per-file outcomes of a readable report. Empty when there is none, except that runner-error keeps them when a
+   * passing report was followed by a non-zero exit code.
+   */
   files: FileRunResult[];
   durationMs: number;
   /** Why the run ended with timeout or runner-error. */
@@ -134,8 +143,9 @@ export async function openProjectFolder(projectDir: string): Promise<ProjectFold
 
 /**
  * Validates project-relative paths before they reach a command line. Each must be relative, must not leave
- * the project folder lexically, and must not be a symlink to a target outside it. Returns the POSIX form,
- * each path once, in the order given. Nothing runs when any path is refused.
+ * the project folder lexically, and must not lead outside it through a symlink (a dangling one included) or
+ * through a folder above a name that does not exist yet. Returns the POSIX form, each path once, in the order
+ * given. Nothing runs when any path is refused.
  */
 export async function resolveProjectPaths(folder: ProjectFolder, paths: readonly string[]): Promise<string[]> {
   const resolved: string[] = [];
@@ -144,12 +154,45 @@ export async function resolveProjectPaths(folder: ProjectFolder, paths: readonly
     if (!resolved.includes(relative)) {
       resolved.push(relative);
     }
-    const target = await fs.realpath(path.join(folder.real, ...relative.split('/'))).catch(() => undefined);
-    if (target !== undefined && !isInside(target, folder.real)) {
+    const target = await realLocation(path.join(folder.real, ...relative.split('/')));
+    if (target === undefined || !isInside(target, folder.real)) {
       throw refusal(raw);
     }
   }
   return resolved;
+}
+
+/** Symlinks followed on one path before it is taken for a loop. */
+const MAX_SYMLINK_HOPS = 40;
+
+/**
+ * Where a path really points, even when it does not exist yet: every symlink on the way is followed, a dangling
+ * one included, and a missing name is kept as written. A link is read relative to the real folder it lives in.
+ * Undefined for a symlink loop.
+ */
+async function realLocation(absolute: string, hops = 0): Promise<string | undefined> {
+  if (hops > MAX_SYMLINK_HOPS) {
+    return undefined;
+  }
+  const real = await fs.realpath(absolute).catch(() => undefined);
+  if (real !== undefined) {
+    return real;
+  }
+  const parent = path.dirname(absolute);
+  if (parent === absolute) {
+    return undefined;
+  }
+  const realParent = await realLocation(parent, hops);
+  if (realParent === undefined) {
+    return undefined;
+  }
+  const name = path.join(realParent, path.basename(absolute));
+  const link = await fs.lstat(name).catch(() => undefined);
+  if (link?.isSymbolicLink()) {
+    const target = await fs.readlink(name).catch(() => undefined);
+    return target === undefined ? undefined : realLocation(path.resolve(realParent, target), hops + 1);
+  }
+  return name;
 }
 
 /**

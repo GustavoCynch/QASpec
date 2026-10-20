@@ -1,0 +1,78 @@
+{
+  "numFailedTestSuites": 0,
+  "numFailedTests": 0,
+  "numPassedTestSuites": 2,
+  "numPassedTests": 1,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 2,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 1,
+  "numTotalTestSuites": 2,
+  "numTotalTests": 4,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["sum"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "sum adds two numbers",
+          "location": null,
+          "status": "pending",
+          "title": "adds two numbers"
+        },
+        {
+          "ancestorTitles": ["sum"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "sum adds negative numbers",
+          "location": null,
+          "status": "skipped",
+          "title": "adds negative numbers"
+        },
+        {
+          "ancestorTitles": ["sum"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "sum adds big numbers",
+          "location": null,
+          "status": "todo",
+          "title": "adds big numbers"
+        }
+      ],
+      "endTime": 1792425600150,
+      "message": "",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["other"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "other reports the status",
+          "location": null,
+          "status": "passed",
+          "title": "reports the status"
+        }
+      ],
+      "endTime": 1792425600250,
+      "message": "",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600200,
+      "status": "passed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildChildEnv } from '../../src/core/catch-git.js';
 import { jestAdapter, quoteShellArgument } from '../../src/core/catch-jest.js';
-import type { RunnerContext } from '../../src/core/catch-runner.js';
+import type { RunResult, RunnerContext } from '../../src/core/catch-runner.js';
 
 const WINDOWS = process.platform === 'win32';
 const FAKE_JEST = fileURLToPath(new URL('../fixtures/catch-jest/fake-jest.mjs', import.meta.url));
@@ -62,6 +62,10 @@ describe('jestAdapter', () => {
   });
 
   const recorded = async (): Promise<Recorded> => JSON.parse(await fs.readFile(record, 'utf8')) as Recorded;
+
+  /** The outcome of each file of a run, by project-relative name. */
+  const outcomeByFile = (result: RunResult): Record<string, string> =>
+    Object.fromEntries(result.files.map((file) => [file.file, file.outcome]));
 
   beforeEach(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-catch-jest-'));
@@ -139,6 +143,18 @@ describe('jestAdapter', () => {
       await expect(fs.access(record)).rejects.toThrow();
     });
 
+    it.skipIf(WINDOWS)(
+      'refuses a test path under a directory symlink to outside, even when the file does not exist yet',
+      async () => {
+        const outsideDir = path.join(root, 'outside-dir');
+        await fs.mkdir(outsideDir);
+        await fs.symlink(outsideDir, path.join(projectDir, 'test', 'linked'));
+
+        await expect(jestAdapter.run(contextFor('echo-pass'), ['test/linked/new.spec.ts'])).rejects.toThrow(REFUSAL);
+        await expect(fs.access(record)).rejects.toThrow();
+      }
+    );
+
     it('refuses an empty list instead of letting Jest run every test', async () => {
       await expect(jestAdapter.run(contextFor('echo-pass'), [])).rejects.toThrow('No test files to run');
       await expect(fs.access(record)).rejects.toThrow();
@@ -199,6 +215,61 @@ describe('jestAdapter', () => {
       expect(result.outcome).toBe('no-build');
       const byFile = Object.fromEntries(result.files.map((file) => [file.file, file.outcome]));
       expect(byFile).toEqual({ 'test/sum.spec.ts': 'no-build', 'test/other.spec.ts': 'fail' });
+    });
+
+    it('classifies a passing suite whose tests are all skipped, pending or todo as no-tests, never pass', async () => {
+      const result = await jestAdapter.run(contextFor('report:skipped'), ['test/sum.spec.ts', 'test/other.spec.ts']);
+
+      expect(result.outcome).toBe('no-tests');
+      expect(outcomeByFile(result)).toEqual({ 'test/sum.spec.ts': 'no-tests', 'test/other.spec.ts': 'pass' });
+      expect(result.files[0].messages).toEqual([expect.stringContaining('No test was executed')]);
+    });
+
+    it('classifies a passing suite with no assertion at all as no-tests', async () => {
+      const result = await jestAdapter.run(contextFor('report:no-assertions'), ['test/sum.spec.ts']);
+
+      expect(result).toMatchObject({ outcome: 'no-tests', files: [{ file: 'test/sum.spec.ts', outcome: 'no-tests' }] });
+    });
+
+    it('reports fail over no-tests when a run mixes them', async () => {
+      const files = ['test/sum.spec.ts', 'test/other.spec.ts'];
+      const result = await jestAdapter.run(contextFor('report:mixed-tests'), files);
+
+      expect(result.outcome).toBe('fail');
+      expect(outcomeByFile(result)).toEqual({ 'test/sum.spec.ts': 'no-tests', 'test/other.spec.ts': 'fail' });
+    });
+
+    it('takes the worst outcome of a file that the report lists twice, not the last one', async () => {
+      const files = ['test/sum.spec.ts', 'test/other.spec.ts', 'test/nested/skip.spec.ts'];
+
+      const result = await jestAdapter.run(contextFor('report:duplicate'), files);
+
+      expect(result.outcome).toBe('no-build');
+      expect(outcomeByFile(result)).toEqual({
+        'test/sum.spec.ts': 'fail',
+        'test/other.spec.ts': 'no-build',
+        'test/nested/skip.spec.ts': 'no-tests',
+      });
+      expect(result.files[0]).toMatchObject({ file: 'test/sum.spec.ts', durationMs: 70 });
+      expect(result.files[0].messages[0]).toContain('Expected: 4');
+    });
+
+    it('turns a passing report into runner-error when the command exits non-zero, keeping the files', async () => {
+      // A failed globalTeardown or a coverage threshold leaves every suite passed while the command fails.
+      const result = await jestAdapter.run(contextFor('report-exit:pass:3'), ['test/sum.spec.ts']);
+
+      expect(result).toMatchObject({
+        outcome: 'runner-error',
+        reason: 'The report passed but the command exited with code 3.',
+        files: [{ file: 'test/sum.spec.ts', outcome: 'pass' }],
+      });
+    });
+
+    it('keeps the outcome of a failing report when the command also exits non-zero', async () => {
+      const result = await jestAdapter.run(contextFor('report-exit:fail:1'), ['test/sum.spec.ts']);
+
+      expect(result.outcome).toBe('fail');
+      expect(result.files).toEqual([expect.objectContaining({ file: 'test/sum.spec.ts', outcome: 'fail' })]);
     });
 
     it('returns runner-error when a requested file has no suite in the report, never a vacuous pass', async () => {

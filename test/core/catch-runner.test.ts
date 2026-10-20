@@ -141,6 +141,69 @@ describe('catch-runner', () => {
 
       expect(await resolveProjectPaths(folder, ['test/alias.spec.ts'])).toEqual(['test/alias.spec.ts']);
     });
+
+    it('accepts a path that does not exist yet and stays inside the project folder', async () => {
+      const folder = await openProjectFolder(projectDir);
+
+      expect(await resolveProjectPaths(folder, ['test/new.spec.ts'])).toEqual(['test/new.spec.ts']);
+    });
+
+    posixOnly('refuses a path under a directory symlink to outside, even when the file is missing', async () => {
+      const outsideDir = path.join(root, 'outside-dir');
+      await fs.mkdir(outsideDir);
+      await fs.symlink(outsideDir, path.join(projectDir, 'test', 'linked'));
+      const folder = await openProjectFolder(projectDir);
+
+      await expect(resolveProjectPaths(folder, ['test/linked/new.spec.ts'])).rejects.toThrow(REFUSAL);
+    });
+
+    posixOnly('accepts a path under a directory symlink that stays inside the project folder', async () => {
+      await fs.mkdir(path.join(projectDir, 'src'));
+      await fs.symlink(path.join(projectDir, 'src'), path.join(projectDir, 'test', 'as-src'));
+      const folder = await openProjectFolder(projectDir);
+
+      expect(await resolveProjectPaths(folder, ['test/as-src/new.ts'])).toEqual(['test/as-src/new.ts']);
+    });
+
+    posixOnly('refuses a dangling symlink whose target is outside the project folder', async () => {
+      await fs.symlink(path.join(root, 'missing.spec.ts'), path.join(projectDir, 'test', 'dangling.spec.ts'));
+      const folder = await openProjectFolder(projectDir);
+
+      await expect(resolveProjectPaths(folder, ['test/dangling.spec.ts'])).rejects.toThrow(REFUSAL);
+    });
+
+    posixOnly('accepts a dangling symlink whose target stays inside the project folder', async () => {
+      await fs.symlink(path.join(projectDir, 'test', 'future.spec.ts'), path.join(projectDir, 'test', 'alias.spec.ts'));
+      const folder = await openProjectFolder(projectDir);
+
+      expect(await resolveProjectPaths(folder, ['test/alias.spec.ts'])).toEqual(['test/alias.spec.ts']);
+    });
+
+    posixOnly('refuses a chain of dangling symlinks that ends outside the project folder', async () => {
+      await fs.symlink(path.join(projectDir, 'test', 'middle.spec.ts'), path.join(projectDir, 'test', 'first.spec.ts'));
+      await fs.symlink(path.join(root, 'missing.spec.ts'), path.join(projectDir, 'test', 'middle.spec.ts'));
+      const folder = await openProjectFolder(projectDir);
+
+      await expect(resolveProjectPaths(folder, ['test/first.spec.ts'])).rejects.toThrow(REFUSAL);
+    });
+
+    posixOnly('resolves a relative dangling symlink from its real folder, not the one it is reached by', async () => {
+      await fs.mkdir(path.join(projectDir, 'real-dir'));
+      await fs.symlink(path.join(projectDir, 'real-dir'), path.join(projectDir, 'test', 'alias-dir'));
+      // Read from real-dir this is outside the project; read through test/alias-dir it would look inside it.
+      await fs.symlink('../../outside/missing.spec.ts', path.join(projectDir, 'real-dir', 'dangling.spec.ts'));
+      const folder = await openProjectFolder(projectDir);
+
+      await expect(resolveProjectPaths(folder, ['test/alias-dir/dangling.spec.ts'])).rejects.toThrow(REFUSAL);
+    });
+
+    posixOnly('refuses a symlink loop, which has no target to check', async () => {
+      const loop = path.join(projectDir, 'test', 'loop.spec.ts');
+      await fs.symlink(loop, loop);
+      const folder = await openProjectFolder(projectDir);
+
+      await expect(resolveProjectPaths(folder, ['test/loop.spec.ts'])).rejects.toThrow(REFUSAL);
+    });
   });
 
   describe('relativeWithin', () => {
