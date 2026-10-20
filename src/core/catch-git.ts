@@ -106,6 +106,17 @@ function projectCatchRoot(projectRoot: string): string {
   return path.join(sharedCatchRoot(), hash);
 }
 
+/**
+ * The folder of a run's worktree: <project catch root>/<run id>. Creating and naming a worktree both go through
+ * this function, so the path is built in one place. Throws for a run id that could leave the catch root.
+ */
+export function catchWorktreePath(projectRoot: string, runId: string): string {
+  if (!RUN_ID_PATTERN.test(runId)) {
+    throw new Error(`Invalid catch run id "${runId}": use letters, digits, dots, dashes and underscores.`);
+  }
+  return path.join(projectCatchRoot(projectRoot), runId);
+}
+
 /** The named variables that are set in parentEnv. Unset names are skipped. */
 function pickEnv(names: readonly string[], parentEnv: NodeJS.ProcessEnv): Map<string, string> {
   const values = new Map<string, string>();
@@ -196,24 +207,37 @@ async function commitOf(projectRoot: string, ref: string): Promise<string | unde
 
 export interface ResolveRevisionsInput {
   projectRoot: string;
-  /** Head commit saved in the analyze approval record (headSha). */
+  /** The PR head: the headSha of the analyze approval record, or the --head commit of the degraded mode. */
   headSha: string;
+  /** Where headSha came from, so the hint names the right fix. Defaults to the approval record. */
+  headSource?: 'approval' | 'flag';
   /** Base ref from catch.baseRef in the config, or from --base. */
   baseRef: string;
 }
 
+/** The refusal for a PR head that is not a commit here. Only the approval source may suggest approving again. */
+function unknownHeadMessage(headSha: string, source: 'approval' | 'flag'): string {
+  if (source === 'flag') {
+    return (
+      `--head ${headSha} is not a commit in this repository. ` +
+      'Fetch the commit into this clone, or check the SHA given with --head.'
+    );
+  }
+  return (
+    `Approved head ${headSha} is not a commit in this repository. ` +
+    'Fetch the PR head into this clone, or approve the analysis again with --head-sha <sha>.'
+  );
+}
+
 /** Resolves the approved head and the base to commits, and returns their merge-base as the parent. */
 export async function resolveRevisions(input: ResolveRevisionsInput): Promise<GitRevisions> {
-  const { projectRoot, headSha, baseRef } = input;
+  const { projectRoot, headSha, baseRef, headSource = 'approval' } = input;
   assertRef(headSha, 'approved head');
   assertRef(baseRef, 'base ref');
 
   const head = await commitOf(projectRoot, headSha);
   if (head === undefined) {
-    throw new Error(
-      `Approved head ${headSha} is not a commit in this repository. ` +
-        'Fetch the PR head into this clone, or approve the analysis again with --head-sha <commit>.'
-    );
+    throw new Error(unknownHeadMessage(headSha, headSource));
   }
   const base = await commitOf(projectRoot, baseRef);
   if (base === undefined) {
@@ -397,7 +421,7 @@ async function commonGitDir(projectRoot: string): Promise<string> {
  * worktree record in this project's own repository, and that record points back at the same folder.
  * Returns the canonical path.
  */
-async function assertCatchWorktree(projectRoot: string, worktree: string, action: string): Promise<string> {
+export async function assertCatchWorktree(projectRoot: string, worktree: string, action: string): Promise<string> {
   const folder = await assertRunFolder(projectRoot, worktree, action);
   const notCatch = (reason: string) =>
     new Error(`Refusing to ${action} ${worktree}: it is not a catch worktree of this project (${reason}).`);
@@ -458,12 +482,9 @@ async function rollbackWorktreeAdd(projectRoot: string, worktree: string): Promi
 
 /** Creates a detached worktree at parentSha, outside the project, and returns its path. */
 export async function createCatchWorktree(projectRoot: string, runId: string, parentSha: string): Promise<string> {
-  if (!RUN_ID_PATTERN.test(runId)) {
-    throw new Error(`Invalid catch run id "${runId}": use letters, digits, dots, dashes and underscores.`);
-  }
+  const worktree = catchWorktreePath(projectRoot, runId);
   assertRef(parentSha, 'parent revision');
   await ensureCatchRoots(projectRoot);
-  const worktree = path.join(projectCatchRoot(projectRoot), runId);
   if (await pathExists(worktree)) {
     throw new Error(`A catch worktree already exists at ${worktree}.`);
   }
@@ -525,16 +546,17 @@ async function removeEmptyCatchFolders(projectRoot: string): Promise<void> {
 
 /**
  * Removes a catch worktree and its git record. A folder that still exists must be a catch worktree of this
- * project and is removed with git worktree remove --force. Only a folder that is already gone falls back to
- * git worktree prune, which clears its stale record (and any other stale record of this repository).
+ * project and is removed with git worktree remove --force. A folder that is already gone loses only its own git
+ * record (removeRecordsOf), so the stale records of other worktrees of the repository stay as they are.
+ * Empty catch folders are removed afterwards.
  */
 export async function removeCatchWorktree(projectRoot: string, worktree: string): Promise<void> {
   if (await pathExists(worktree)) {
     const folder = await assertCatchWorktree(projectRoot, worktree, 'remove');
     await gitOutput(projectRoot, ['worktree', 'remove', '--force', folder]);
   } else {
-    await assertRunFolder(projectRoot, worktree, 'remove');
-    await gitOutput(projectRoot, ['worktree', 'prune']);
+    const folder = await assertRunFolder(projectRoot, worktree, 'remove');
+    await removeRecordsOf(projectRoot, folder);
   }
   await removeEmptyCatchFolders(projectRoot);
 }

@@ -10,9 +10,9 @@ import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent, type CatchRequ
 import {
   CATCH_RUNS_DIRNAME,
   describeCatchRun,
+  describeChangeRuns,
   findCatchRun,
   finishCatchRun,
-  listCatchRuns,
   startCatchRun,
   type CatchBlocker,
   type CatchRecordIssue,
@@ -306,15 +306,23 @@ export async function catchStatusCommand(options: CatchStatusCommandOptions): Pr
   }
 
   const changeName = await validateChangeExists(options.change, planningHome.root, planningHome.changesDir);
-  const runs = listCatchRuns(getChangeDir(planningHome, changeName));
+  const changeDir = getChangeDir(planningHome, changeName);
+  const statuses = describeChangeRuns(changeDir);
+  const runFolderOf = (status: CatchRunStatus): string =>
+    path.relative(planningHome.root, path.join(changeDir, CATCH_RUNS_DIRNAME, status.run.runId));
   if (options.json) {
+    const runs = statuses.map((status) => statusPayload(status, runFolderOf(status)));
     console.log(JSON.stringify({ change: changeName, runs }, null, 2));
-  } else if (runs.length === 0) {
+  } else if (statuses.length === 0) {
     console.log(`No catch runs for change "${changeName}"`);
   } else {
-    for (const entry of runs) {
-      console.log(`${entry.run}  ${entry.state}  ${entry.mode}  ${entry.createdAt}`);
-    }
+    // Each run is printed as --run prints it, one block per run.
+    statuses.forEach((status, index) => {
+      if (index > 0) {
+        console.log('');
+      }
+      printStatus(status, runFolderOf(status));
+    });
   }
 }
 

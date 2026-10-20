@@ -240,6 +240,18 @@ describe('recordMutant gates', () => {
     ).rejects.toThrow(/is finished/);
   });
 
+  it('refuses a mutant whose recorded worktree is now a plain folder, and starts no runner', async () => {
+    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp }));
+    // The recorded path holds a plain folder under the catch root: it is no catch worktree of this project.
+    fs.rmSync(ready.worktree, { recursive: true, force: true });
+    fs.mkdirSync(ready.worktree);
+
+    await expect(
+      recordMutant(mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;')))
+    ).rejects.toThrow(/not a catch worktree of this project/);
+    expect(fs.existsSync(ready.fx.recordPath)).toBe(false);
+  });
+
   it.each([
     ['an unknown risk', { ...appMutant('export const value = 1;', 'x'), risk: 'R9' }, 'risk-unknown'],
     ['a file that leaves the project', appMutant('export const value = 1;', 'x', '../secret.ts'), 'file-refused'],

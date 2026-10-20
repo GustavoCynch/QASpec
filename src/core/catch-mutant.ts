@@ -31,7 +31,6 @@ import {
 import { readProjectConfig } from './project-config.js';
 import type { ResolvedCatchConfig } from './catch-config.js';
 import {
-  CATCH_COMMAND,
   type CatchRecordIssue,
   MUTANTS_DIRNAME,
   RISKS_DIRNAME,
@@ -42,10 +41,11 @@ import {
   readCatchRun,
   readRecord,
   requireReadyRun,
+  withCatchRunLock,
   withRunLockAsync,
   writeRecord,
 } from './catch-run.js';
-import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso, withRunLock } from './run-store.js';
+import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso } from './run-store.js';
 
 export const MUTANT_SCHEMA = 'qaspec.catch-mutant/v1' as const;
 
@@ -293,7 +293,7 @@ export async function recordMutant(input: RecordMutantInput): Promise<RecordMuta
       const risksDir = path.join(location.runDir, RISKS_DIRNAME);
       const mutantsDir = path.join(location.runDir, MUTANTS_DIRNAME);
       const { adapter, config } = runnerFor(readProjectConfig(input.projectRoot)?.catch);
-      const projectDir = projectDirInWorktree(input.projectRoot, run);
+      const projectDir = await projectDirInWorktree(input.projectRoot, run);
       const folder = await openProjectFolder(projectDir);
 
       const issues: CatchRecordIssue[] = [];
@@ -416,8 +416,9 @@ function checkVerdict(value: unknown): VerdictCheck {
  */
 export function recordEquivalence(input: RecordEquivalenceInput): RecordEquivalenceOutcome {
   const location = findCatchRun(input.changesDir, input.runId);
-  return withRunLock(
+  return withCatchRunLock(
     location.runDir,
+    input.lockTimeoutMs ?? RUN_LOCK_TIMEOUT_MS,
     (): RecordEquivalenceOutcome => {
       const run = readCatchRun(location.runDir);
       requireReadyRun(run, EQUIVALENCE_COMMAND);
@@ -459,7 +460,6 @@ export function recordEquivalence(input: RecordEquivalenceInput): RecordEquivale
         outcome: judged.outcome,
       });
       return { ok: true, mutant: judged };
-    },
-    { command: CATCH_COMMAND, timeoutMs: input.lockTimeoutMs ?? RUN_LOCK_TIMEOUT_MS }
+    }
   );
 }

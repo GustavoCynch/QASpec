@@ -179,6 +179,18 @@ describe('loadCatchContext', () => {
     await expect(loadCatchContext(contextInput(fx, runId))).rejects.toThrow(/runner\.command/);
     expect(fs.existsSync(path.join(runDir, 'related-tests.json'))).toBe(false);
   });
+
+  it('refuses a run whose recorded worktree is now a plain folder, not this project catch worktree, and caches nothing', async () => {
+    const fx = makeProjectFixture({ root: tmp });
+    const { runId, runDir, run } = await startRun(fx);
+    const worktree = run.worktree as string;
+    // The recorded path holds a plain folder under the catch root: it is no worktree of this project.
+    fs.rmSync(worktree, { recursive: true, force: true });
+    fs.mkdirSync(worktree);
+
+    await expect(loadCatchContext(contextInput(fx, runId))).rejects.toThrow(/not a catch worktree of this project/);
+    expect(fs.existsSync(path.join(runDir, 'related-tests.json'))).toBe(false);
+  });
 });
 
 describe('recordRisk in analysis mode', () => {

@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { parseCatchConfig, type CatchConfig, type ResolvedCatchConfig } from '../../src/core/catch-config.js';
 import {
   buildChildEnv,
+  catchWorktreePath,
   changedFiles,
   createCatchWorktree,
   diffPatch,
@@ -249,6 +250,21 @@ describe('catch-git', () => {
       );
     });
 
+    it('reports an unknown --head with the fetch and check-the-SHA hints, never the approval hint', async () => {
+      const repo = createRepo();
+      commit(repo, { 'a.txt': 'one\n' }, 'only commit');
+      const missing = 'f'.repeat(40);
+
+      const message = await messageOf(
+        resolveRevisions({ projectRoot: repo, headSha: missing, baseRef: 'HEAD', headSource: 'flag' })
+      );
+
+      expect(message).toMatch(/--head .* is not a commit/);
+      expect(message).toMatch(/[Ff]etch/);
+      expect(message).toMatch(/check the SHA/);
+      expect(message).not.toMatch(/approve/);
+    });
+
     it('reports an unknown base ref with the catch.baseRef and --base hints', async () => {
       const repo = createRepo();
       const head = commit(repo, { 'a.txt': 'one\n' }, 'only commit');
@@ -451,6 +467,15 @@ describe('catch-git', () => {
       expect(git(worktree, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('HEAD');
       expect(git(repo, 'worktree', 'list', '--porcelain')).toContain(`worktree ${fs.realpathSync(worktree)}`);
       expect(git(repo, 'rev-parse', 'HEAD')).toBe(head);
+    });
+
+    it('names the run folder that createCatchWorktree uses, and refuses a run id that could leave the root', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const worktree = await createCatchWorktree(repo, RUN_ID, parent);
+
+      expect(catchWorktreePath(repo, RUN_ID)).toBe(worktree);
+      expect(() => catchWorktreePath(repo, '../escape')).toThrow(/Invalid catch run id/);
     });
 
     it('refuses run ids that could leave the catch root', async () => {
@@ -821,6 +846,23 @@ describe('catch-git', () => {
       await removeCatchWorktree(repo, mine);
 
       expect(git(repo, 'worktree', 'list', '--porcelain')).toContain(`worktree ${unrelatedListed}`);
+    });
+
+    it('removes only its own record when its folder is gone, and keeps an unrelated record whose folder is gone too', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const mine = await createCatchWorktree(repo, RUN_ID, parent);
+      const unrelated = await createCatchWorktree(repo, OTHER_RUN_ID, parent);
+      const mineListed = fs.realpathSync(mine);
+      const unrelatedListed = fs.realpathSync(unrelated);
+      fs.rmSync(mine, { recursive: true, force: true });
+      fs.rmSync(unrelated, { recursive: true, force: true });
+
+      await removeCatchWorktree(repo, mine);
+
+      const listed = git(repo, 'worktree', 'list', '--porcelain');
+      expect(listed).not.toContain(`worktree ${mineListed}`);
+      expect(listed).toContain(`worktree ${unrelatedListed}`);
     });
 
     it('deletes the project catch folder with its last run folder and keeps it while another run remains', async () => {
