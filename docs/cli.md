@@ -1200,7 +1200,7 @@ intent.json           the intent (not written in degraded mode)
 diff.patch            the PR diff, from the parent to the head
 changed-files.json    changed files, repository-relative
 related-tests.json    existing tests related to the changes, cached on the parent
-baselines.json        related-test outcomes on the unmutated parent, cached per test set unless timed out or failed to run
+baselines.json        related-test outcomes on the unmutated parent, cached per test set; a timeout or runner error is retried once, then cached
 setup-output.json     tails of the setup output per phase (parent, child), never printed
 ledger.jsonl          one line per stage
 risks/ mutants/ tests/ results/ judges/ runner-output/
@@ -1294,7 +1294,7 @@ qaspec catch status --change <name> [--json]
 
 `--run` shows one run: its state, mode, revisions, worktree, setup results, failure, ledger count per stage, funnel and precision. `--change` narrows the lookup to that change. `--change` alone lists the runs of the change, one block per run.
 
-The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, findings with their answers (`funnel.findings`: `count`, `confirmed`, `dismissed` and `unanswered`), and the tests that `catch landed` recorded (`funnel.landed`). A corrupt or unreadable record, ledger line, assessment or findings file is left out of its count and counted under `unreadable`, so `status` still succeeds. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
+The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, findings with their answers (`funnel.findings`: `count`, `confirmed`, `dismissed` and `unanswered`; each finding is counted once, by its last answer in the ledger, so `count` equals the sum of the other three, and an answer that names no finding of `findings.json` is left out), and the tests that `catch landed` recorded (`funnel.landed`). A corrupt or unreadable record, ledger line, assessment or findings file is left out of its count and counted under `unreadable`, so `status` still succeeds. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
 
 **Exit:** 0; 1 when the run or the change is unknown.
 
@@ -1369,7 +1369,7 @@ Records one mutant (`M1`, `M2`, ...) of a risk and runs its gates. The mutant re
 The gates run in this order:
 
 1. **Equivalence by text.** The mutant differs from the parent only in comments or in spaces between tokens; line breaks still count. For other file types, only line endings and trailing whitespace are ignored. The result is `syntactic-equivalent`, and no test runs.
-2. **Baseline.** The related tests run once on the unmutated parent, and the result is cached for that source. When the baseline is not `pass`, every mutant of that source ends `baseline-not-passing`.
+2. **Baseline.** The related tests run once on the unmutated parent, and the result is cached for that source. A timeout or a runner error is retried once, by the next mutant of that source, and the outcome of that second attempt is cached whatever it is. When the baseline is not `pass`, every mutant of that source ends `baseline-not-passing`.
 3. **Related tests on the mutated parent.** A failure is `caught-by-existing`, a build error is `no-build`, and a timeout or runner error is `inconclusive`. A pass, a run that executes no test, or no related test at all is `surviving`.
 
 | Outcome | Meaning | Next step |
@@ -1408,7 +1408,7 @@ Records the verdict of a fresh-context judge on one `surviving` mutant, once.
 qaspec catch test --run <id> --input <file> [--json]
 ```
 
-Records one test and runs its parent gates. The test path must be a new file inside the project: it must not exist on the parent. The content is stored in the run folder, written into the worktree before each run, and removed after it.
+Records one test and runs its parent gates. The test path must be a new file inside the project: it must not exist on the parent, and no earlier test of the run that passed its parent gates may use it (`path-duplicate`). A test that a gate discarded does not block its path. The content is stored in the run folder, written into the worktree before each run, and removed after it.
 
 | `kind` | Fields | Allowed in | Purpose |
 |--------|--------|------------|---------|

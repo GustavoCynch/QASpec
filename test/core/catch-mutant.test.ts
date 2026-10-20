@@ -457,6 +457,58 @@ describe('recordMutant baseline, cache and diagnostics (T14-F2)', () => {
   });
 });
 
+describe('recordMutant retries a transient baseline once (T14-F4)', () => {
+  const LABEL = appMutant("export const label = 'value';", "export const label = 'other';");
+  const VALUE = appMutant('export const value = 1;', 'export const value = 2;');
+
+  it.each([
+    ['times out', 'sleep'],
+    ['exits without a report', 'exit3'],
+  ] as const)(
+    'runs a baseline that %s at most twice: the second transient outcome is cached, and the third mutant runs no baseline',
+    async (_label, directive) => {
+      const fx = makeProjectFixture({
+        root: tmp,
+        timeoutSeconds: 1,
+        baseFiles: { 'test/app.spec.ts': `// covers: src/app.ts\n// expect: export const value = 1;\n// fake: ${directive} on base\n` },
+      });
+      const ready = await readyRunWithRisk(fx);
+
+      const first = await recordMutant(mutantInput(ready, LABEL));
+      const second = await recordMutant(mutantInput(ready, VALUE));
+      const third = await recordMutant(
+        mutantInput(ready, appMutant("export const label = 'value';", "export const label = 'again';"))
+      );
+
+      expect(first).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'baseline-not-passing', runOutcome: null } });
+      expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'baseline-not-passing', runOutcome: null } });
+      expect(third).toMatchObject({ ok: true, mutant: { id: 'M3', outcome: 'baseline-not-passing', runOutcome: null } });
+      // The baseline runs for M1 and for the second attempt of M2; M3 reads the cached outcome and no mutant runs.
+      expect(readRunsLog(fx.recordPath)).toHaveLength(2);
+      expect(changedInWorktree(ready.worktree, 'src/app.ts')).toBe(false);
+    }
+  );
+
+  it('caches a baseline that recovers on its second attempt as its stable outcome, so the next mutant runs no baseline again', async () => {
+    const fx = makeProjectFixture({
+      root: tmp,
+      timeoutSeconds: 1,
+      baseFiles: { 'test/app.spec.ts': '// covers: src/app.ts\n// expect: export const value = 1;\n// fake: crash-once on base\n' },
+    });
+    const ready = await readyRunWithRisk(fx);
+
+    const first = await recordMutant(mutantInput(ready, LABEL));
+    const second = await recordMutant(mutantInput(ready, VALUE));
+    const third = await recordMutant(mutantInput(ready, LABEL));
+
+    expect(first).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'baseline-not-passing' } });
+    expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'caught-by-existing', runOutcome: 'fail' } });
+    expect(third).toMatchObject({ ok: true, mutant: { id: 'M3', outcome: 'surviving', runOutcome: 'pass' } });
+    // The baseline crashes, the baseline passes and is cached, then one run of M2 and one run of M3 on the mutated parent.
+    expect(readRunsLog(fx.recordPath)).toHaveLength(4);
+  });
+});
+
 describe('recordEquivalence', () => {
   /** Records one surviving mutant (M1) on the label, which the spec does not keep. */
   async function survivingMutant(): Promise<ReadyRun> {

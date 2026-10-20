@@ -854,7 +854,10 @@ export interface CatchFunnel {
   classified: Record<string, number>;
   assessed: Record<string, number>;
   judged: Record<string, number>;
-  /** The findings of findings.json: how many, how many were confirmed or dismissed, and how many are unanswered. */
+  /**
+   * The findings of findings.json, each counted once by its last answer in the ledger: how many, how many were confirmed
+   * or dismissed, and how many are unanswered. An answer that names no finding of the file is left out.
+   */
   findings: { count: number; confirmed: number; dismissed: number; unanswered: number };
   /** The tests recorded by catch landed: one landed ledger line per test the person applied and recorded. */
   landed: number;
@@ -974,13 +977,42 @@ function findingsOf(runDir: string, tally: ReadTally): Array<Record<string, unkn
   });
 }
 
-/** The ids of the findings the ledger answers: each confirmed or dismissed line names the finding it answers. */
-function answeredFindingIds(ledger: Array<Record<string, unknown>>): Set<string> {
-  return new Set(
-    ledger
-      .filter((entry) => entry.stage === 'confirmed' || entry.stage === 'dismissed')
-      .flatMap((entry) => (typeof entry.finding === 'string' ? [entry.finding] : []))
-  );
+/** The answer to a finding: a confirmed or dismissed ledger line names the finding it answers. */
+type FindingAnswer = 'confirmed' | 'dismissed';
+
+/**
+ * The last answer the ledger gives each finding id: a later line for the same finding replaces an earlier one. A line
+ * that names no finding, or a stage that is not an answer, gives no answer.
+ */
+function lastAnswers(ledger: Array<Record<string, unknown>>): Map<string, FindingAnswer> {
+  const answers = new Map<string, FindingAnswer>();
+  for (const entry of ledger) {
+    const stage = entry.stage;
+    if ((stage === 'confirmed' || stage === 'dismissed') && typeof entry.finding === 'string') {
+      answers.set(entry.finding, stage);
+    }
+  }
+  return answers;
+}
+
+/**
+ * Counts the findings of findings.json by the last answer each one has. Each finding is counted once, as confirmed,
+ * dismissed or unanswered, so count = confirmed + dismissed + unanswered always holds.
+ */
+function countFindings(
+  findings: Array<Record<string, unknown>>,
+  answers: Map<string, FindingAnswer>
+): CatchFunnel['findings'] {
+  const counts = { count: findings.length, confirmed: 0, dismissed: 0, unanswered: 0 };
+  for (const finding of findings) {
+    const answer = typeof finding.id === 'string' ? answers.get(finding.id) : undefined;
+    if (answer === undefined) {
+      counts.unanswered += 1;
+    } else {
+      counts[answer] += 1;
+    }
+  }
+  return counts;
 }
 
 /** Counts the values of one field across records, with the keys in sorted order. */
@@ -1005,7 +1037,6 @@ export function describeCatchFunnel(runDir: string): CatchFunnel {
   const ledger = ledgerEntries(runDir, tally);
   const stages = countStages(ledger);
   const findings = findingsOf(runDir, tally);
-  const answered = answeredFindingIds(ledger);
   const funnel: Omit<CatchFunnel, 'unreadable'> = {
     risks: recordsIn(path.join(runDir, RISKS_DIRNAME), 'R', tally).length,
     mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M', tally), 'outcome'),
@@ -1013,12 +1044,7 @@ export function describeCatchFunnel(runDir: string): CatchFunnel {
     classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T', tally), 'action'),
     assessed: countField(assessedReports(runDir, tally), 'outcome'),
     judged: countField(recordsIn(path.join(runDir, JUDGES_DIRNAME), 'T', tally), 'outcome'),
-    findings: {
-      count: findings.length,
-      confirmed: stages.confirmed ?? 0,
-      dismissed: stages.dismissed ?? 0,
-      unanswered: findings.filter((finding) => typeof finding.id !== 'string' || !answered.has(finding.id)).length,
-    },
+    findings: countFindings(findings, lastAnswers(ledger)),
     landed: stages.landed ?? 0,
   };
   return { ...funnel, unreadable: tally.unreadable };

@@ -583,6 +583,47 @@ describe('recordTest functionality and dodgy-diff tests', () => {
   });
 });
 
+describe('recordTest path of an earlier test that a parent gate discarded (T14-F4)', () => {
+  const CURRENCY = { kind: 'functionality', requirement: 'Currency', path: 'test/catch-currency.spec.ts' };
+  // The parent run of this test never ends: it is discarded as inconclusive at the gate.
+  const SLEEPS_ON_PARENT = `// fake: sleep on base\n${spec('export const value = 1;')}`;
+
+  it('records a new test at the path of an earlier test that its parent run discarded as inconclusive', async () => {
+    const ready = await readyRun(makeProjectFixture({ root: tmp, timeoutSeconds: 1 }));
+
+    const discarded = await recordTest(testInput(ready, { ...CURRENCY, content: SLEEPS_ON_PARENT }));
+    expect(discarded).toMatchObject({ ok: true, test: { id: 'T1', outcome: 'inconclusive' } });
+
+    const retry = await recordTest(testInput(ready, { ...CURRENCY, content: spec('export const value = 1;') }));
+    expect(retry).toMatchObject({ ok: true, test: { id: 'T2', path: 'test/catch-currency.spec.ts', outcome: 'gated' } });
+  });
+
+  it('records a new catching test at the path of an earlier catching test that its parent did not pass', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+    const ready = await readyRun(fx);
+    await judgedMutant(ready, LABEL_ORIGINAL, LABEL_REPLACEMENT);
+    const catchingAt = (content: string) => ({ kind: 'catching', mutant: 'M1', path: 'test/catch-label.spec.ts', content });
+
+    const discarded = await recordTest(testInput(ready, catchingAt(spec('export const value = 2;'))));
+    expect(discarded).toMatchObject({ ok: true, test: { id: 'T1', outcome: 'parent-not-passing' } });
+
+    const retry = await recordTest(testInput(ready, catchingAt(spec("export const label = 'value';"))));
+    expect(retry).toMatchObject({ ok: true, test: { id: 'T2', path: 'test/catch-label.spec.ts', outcome: 'gated' } });
+  });
+
+  it('refuses a third test at that path once the retry is recorded, because the retry is still alive', async () => {
+    const ready = await readyRun(makeProjectFixture({ root: tmp, timeoutSeconds: 1 }));
+    await recordTest(testInput(ready, { ...CURRENCY, content: SLEEPS_ON_PARENT }));
+    const retry = await recordTest(testInput(ready, { ...CURRENCY, content: spec('export const value = 1;') }));
+    expect(retry).toMatchObject({ ok: true, test: { id: 'T2', outcome: 'gated' } });
+
+    const third = await recordTest(testInput(ready, { ...CURRENCY, content: spec('export const value = 1;') }));
+
+    expect(third).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'path-duplicate' })] });
+    expect(fs.existsSync(path.join(ready.runDir, 'tests', 'T3.json'))).toBe(false);
+  });
+});
+
 describe('findIntentRequirement, the one requirement lookup of risks and tests (T10)', () => {
   const intent = {
     schema: 'qaspec.catch-intent/v1' as const,
