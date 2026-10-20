@@ -658,6 +658,25 @@ describe('execution results (T8)', () => {
       });
     });
 
+    it('refuses TCMS ids with characters outside letters, digits, dot, underscore, colon and hyphen', async () => {
+      await setUpChange();
+      const runId = await startOnly();
+
+      for (const tcmsId of ['42$(touch pwned)', '42; rm -rf x', 'a b', '`id`']) {
+        expect(recordTcmsMapping(locate(runId), { title: 'Export totals', tcmsId })).toMatchObject({
+          ok: false,
+          issues: [{ message: expect.stringContaining('--tcms-id may contain only') }],
+        });
+      }
+      expect(recordTcmsMapping(locate(runId), { title: 'Export totals', tcmsId: '42', tcmsRun: 'run 7' })).toMatchObject({
+        ok: false,
+        issues: [{ message: expect.stringContaining('--tcms-run may contain only') }],
+      });
+      expect(recordTcmsMapping(locate(runId), { title: 'Export totals', tcmsId: 'PRJ-42', tcmsRun: 'r:7.1_a' })).toMatchObject({
+        ok: true,
+      });
+    });
+
     it('refuses to write while another command holds the run lock, and keeps the mapping it had', async () => {
       await setUpChange();
       const runId = await startOnly();

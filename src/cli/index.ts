@@ -754,8 +754,9 @@ executeCmd
   .description('Record the judge classification of a case that needs triage (once per case; app creates a finding)')
   .requiredOption('--run <id>', 'Run id printed by execute start')
   .requiredOption('--case <id>', 'Testcase id such as 1.1, or control')
-  .requiredOption('--classification <kind>', 'agent, environment or app')
-  .requiredOption('--rationale <text>', 'Why the judge chose this classification')
+  .option('--input <file>', 'Judgement JSON file: classification, rationale, expected, observed (instead of the flags)')
+  .option('--classification <kind>', 'agent, environment or app (required without --input)')
+  .option('--rationale <text>', 'Why the judge chose this classification (required without --input)')
   .option('--expected <text>', 'What the case expects (app only, required)')
   .option('--observed <text>', 'What the run observed (app only, required)')
   .option('--json', 'Output as JSON')
@@ -763,8 +764,9 @@ executeCmd
     async (options: {
       run: string;
       case: string;
-      classification: string;
-      rationale: string;
+      input?: string;
+      classification?: string;
+      rationale?: string;
       expected?: string;
       observed?: string;
       json?: boolean;
@@ -786,16 +788,26 @@ executeCmd
   .requiredOption('--finding <id>', 'Finding id such as F1')
   .requiredOption('--intended <yes|no>', 'Whether the behavior is intended')
   .option('--note <text>', 'Optional note from the person')
+  .option('--note-file <file>', 'Optional note from the person, read from a plain text file (instead of --note)')
   .option('--json', 'Output as JSON')
-  .action(async (options: { run: string; finding: string; intended: string; note?: string; json?: boolean }) => {
-    try {
-      await executeAnswerCommand(options);
-    } catch (error) {
-      console.log();
-      ora().fail(`Error: ${(error as Error).message}`);
-      process.exit(1);
+  .action(
+    async (options: {
+      run: string;
+      finding: string;
+      intended: string;
+      note?: string;
+      noteFile?: string;
+      json?: boolean;
+    }) => {
+      try {
+        await executeAnswerCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
     }
-  });
+  );
 
 executeCmd
   .command('results')
@@ -831,12 +843,20 @@ executeCmd
   .command('tcms-map')
   .description('Record the TCMS id of one case title in the run (a title keeps one id; status --json shows the mapping)')
   .requiredOption('--run <id>', 'Run id printed by execute start')
-  .requiredOption('--title <text>', 'Case title: the checkbox text after the case number, as written in testcases.md')
+  .option('--title <text>', 'Case title: the checkbox text after the case number, as written in testcases.md')
+  .option('--title-file <file>', 'Case title read from a plain text file, one line (instead of --title)')
   .requiredOption('--tcms-id <id>', 'Case id in the TCMS')
   .option('--tcms-run <id>', 'Run id in the TCMS, recorded once per run')
   .option('--json', 'Output as JSON')
   .action(
-    async (options: { run: string; title: string; tcmsId: string; tcmsRun?: string; json?: boolean }) => {
+    async (options: {
+      run: string;
+      title?: string;
+      titleFile?: string;
+      tcmsId: string;
+      tcmsRun?: string;
+      json?: boolean;
+    }) => {
       try {
         await executeTcmsMapCommand(options);
       } catch (error) {

@@ -384,6 +384,57 @@ function judgementIssues(input: TriageInput): ExecutionIssue[] {
   return issues;
 }
 
+/** The keys of a judgement file: the judgement flags without their dashes. */
+const JUDGEMENT_FILE_KEYS = ['classification', 'rationale', 'expected', 'observed'] as const;
+
+/**
+ * Reads one judgement from the JSON text of a `triage --input` file, an object whose keys are the judgement
+ * flags without their dashes. It checks the shape only; triageCase applies the rules every judgement follows.
+ */
+export function parseTriageInput(text: string): { ok: true; input: TriageInput } | Refusal {
+  const parsed = parseJsonText(text);
+  if (!parsed.ok) {
+    return refusal(`The judgement file is not valid JSON: ${parsed.message}`);
+  }
+  const value = parsed.value;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return refusal(
+      'The judgement file must hold one JSON object: classification, rationale and, for app, expected and observed'
+    );
+  }
+  const fields = value as Record<string, unknown>;
+  const issues: ExecutionIssue[] = Object.keys(fields)
+    .filter((key) => !(JUDGEMENT_FILE_KEYS as readonly string[]).includes(key))
+    .map((key) => ({
+      message: `Unknown key "${key}" in the judgement file: use classification, rationale, expected and observed`,
+    }));
+  const { classification, rationale, expected, observed } = fields;
+  if (typeof classification !== 'string') {
+    issues.push({ message: 'Classification must be agent, environment or app' });
+  }
+  if (typeof rationale !== 'string') {
+    issues.push({ message: 'rationale must be a string' });
+  }
+  if (expected !== undefined && typeof expected !== 'string') {
+    issues.push({ message: 'expected must be a string' });
+  }
+  if (observed !== undefined && typeof observed !== 'string') {
+    issues.push({ message: 'observed must be a string' });
+  }
+  if (issues.length > 0) {
+    return { ok: false, issues };
+  }
+  return {
+    ok: true,
+    input: {
+      classification: classification as string,
+      rationale: rationale as string,
+      ...(expected !== undefined ? { expected: expected as string } : {}),
+      ...(observed !== undefined ? { observed: observed as string } : {}),
+    },
+  };
+}
+
 /**
  * Records the judge's classification of one case, once. An app classification also stores a finding
  * (ledger stage reported) with its sense-check question. Agent and environment produce no finding.

@@ -13,7 +13,7 @@ import {
   startRun,
   storePlan,
 } from '../../src/core/execution-run.js';
-import { answerFinding, triageCase, triageContext } from '../../src/core/execution-triage.js';
+import { answerFinding, parseTriageInput, triageCase, triageContext } from '../../src/core/execution-triage.js';
 import { writeChangeMetadata } from '../../src/utils/change-metadata.js';
 
 const CHANGE = 'pr-1';
@@ -727,6 +727,85 @@ describe('execution triage (T7)', () => {
       expect(outcome.ok === false && outcome.issues.map((issue) => issue.message)).toEqual([
         `Run ${runId} is environment-noise: its findings are void, so they are not answered`,
       ]);
+    });
+  });
+
+  describe('judgement file (triage --input)', () => {
+    const messagesOf = (outcome: { ok: boolean; issues?: Array<{ message: string }> }): string[] =>
+      outcome.ok ? [] : (outcome.issues ?? []).map((issue) => issue.message);
+
+    it('reads each classification and keeps expected and observed for app only', () => {
+      expect(parseTriageInput(json({ classification: 'agent', rationale: 'Mis-click' }))).toEqual({
+        ok: true,
+        input: { classification: 'agent', rationale: 'Mis-click' },
+      });
+      expect(parseTriageInput(json({ classification: 'environment', rationale: 'Maintenance page' }))).toEqual({
+        ok: true,
+        input: { classification: 'environment', rationale: 'Maintenance page' },
+      });
+      expect(
+        parseTriageInput(
+          json({ classification: 'app', rationale: 'Banner', expected: 'Saved banner shown', observed: 'Error banner shown' })
+        )
+      ).toEqual({
+        ok: true,
+        input: { classification: 'app', rationale: 'Banner', expected: 'Saved banner shown', observed: 'Error banner shown' },
+      });
+    });
+
+    it('keeps the text exactly as written, shell syntax included, and accepts a byte order mark', () => {
+      const rationale = 'Expects $(touch pwned) and `ticks` to stay text';
+
+      expect(parseTriageInput(`﻿${json({ classification: 'agent', rationale })}`)).toEqual({
+        ok: true,
+        input: { classification: 'agent', rationale },
+      });
+    });
+
+    it('refuses invalid JSON, a value that is not an object, and an unknown key', () => {
+      expect(messagesOf(parseTriageInput('{"classification": '))[0]).toMatch(/^The judgement file is not valid JSON: /);
+      expect(messagesOf(parseTriageInput('["agent"]'))).toEqual([
+        'The judgement file must hold one JSON object: classification, rationale and, for app, expected and observed',
+      ]);
+      expect(messagesOf(parseTriageInput(json({ classification: 'agent', rationale: 'Mis-click', observd: 'typo' })))).toEqual([
+        'Unknown key "observd" in the judgement file: use classification, rationale, expected and observed',
+      ]);
+    });
+
+    it('refuses a missing or non-string classification and rationale, and a non-string expected or observed', () => {
+      expect(messagesOf(parseTriageInput(json({ rationale: 'Mis-click' })))).toEqual([
+        'Classification must be agent, environment or app',
+      ]);
+      expect(messagesOf(parseTriageInput(json({ classification: 'agent' })))).toEqual(['rationale must be a string']);
+      expect(
+        messagesOf(parseTriageInput(json({ classification: 'app', rationale: 'Banner', expected: null, observed: 3 })))
+      ).toEqual(['expected must be a string', 'observed must be a string']);
+    });
+
+    it('judges a case from a file with the same rules as the flags, and writes nothing when they fail', async () => {
+      const runId = await startWithControl();
+      failCaseTwice(runId, '1.1', CASE_1_PLAN, CASE_1_FAIL);
+      const appWithoutExpected = parseTriageInput(json({ classification: 'app', rationale: 'Banner', observed: 'Error banner shown' }));
+      const appComplete = parseTriageInput(
+        json({ classification: 'app', rationale: 'Banner', expected: 'Saved banner shown', observed: 'Error banner shown' })
+      );
+      const agentWithExpected = parseTriageInput(json({ classification: 'agent', rationale: 'Mis-click', expected: 'Saved' }));
+      if (!appWithoutExpected.ok || !appComplete.ok || !agentWithExpected.ok) {
+        throw new Error('the judgement files are valid JSON objects');
+      }
+
+      expect(messagesOf(triageCase(locate(runId), '1.1', appWithoutExpected.input))).toEqual([
+        'An app judgement needs --expected',
+      ]);
+      expect(messagesOf(triageCase(locate(runId), '1.1', agentWithExpected.input))).toEqual([
+        '--expected and --observed apply only to app judgements',
+      ]);
+      expect(ledgerLines(runId).filter((line) => line.stage !== 'candidate')).toEqual([]);
+
+      const outcome = triageCase(locate(runId), '1.1', { ...appComplete.input, now: at(0) });
+      expect(outcome.ok && outcome.finding?.question).toBe(
+        'Case 1.1 expects: Saved banner shown. The run observed: Error banner shown. Is this intended?'
+      );
     });
   });
 });

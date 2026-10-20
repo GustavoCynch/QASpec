@@ -7,6 +7,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import * as fs from 'node:fs';
+import { TextDecoder } from 'node:util';
 import path from 'path';
 import { getChangeDir, resolveCurrentPlanningHomeSync } from '../core/planning-home.js';
 import { executeLogin } from '../core/execution-auth.js';
@@ -36,7 +37,14 @@ import {
   type RunRecord,
   type StartBlocker,
 } from '../core/execution-run.js';
-import { answerFinding, triageCase, triageContext, type TriageContext } from '../core/execution-triage.js';
+import {
+  answerFinding,
+  parseTriageInput,
+  triageCase,
+  triageContext,
+  type TriageContext,
+  type TriageInput,
+} from '../core/execution-triage.js';
 import {
   buildResults,
   readTcmsMapping,
@@ -293,6 +301,43 @@ function readInputBytes(filePath: string, label: string): Buffer {
   } catch (error) {
     const reason = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'file not found' : (error as Error).message;
     throw new Error(`Cannot read ${label} "${filePath}": ${reason}`);
+  }
+}
+
+/** The largest plain text file a command reads: a judgement, a note or a title, written by the workflow. */
+const MAX_TEXT_INPUT_BYTES = 64 * 1024;
+
+/**
+ * Reads a plain text input file as UTF-8, so free text reaches the CLI from a file and never from a shell command
+ * line. The file must be a regular file of at most 64 KB and valid UTF-8; the text is returned as written.
+ */
+function readTextInput(
+  filePath: string,
+  label: string
+): { ok: true; text: string } | { ok: false; issues: ExecutionIssue[] } {
+  const refuse = (message: string) => ({ ok: false as const, issues: [{ message }] });
+  const resolved = path.resolve(filePath);
+  let bytes: Buffer;
+  try {
+    const stats = fs.statSync(resolved);
+    if (!stats.isFile()) {
+      return refuse(`The ${label} "${filePath}" must be a regular file`);
+    }
+    if (stats.size > MAX_TEXT_INPUT_BYTES) {
+      return refuse(`The ${label} "${filePath}" is larger than 64 KB`);
+    }
+    bytes = fs.readFileSync(resolved);
+  } catch (error) {
+    const reason = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'file not found' : (error as Error).message;
+    return refuse(`Cannot read the ${label} "${filePath}": ${reason}`);
+  }
+  if (bytes.length > MAX_TEXT_INPUT_BYTES) {
+    return refuse(`The ${label} "${filePath}" is larger than 64 KB`);
+  }
+  try {
+    return { ok: true, text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+  } catch {
+    return refuse(`The ${label} "${filePath}" is not valid UTF-8`);
   }
 }
 
@@ -643,8 +688,9 @@ export async function executeStatusCommand(options: ExecuteStatusOptions): Promi
 /* Triage (T7): the judge's input, one judgement per case, and the person's answers to the findings. */
 
 export interface ExecuteTriageOptions extends ExecuteCaseCommandOptions {
-  classification: string;
-  rationale: string;
+  input?: string;
+  classification?: string;
+  rationale?: string;
   expected?: string;
   observed?: string;
 }
@@ -653,6 +699,7 @@ export interface ExecuteAnswerOptions extends ExecuteRunCommandOptions {
   finding: string;
   intended: string;
   note?: string;
+  noteFile?: string;
 }
 
 function printTriageSummary(context: TriageContext): void {
@@ -678,15 +725,59 @@ export async function executeTriageContextCommand(options: ExecuteCaseCommandOpt
   printTriageSummary(outcome.context);
 }
 
+/**
+ * The judgement a triage command records: the JSON file of --input, or the judgement flags. Mixing the two, and
+ * a flag that is missing, is refused before anything is recorded.
+ */
+function judgementFromOptions(
+  options: ExecuteTriageOptions
+): { ok: true; input: TriageInput } | { ok: false; issues: ExecutionIssue[] } {
+  if (options.input !== undefined) {
+    const flagged = [options.classification, options.rationale, options.expected, options.observed].some(
+      (value) => value !== undefined
+    );
+    if (flagged) {
+      return {
+        ok: false,
+        issues: [{ message: '--input cannot be combined with --classification, --rationale, --expected or --observed' }],
+      };
+    }
+    const file = readTextInput(options.input, 'judgement file');
+    if (!file.ok) {
+      return file;
+    }
+    return parseTriageInput(file.text);
+  }
+  const issues: ExecutionIssue[] = [];
+  if (options.classification === undefined) {
+    issues.push({ message: 'Missing required option --classification (or --input)' });
+  }
+  if (options.rationale === undefined) {
+    issues.push({ message: 'Missing required option --rationale (or --input)' });
+  }
+  if (issues.length > 0) {
+    return { ok: false, issues };
+  }
+  return {
+    ok: true,
+    input: {
+      classification: options.classification as string,
+      rationale: options.rationale as string,
+      expected: options.expected,
+      observed: options.observed,
+    },
+  };
+}
+
 /** Records the judge's classification of one case, once. Only app creates a finding. */
 export async function executeTriageCommand(options: ExecuteTriageOptions): Promise<void> {
+  const judgement = judgementFromOptions(options);
+  if (!judgement.ok) {
+    printReportedIssues(judgement.issues, options.json, `Judgement not recorded for case ${options.case}`);
+    return;
+  }
   const location = resolveRun(options.run);
-  const outcome = triageCase(location, options.case, {
-    classification: options.classification,
-    rationale: options.rationale,
-    expected: options.expected,
-    observed: options.observed,
-  });
+  const outcome = triageCase(location, options.case, judgement.input);
   if (!outcome.ok) {
     printReportedIssues(outcome.issues, options.json, `Judgement not recorded for case ${options.case}`);
     return;
@@ -719,13 +810,32 @@ export async function executeTriageCommand(options: ExecuteTriageOptions): Promi
   }
 }
 
+/** The note of an answer: the text of --note-file, or the --note text. */
+function noteFromOptions(
+  options: ExecuteAnswerOptions
+): { ok: true; note?: string } | { ok: false; issues: ExecutionIssue[] } {
+  if (options.noteFile === undefined) {
+    return { ok: true, note: options.note };
+  }
+  if (options.note !== undefined) {
+    return { ok: false, issues: [{ message: '--note cannot be combined with --note-file' }] };
+  }
+  const file = readTextInput(options.noteFile, 'note file');
+  return file.ok ? { ok: true, note: file.text } : file;
+}
+
 /** Records the person's answer to one finding, once: yes (intended) dismisses it, no confirms it. */
 export async function executeAnswerCommand(options: ExecuteAnswerOptions): Promise<void> {
+  const note = noteFromOptions(options);
+  if (!note.ok) {
+    printReportedIssues(note.issues, options.json, `Answer not recorded for finding ${options.finding}`);
+    return;
+  }
   const location = resolveRun(options.run);
   const outcome = answerFinding(location, {
     finding: options.finding,
     intended: options.intended,
-    note: options.note,
+    note: note.note,
   });
   if (!outcome.ok) {
     printReportedIssues(outcome.issues, options.json, `Answer not recorded for finding ${options.finding}`);
@@ -756,7 +866,8 @@ export async function executeAnswerCommand(options: ExecuteAnswerOptions): Promi
 /* Results (T8): the TCMS results of a finished run, the results gate, and the title to TCMS id mapping. */
 
 export interface ExecuteTcmsMapOptions extends ExecuteRunCommandOptions {
-  title: string;
+  title?: string;
+  titleFile?: string;
   tcmsId: string;
   tcmsRun?: string;
 }
@@ -816,11 +927,52 @@ export async function executeResultsGateCommand(options: ExecuteRunCommandOption
   }
 }
 
+/**
+ * The case title of tcms-map: the --title text as given, or the --title-file text without its trailing line
+ * break. A title file holds one line, the exact title as testcases.md writes it.
+ */
+function titleFromOptions(
+  options: ExecuteTcmsMapOptions
+): { ok: true; title: string } | { ok: false; issues: ExecutionIssue[] } {
+  if (options.titleFile === undefined) {
+    if (options.title === undefined) {
+      return { ok: false, issues: [{ message: 'Missing required option --title (or --title-file)' }] };
+    }
+    return { ok: true, title: options.title };
+  }
+  if (options.title !== undefined) {
+    return { ok: false, issues: [{ message: '--title cannot be combined with --title-file' }] };
+  }
+  const file = readTextInput(options.titleFile, 'title file');
+  if (!file.ok) {
+    return file;
+  }
+  const title = file.text.replace(/\r?\n$/, '');
+  if (/[\r\n]/.test(title)) {
+    return {
+      ok: false,
+      issues: [{ message: `The title file "${options.titleFile}" must hold one line: the exact case title` }],
+    };
+  }
+  if (title.trim() === '') {
+    return {
+      ok: false,
+      issues: [{ message: `The title file "${options.titleFile}" is empty: write the exact case title` }],
+    };
+  }
+  return { ok: true, title };
+}
+
 /** Records the TCMS id of one case title in the run, and the TCMS run id when it is given. */
 export async function executeTcmsMapCommand(options: ExecuteTcmsMapOptions): Promise<void> {
+  const titled = titleFromOptions(options);
+  if (!titled.ok) {
+    printReportedIssues(titled.issues, options.json, `TCMS mapping not recorded for run ${options.run}`);
+    return;
+  }
   const location = resolveRun(options.run);
   const outcome = recordTcmsMapping(location, {
-    title: options.title,
+    title: titled.title,
     tcmsId: options.tcmsId,
     tcmsRun: options.tcmsRun,
   });

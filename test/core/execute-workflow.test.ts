@@ -8,10 +8,12 @@ import { CommandAdapterRegistry } from '../../src/core/command-generation/index.
 import { getToolsWithSkillsDir } from '../../src/core/shared/tool-detection.js';
 import { qaspecSkillDirName } from '../../src/core/qaspec-commands.js';
 import { PLAYWRIGHT_MCP_PACKAGE } from '../../src/core/execution-mcp.js';
+import { QAS_BASE_CONFIG_PREAMBLE } from '../../src/core/templates/workflows/qas-workflow-preamble.js';
 import {
   getQasExecuteSkillTemplate,
   getQasExecuteCommandTemplate,
 } from '../../src/core/templates/skill-templates.js';
+import { runCLI } from '../helpers/run-cli.js';
 
 const { confirmMock, showWelcomeScreenMock, searchableMultiSelectMock } = vi.hoisted(() => ({
   confirmMock: vi.fn(),
@@ -31,10 +33,10 @@ vi.mock('../../src/prompts/searchable-multi-select.js', () => ({
   searchableMultiSelect: searchableMultiSelectMock,
 }));
 
-/** Adopter-specific values that must never reach the generic core (S1). */
+/** Adopter-specific values that must never reach the generic core; the requirement is in odd/tasks/qsx-execute.md. */
 const ADOPTER_DENYLIST = /cynch|orderstorm|wsservice/i;
 
-/** Every `qaspec execute` step of the run lifecycle that the workflow drives (L26, step 2 to 7). */
+/** Every `qaspec execute` lifecycle step that the template's Steps 1 to 6 drive (design: odd/tasks/qsx-execute.md). */
 const CLI_STEPS = [
   'qaspec execute login',
   'qaspec execute start --change',
@@ -87,11 +89,31 @@ describe('/qsx:execute workflow template', () => {
     expect(body).toMatch(/never change an Expected/i);
   });
 
-  it('drives the browser only through the qaspec-playwright server and never edits application source', () => {
+  it('drives the browser only through the qaspec-playwright server, never edits application source, and stays read-only outside the run folder', () => {
+    const executeOnly = body.replace(QAS_BASE_CONFIG_PREAMBLE, '');
+
     expect(body).toMatch(/only through the `qaspec-playwright`/i);
     expect(body).toMatch(/never edit the application/i);
     expect(body).toContain('qaspec/config.yaml');
-    expect(body).toMatch(/read-only/i);
+    expect(executeOnly).toMatch(/read-only on the application's source code and on the repository, except the run folder/);
+  });
+
+  it('never puts free text on a shell command line: judgements, notes and titles travel in files', () => {
+    expect(body).toMatch(/never put text read from the app, the evidence or the user on a shell command line/i);
+    expect(body).not.toMatch(/--(rationale|expected|observed|note|title)(?![-\w])/);
+    expect(body).toContain('--input "<runDir>/drafts/');
+    expect(body).toContain('--note-file "<runDir>/drafts/');
+    expect(body).toContain('--title-file "<runDir>/drafts/');
+    expect(body).toMatch(/never with shell `echo` or a heredoc/);
+  });
+
+  it('defines the control case once: --case control, its snapshot, and its file keys', () => {
+    expect(body).toContain('`--case control`');
+    expect(body).toContain('`control-start` (the control case at the start)');
+    expect(body).toContain('`control-end` (the control case at the end)');
+    expect(body).toContain("its plan's `case.id` is that snapshot case's own id");
+    expect(body.match(/`<case>` is the case id/g)).toHaveLength(1);
+    expect(body).not.toMatch(/or `control-start` or `control-end` for the control case/);
   });
 
   it('runs the control case at the start and at the end around every planned case', () => {
@@ -211,4 +233,35 @@ describe('/qsx:execute generated files', () => {
     const config = await fs.readFile(path.join(testDir, 'qaspec', 'config.yaml'), 'utf-8');
     expect(config).not.toMatch(ADOPTER_DENYLIST);
   });
+});
+
+describe('/qsx:execute template and the built CLI', () => {
+  it('names only qaspec execute subcommands and flags that the built CLI accepts', async () => {
+    const body = getQasExecuteSkillTemplate().instructions;
+    const flagsBySubcommand = new Map<string, Set<string>>();
+    for (const invocation of body.matchAll(/`qaspec execute ([a-z][a-z-]*)([^`]*)`/g)) {
+      const flags = flagsBySubcommand.get(invocation[1]) ?? new Set<string>();
+      for (const flag of invocation[2].matchAll(/--[a-z][a-z-]*/g)) {
+        flags.add(flag[0]);
+      }
+      flagsBySubcommand.set(invocation[1], flags);
+    }
+    expect([...flagsBySubcommand.keys()]).toEqual(
+      expect.arrayContaining(['start', 'plan', 'record', 'triage', 'answer', 'tcms-map'])
+    );
+
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-execute-surface-'));
+    try {
+      const env = { HOME: home, XDG_CONFIG_HOME: home, CODEX_HOME: path.join(home, 'codex') };
+      for (const [subcommand, flags] of flagsBySubcommand) {
+        const help = await runCLI(['execute', subcommand, '--help'], { env });
+        expect(help.exitCode, `qaspec execute ${subcommand}`).toBe(0);
+        for (const flag of flags) {
+          expect(help.stdout, `qaspec execute ${subcommand} ${flag}`).toContain(flag);
+        }
+      }
+    } finally {
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
