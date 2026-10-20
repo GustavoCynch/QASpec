@@ -332,9 +332,16 @@ async function checkTestPath(
   return { ok: true, relative: placed.relative };
 }
 
-/** The id of an earlier test of the run that writes the given project path, or undefined: each catch test is a new file. */
+/**
+ * The id of an earlier test of the run that is still alive at the given project path, or undefined: each catch test is a
+ * new file. A test is alive when it passed its parent gates (gated, the only outcome that reaches the child phase); a
+ * test a gate discarded is never landed, so it does not block its path.
+ */
 function earlierTestAt(testsDir: string, testPath: string): string | undefined {
-  return listRecordIds(testsDir, 'T').find((id) => readRecord<CatchTest>(testsDir, id)?.path === testPath);
+  return listRecordIds(testsDir, 'T').find((id) => {
+    const earlier = readRecord<CatchTest>(testsDir, id);
+    return earlier?.path === testPath && earlier.outcome === 'gated';
+  });
 }
 
 /** A mutant applied to its parent file: the file, its original bytes, and the mutated text. */

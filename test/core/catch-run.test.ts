@@ -1132,7 +1132,8 @@ describe('catch run helpers of the child phase (T8)', () => {
       classified: { land: 1 },
       assessed: {},
       judged: {},
-      findings: { count: 0, confirmed: 1, dismissed: 0, unanswered: 0 },
+      // The confirmed line names no finding, so it answers nothing: findings.json holds none (it is unreadable).
+      findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
       landed: 0,
       unreadable: 6,
     });
@@ -1181,6 +1182,75 @@ describe('catch run helpers of the child phase (T8)', () => {
       findings: { count: 3, confirmed: 1, dismissed: 1, unanswered: 1 },
       unreadable: 0,
     });
+  });
+
+  it('describeCatchFunnel leaves an answer that names no finding of findings.json out of the findings counts (T14-F4)', () => {
+    const runDir = path.join(tmp, 'unknown-answer-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'findings.json'),
+      JSON.stringify([
+        { id: 'F1', test: 'T1' },
+        { id: 'F2', test: 'T2' },
+      ])
+    );
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'dismissed', finding: 'F9', intended: 'yes' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    const { findings } = describeCatchFunnel(runDir);
+
+    expect(findings).toEqual({ count: 2, confirmed: 1, dismissed: 0, unanswered: 1 });
+    expect(findings.confirmed + findings.dismissed + findings.unanswered).toBe(findings.count);
+  });
+
+  it('describeCatchFunnel counts a finding once, by its last answer, when the ledger answers it twice (T14-F4)', () => {
+    const runDir = path.join(tmp, 'two-answers-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(path.join(runDir, 'findings.json'), JSON.stringify([{ id: 'F1', test: 'T1' }]));
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'dismissed', finding: 'F1', intended: 'yes' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    expect(describeCatchFunnel(runDir).findings).toEqual({ count: 1, confirmed: 0, dismissed: 1, unanswered: 0 });
+  });
+
+  it('describeCatchFunnel keeps count = confirmed + dismissed + unanswered with repeated and unknown answers (T14-F4)', () => {
+    const runDir = path.join(tmp, 'mixed-answers-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'findings.json'),
+      JSON.stringify([
+        { id: 'F1', test: 'T1' },
+        { id: 'F2', test: 'T2' },
+        { id: 'F3', test: 'T3' },
+      ])
+    );
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'dismissed', finding: 'F3', intended: 'yes' },
+        { stage: 'confirmed', finding: 'F7', intended: 'no' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    expect(describeCatchFunnel(runDir).findings).toEqual({ count: 3, confirmed: 1, dismissed: 1, unanswered: 1 });
   });
 
   it('describeCatchFunnel counts the tests recorded by catch landed, one landed ledger line per test', () => {

@@ -5,8 +5,8 @@
  *   1. The comparable forms of the parent and the mutant (the adapter's normalizeSource) are equal:
  *      syntactic-equivalent. Discarded; nothing runs.
  *   2. The existing tests related to the file run on the unmutated parent first (the baseline, once per set of
- *      related tests, cached in the run unless it timed out or failed to run, so the next mutant runs it again).
- *      A set that is not passing there ends the mutant as baseline-not-passing:
+ *      related tests and cached in the run; a timeout or a runner error is retried by the next mutant of the set, and
+ *      the second transient outcome is cached). A set that is not passing there ends the mutant as baseline-not-passing:
  *      the mutant is not blamed, and no mutant run happens. Otherwise the mutant is applied in the parent's worktree
  *      and the same tests run on it. The file is restored byte for byte afterwards, whatever happened. no-build and
  *      caught-by-existing are discarded; caughtBy lists the tests that failed. surviving: no related test, or the
@@ -289,24 +289,35 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
 export const BASELINES_FILE = 'baselines.json';
 
 /**
- * The outcome of one related-test set on the unmutated parent: run once per run and reused by later mutants when the
- * outcome is stable (a timeout or a runner error is not stored).
+ * The outcome of one related-test set on the unmutated parent, reused by the later mutants of the set. A stable outcome
+ * is final at once. A timeout or a runner error is not reused after its first attempt: the next mutant runs the baseline
+ * again, and the second transient outcome is final.
  */
 export interface CatchBaseline {
   /** The set: the related test files, sorted. */
   tests: string[];
   outcome: RunOutcome;
   detail?: string;
+  /** The runs of the set's baseline in this run, the one that gave this outcome included. */
+  attempts: number;
   createdAt: string;
 }
+
+/** A timeout or a runner error is retried once: a set whose baseline stays transient for this many attempts is final. */
+const TRANSIENT_BASELINE_ATTEMPTS = 2;
+
+/** Whether a stored baseline answers the later mutants of its set: a stable outcome, or a transient one on its last attempt. */
+const isFinalBaseline = (baseline: CatchBaseline): boolean =>
+  !isInconclusive(baseline.outcome) || baseline.attempts >= TRANSIENT_BASELINE_ATTEMPTS;
 
 /** The cache key of a related-test set: the hash of its sorted list. */
 const baselineKey = (sortedTests: readonly string[]): string => sha256(Buffer.from(JSON.stringify(sortedTests)));
 
 /**
- * The baseline of a related-test set: read from the run's cache when the set has one, else run once on the unmutated
- * parent. A stable outcome is stored there; a timeout or a runner error is returned but not stored, so the next mutant
- * of the set runs the baseline again. Callers hold the run lock, and the mutant is not written before this returns.
+ * The baseline of a related-test set: read from the run's cache when the set has a final one, else run once on the
+ * unmutated parent. Every attempt is stored with its attempt count, so a timeout or a runner error makes the next mutant
+ * of the set run the baseline again, and the outcome of the second attempt is final. Callers hold the run lock, and the
+ * mutant is not written before this returns.
  */
 async function baselineOf(
   runDir: string,
@@ -318,15 +329,19 @@ async function baselineOf(
   const cache = existsSync(path.join(runDir, BASELINES_FILE))
     ? readRunJson<Record<string, CatchBaseline>>(runDir, BASELINES_FILE)
     : {};
-  const cached = cache[key];
-  if (cached !== undefined) {
+  const cached: CatchBaseline | undefined = cache[key];
+  if (cached !== undefined && isFinalBaseline(cached)) {
     return cached;
   }
   const result = await runSet();
-  const baseline: CatchBaseline = { tests: sorted, outcome: result.outcome, ...withDetail(runDetail(result)), createdAt: nowIso() };
-  if (!isInconclusive(result.outcome)) {
-    writeRunJson(runDir, BASELINES_FILE, { ...cache, [key]: baseline });
-  }
+  const baseline: CatchBaseline = {
+    tests: sorted,
+    outcome: result.outcome,
+    ...withDetail(runDetail(result)),
+    attempts: (cached?.attempts ?? 0) + 1,
+    createdAt: nowIso(),
+  };
+  writeRunJson(runDir, BASELINES_FILE, { ...cache, [key]: baseline });
   return baseline;
 }
 
