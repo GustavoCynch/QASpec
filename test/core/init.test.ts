@@ -118,6 +118,16 @@ execution:
       expect(output.indexOf('/qsx:execute')).toBeGreaterThan(output.indexOf('/qsx:publish'));
     });
 
+    it('should list /qsx:catch in getting-started output after /qsx:execute', async () => {
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+
+      await initCommand.execute(testDir);
+
+      const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+      expect(output).toContain('/qsx:catch');
+      expect(output.indexOf('/qsx:catch')).toBeGreaterThan(output.indexOf('/qsx:execute'));
+    });
+
     it('should create config.yaml with default schema', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
 
@@ -141,12 +151,13 @@ execution:
 
       await initCommand.execute(testDir);
 
-      // Core profile: analyze, cases, publish, execute, archive
+      // Core profile: analyze, cases, publish, execute, catch, archive
       const coreSkillNames = [
         'qaspec-analyze',
         'qaspec-cases',
         'qaspec-publish',
         'qaspec-execute',
+        'qaspec-catch',
         'qaspec-archive',
       ];
 
@@ -180,12 +191,13 @@ execution:
 
       await initCommand.execute(testDir);
 
-      // Core profile: analyze, cases, publish, execute, archive
+      // Core profile: analyze, cases, publish, execute, catch, archive
       const coreCommandNames = [
         'qsx/analyze.md',
         'qsx/cases.md',
         'qsx/publish.md',
         'qsx/execute.md',
+        'qsx/catch.md',
         'qsx/archive.md',
       ];
 

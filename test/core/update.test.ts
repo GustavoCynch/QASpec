@@ -163,6 +163,7 @@ Old instructions content
         'qaspec-cases',
         'qaspec-publish',
         'qaspec-execute',
+        'qaspec-catch',
         'qaspec-archive',
       ];
 
@@ -236,8 +237,8 @@ Old instructions content
 
       await updateCommand.execute(testDir);
 
-      // Verify core profile commands were created (analyze, cases, publish, execute, archive)
-      const coreCommandIds = ['analyze', 'cases', 'publish', 'execute', 'archive'];
+      // Verify core profile commands were created (analyze, cases, publish, execute, catch, archive)
+      const coreCommandIds = ['analyze', 'cases', 'publish', 'execute', 'catch', 'archive'];
       const commandsDir = path.join(testDir, '.claude', 'commands', 'qsx');
       for (const cmdId of coreCommandIds) {
         const cmdFile = path.join(commandsDir, `${cmdId}.md`);
@@ -1130,6 +1131,35 @@ metadata:
       )).toBe(true);
       expect(await FileSystemUtils.fileExists(
         path.join(testDir, '.claude', 'commands', 'qsx', 'execute.md')
+      )).toBe(true);
+    });
+
+    it('should add the catch workflow to a project generated with the five-workflow core set', async () => {
+      // A project installed before catch existed: the custom profile with the five core workflows.
+      setMockConfig({
+        featureFlags: {},
+        profile: 'custom',
+        delivery: 'both',
+        workflows: ['analyze', 'cases', 'publish', 'execute', 'archive'],
+      });
+      await new InitCommand({ tools: 'claude', force: true }).execute(testDir);
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'skills', 'qaspec-catch', 'SKILL.md')
+      )).toBe(false);
+
+      // The core profile now includes catch; update adds it to the existing project.
+      setMockConfig({
+        featureFlags: {},
+        profile: 'core',
+        delivery: 'both',
+      });
+      await updateCommand.execute(testDir);
+
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'skills', 'qaspec-catch', 'SKILL.md')
+      )).toBe(true);
+      expect(await FileSystemUtils.fileExists(
+        path.join(testDir, '.claude', 'commands', 'qsx', 'catch.md')
       )).toBe(true);
     });
 
