@@ -1,0 +1,50 @@
+{
+  "numFailedTestSuites": 1,
+  "numFailedTests": 1,
+  "numPassedTestSuites": 0,
+  "numPassedTests": 1,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 1,
+  "numTotalTests": 2,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["sum"],
+          "duration": 4,
+          "failureDetails": [{}],
+          "failureMessages": [
+            "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 4\nReceived: 3\n\n  2 |\n  3 | test('adds two numbers', () => {\n> 4 |   expect(sum(1, 2)).toBe(4);\n    |                    ^\n  5 | });\n\n    at Object.<anonymous> (test/sum.spec.ts:4:20)"
+          ],
+          "fullName": "sum adds two numbers",
+          "location": null,
+          "status": "failed",
+          "title": "adds two numbers"
+        },
+        {
+          "ancestorTitles": ["sum"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "sum adds zero",
+          "location": null,
+          "status": "passed",
+          "title": "adds zero"
+        }
+      ],
+      "endTime": 1792425600150,
+      "message": "    ● sum › adds two numbers\n\n      Error: expect(received).toBe(expected) // Object.is equality\n\n      Expected: 4\n      Received: 3",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "failed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}
