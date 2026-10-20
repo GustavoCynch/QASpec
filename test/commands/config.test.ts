@@ -190,6 +190,13 @@ describe('config key validation', () => {
 });
 
 describe('config command workflow prompt copy', () => {
+  it('names the execute and catch workflows in the workflow picker', async () => {
+    const { WORKFLOW_PROMPT_META } = await import('../../src/commands/config.js');
+
+    expect(WORKFLOW_PROMPT_META.execute?.name).toBe('Execute test cases');
+    expect(WORKFLOW_PROMPT_META.catch?.name).toBe('Catch PR regressions');
+  });
+
   it('publish workflow prompt meta is provider-neutral', async () => {
     const { WORKFLOW_PROMPT_META } = await import('../../src/commands/config.js');
 
