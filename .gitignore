@@ -164,3 +164,7 @@ opencode.json
 
 # Bob
 .bob/
+
+# Local agent tooling
+.atl/
+.diagram/
