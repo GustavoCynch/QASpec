@@ -12,7 +12,7 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 /qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:execute ──► /qsx:archive
 ```
 
-The global **`core`** profile includes exactly five workflows: `analyze`, `cases`, `publish`, `execute`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
+The global **`core`** profile includes exactly six workflows: `analyze`, `cases`, `publish`, `execute`, `catch`, `archive`. `/qsx:catch` runs after analyze, in parallel with the other steps. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
 
 Free-form investigation happens in normal chat or at the start of `/qsx:analyze` — no separate explore command is required.
 
@@ -31,6 +31,7 @@ qaspec/                          # Planning home
     └── <change-name>/
         ├── analysis.md          # From /qsx:analyze
         ├── testcases.md        # From /qsx:cases
+        ├── catch/               # Catch runs from /qsx:catch (git-ignored)
         └── specs/               # Delta specs (from analyze phase)
 ```
 
@@ -46,6 +47,7 @@ qaspec/                          # Planning home
 | `analysis.md` + delta specs | `/qsx:analyze` | Risk analysis, affected capabilities, blind-review synthesis, and delta specs for agreed behavior |
 | `testcases.md` | `/qsx:cases` | Test cases with approval checkboxes covering the approved specs |
 | TCMS upload (`/qsx:publish`) | `/qsx:publish` | Publish approved test cases to your TCMS after human approval |
+| Catch run (`catch/<run-id>/`) | `/qsx:catch` | Catching tests for a PR, their classification, findings and landing patch |
 | Archived change | `/qsx:archive` | Close the change and merge deltas when applicable |
 
 `/qsx:analyze` includes investigation before writing `analysis.md`. `/qsx:analyze`, `/qsx:cases`, and `/qsx:publish` enforce halts for human approval (see [Workflows](workflows.md)).
@@ -109,6 +111,17 @@ The run asks you for these:
 - **TCMS:** one confirmation before any write to your TCMS.
 
 Run folders are stored in `qaspec/changes/<change>/runs/`. QASpec writes a `.gitignore` there that ignores everything, so captured app data and evidence stay out of git.
+
+## Catch Tests for a PR
+
+`/qsx:catch` writes tests for a PR's code change from the approved analysis. It runs them on the parent and on the PR head, and asks you about each likely regression. Tests that pass on the head can land as one patch.
+
+1. **Approve the analysis with the PR head.** The analysis needs an `Intent class` section and `qaspec approve analyze --head-sha <sha>`.
+2. **Configure the catch block.** Uncomment `catch` in `qaspec/config.yaml` and set `runner.adapter: jest`, `runner.command` and `baseRef`. The settings are in [CLI](cli.md#the-catch-block).
+3. **Run `/qsx:catch <change>`.** The workflow needs a tool that can launch subagents for its judges. Without one, it stops before judging.
+4. **Answer the questions, then land.** Each finding asks whether the behavior is intended. Landing asks once, and you review and commit the patch.
+
+The run executes code that the agent wrote, with your permissions, in a worktree outside the project. Read [Trust and containment](cli.md#trust-and-containment) before the first run.
 
 ## CLI Alongside Slash Commands
 

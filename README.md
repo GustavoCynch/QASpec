@@ -21,7 +21,7 @@ The workflow adapts to what you provide; the goal is always the same: align on *
 
 ## Workflow
 
-The core workflow runs these slash commands, in this order:
+The core workflow runs these slash commands. `/qsx:catch` runs after `/qsx:analyze`, in parallel with the cases, publish and execute steps:
 
 | Command | Purpose |
 |---------|---------|
@@ -29,6 +29,7 @@ The core workflow runs these slash commands, in this order:
 | `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
 | `/qsx:publish` | Publish approved cases to your TCMS (any MCP-backed provider) |
 | `/qsx:execute` | Run approved cases in a real browser, judge failures, and report results to your TCMS |
+| `/qsx:catch` | Generate catching tests for a PR from the approved analysis, run them on the PR head, and ask about each likely regression |
 | `/qsx:archive` | Finalize and archive the change |
 
 For syntax and halts, see [Commands](docs/commands.md) and [Workflows](docs/workflows.md).
