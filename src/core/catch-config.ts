@@ -38,6 +38,7 @@ const BaseRefSchema = z
 const ShellCommandSchema = z.string().refine((value) => value.trim().length > 0);
 const EnvNameSchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 const RunnerAdapterSchema = z.enum(['jest']);
+const RUNNER_ADAPTER_EXPECTATION = RunnerAdapterSchema.options.map((name) => `'${name}'`).join(' or ');
 const PositiveIntegerSchema = z.number().int().positive();
 const GateRunsSchema = z.number().int().min(1).max(20);
 const JudgesSchema = z
@@ -58,14 +59,18 @@ export const CatchConfigSchema = z.object({
         .array(ProjectRelativePathSchema)
         .optional()
         .describe('Reinstall only when the child differs from the parent in these paths, for example a lockfile'),
-      timeoutSeconds: PositiveIntegerSchema.optional().describe('Timeout per setup command (default 900)'),
+      timeoutSeconds: PositiveIntegerSchema.optional().describe(
+        `Timeout per setup command (default ${DEFAULT_SETUP_TIMEOUT_SECONDS})`
+      ),
     })
     .optional(),
   runner: z
     .object({
       adapter: RunnerAdapterSchema.optional().describe('Test-runner adapter'),
       command: ShellCommandSchema.optional().describe('Base test command the adapter runs'),
-      timeoutSeconds: PositiveIntegerSchema.optional().describe('Timeout per test run (default 300)'),
+      timeoutSeconds: PositiveIntegerSchema.optional().describe(
+        `Timeout per test run (default ${DEFAULT_RUNNER_TIMEOUT_SECONDS})`
+      ),
     })
     .optional(),
   env: z
@@ -82,15 +87,29 @@ export const CatchConfigSchema = z.object({
     .optional(),
   gates: z
     .object({
-      parentRuns: GateRunsSchema.optional().describe('Passing runs of a catching test on the parent (default 5)'),
-      childRuns: GateRunsSchema.optional().describe('Repeats of a child failure, to rule out flakiness (default 3)'),
+      parentRuns: GateRunsSchema.optional().describe(
+        `Passing runs of a catching test on the parent (default ${DEFAULT_PARENT_RUNS})`
+      ),
+      childRuns: GateRunsSchema.optional().describe(
+        `Repeats of a child failure, to rule out flakiness (default ${DEFAULT_CHILD_RUNS})`
+      ),
     })
     .optional(),
-  judges: JudgesSchema.optional().describe('Fresh-context judges that may only discard findings (default 3)'),
+  judges: JudgesSchema.optional().describe(
+    `Fresh-context judges that may only discard findings (default ${DEFAULT_JUDGES})`
+  ),
   rulesFile: ProjectRelativePathSchema.optional().describe('Per-project assessor rules file'),
 });
 
 export type CatchConfig = z.infer<typeof CatchConfigSchema>;
+
+/** The parsed `catch` block: every field with a default is always present. */
+export type ResolvedCatchConfig = Omit<CatchConfig, 'setup' | 'runner' | 'gates' | 'judges'> & {
+  setup: NonNullable<CatchConfig['setup']> & { timeoutSeconds: number };
+  runner: NonNullable<CatchConfig['runner']> & { timeoutSeconds: number };
+  gates: Required<NonNullable<CatchConfig['gates']>>;
+  judges: number;
+};
 
 /** Reads env.set entry by entry: a name must be a variable name and a value must be a string. */
 function readEnvSet(value: unknown): Record<string, string> | undefined {
@@ -119,7 +138,7 @@ function readEnvSet(value: unknown): Record<string, string> | undefined {
  * execution block, defaults are applied here: an absent block returns undefined, while an
  * object-valued block always returns every defaulted field.
  */
-export function parseCatchConfig(raw: unknown): CatchConfig | undefined {
+export function parseCatchConfig(raw: unknown): ResolvedCatchConfig | undefined {
   const section = readSection(raw, 'catch');
   if (!section) {
     return undefined;
@@ -130,16 +149,25 @@ export function parseCatchConfig(raw: unknown): CatchConfig | undefined {
   const envRaw = readSection(section.env, 'catch.env');
   const gatesRaw = readSection(section.gates, 'catch.gates');
 
-  return compact({
-    baseRef: readField(section.baseRef, BaseRefSchema, 'catch.baseRef', BASE_REF_EXPECTATION),
-    setup: compact({
-      commands: readList(setupRaw?.commands, ShellCommandSchema, 'catch.setup.commands', SHELL_COMMAND_EXPECTATION),
-      reinstallWhenChanged: readList(
-        setupRaw?.reinstallWhenChanged,
-        ProjectRelativePathSchema,
-        'catch.setup.reinstallWhenChanged',
-        PATH_EXPECTATION
-      ),
+  return {
+    ...compact({
+      baseRef: readField(section.baseRef, BaseRefSchema, 'catch.baseRef', BASE_REF_EXPECTATION),
+      env: compact({
+        inherit: readList(envRaw?.inherit, EnvNameSchema, 'catch.env.inherit', ENV_NAME_EXPECTATION),
+        set: readEnvSet(envRaw?.set),
+      }),
+      rulesFile: readField(section.rulesFile, ProjectRelativePathSchema, 'catch.rulesFile', PATH_EXPECTATION),
+    }),
+    setup: {
+      ...compact({
+        commands: readList(setupRaw?.commands, ShellCommandSchema, 'catch.setup.commands', SHELL_COMMAND_EXPECTATION),
+        reinstallWhenChanged: readList(
+          setupRaw?.reinstallWhenChanged,
+          ProjectRelativePathSchema,
+          'catch.setup.reinstallWhenChanged',
+          PATH_EXPECTATION
+        ),
+      }),
       timeoutSeconds:
         readField(
           setupRaw?.timeoutSeconds,
@@ -147,10 +175,12 @@ export function parseCatchConfig(raw: unknown): CatchConfig | undefined {
           'catch.setup.timeoutSeconds',
           POSITIVE_INTEGER_EXPECTATION
         ) ?? DEFAULT_SETUP_TIMEOUT_SECONDS,
-    }),
-    runner: compact({
-      adapter: readField(runnerRaw?.adapter, RunnerAdapterSchema, 'catch.runner.adapter', "'jest'"),
-      command: readField(runnerRaw?.command, ShellCommandSchema, 'catch.runner.command', SHELL_COMMAND_EXPECTATION),
+    },
+    runner: {
+      ...compact({
+        adapter: readField(runnerRaw?.adapter, RunnerAdapterSchema, 'catch.runner.adapter', RUNNER_ADAPTER_EXPECTATION),
+        command: readField(runnerRaw?.command, ShellCommandSchema, 'catch.runner.command', SHELL_COMMAND_EXPECTATION),
+      }),
       timeoutSeconds:
         readField(
           runnerRaw?.timeoutSeconds,
@@ -158,20 +188,15 @@ export function parseCatchConfig(raw: unknown): CatchConfig | undefined {
           'catch.runner.timeoutSeconds',
           POSITIVE_INTEGER_EXPECTATION
         ) ?? DEFAULT_RUNNER_TIMEOUT_SECONDS,
-    }),
-    env: compact({
-      inherit: readList(envRaw?.inherit, EnvNameSchema, 'catch.env.inherit', ENV_NAME_EXPECTATION),
-      set: readEnvSet(envRaw?.set),
-    }),
-    gates: compact({
+    },
+    gates: {
       parentRuns:
         readField(gatesRaw?.parentRuns, GateRunsSchema, 'catch.gates.parentRuns', GATE_RUNS_EXPECTATION) ??
         DEFAULT_PARENT_RUNS,
       childRuns:
         readField(gatesRaw?.childRuns, GateRunsSchema, 'catch.gates.childRuns', GATE_RUNS_EXPECTATION) ??
         DEFAULT_CHILD_RUNS,
-    }),
+    },
     judges: readField(section.judges, JudgesSchema, 'catch.judges', JUDGES_EXPECTATION) ?? DEFAULT_JUDGES,
-    rulesFile: readField(section.rulesFile, ProjectRelativePathSchema, 'catch.rulesFile', PATH_EXPECTATION),
-  });
+  };
 }

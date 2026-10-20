@@ -268,4 +268,30 @@ describe('catch config', () => {
     expect(config?.catch?.gates).toEqual({ parentRuns: 5, childRuns: 3 });
     expectWarnings(['catch.setup.timeoutSeconds', 'catch.runner.timeoutSeconds', 'catch.gates.parentRuns']);
   });
+
+  it('should reject childRuns outside 1 to 20 and use the default', () => {
+    for (const childRuns of [0, 21]) {
+      consoleWarnSpy.mockClear();
+      writeConfig(`catch:\n  gates:\n    parentRuns: 4\n    childRuns: ${childRuns}\n`);
+
+      expect(readProjectConfig(tempDir)?.catch?.gates).toEqual({ parentRuns: 4, childRuns: 3 });
+      expectWarnings(['catch.gates.childRuns']);
+    }
+  });
+
+  it('should warn and drop env sections that are not objects, keeping siblings', () => {
+    for (const envBody of ['  env: CI\n', '  env:\n    inherit: [CI]\n    set: TZ=UTC\n', '  env:\n    inherit: [CI]\n    set: [TZ]\n']) {
+      consoleWarnSpy.mockClear();
+      writeConfig(`catch:\n  baseRef: origin/main\n${envBody}`);
+
+      const config = readProjectConfig(tempDir);
+
+      expect(config?.catch?.baseRef).toBe('origin/main');
+      expect(config?.catch?.env?.set).toBeUndefined();
+      expectWarnings([envBody.startsWith('  env: CI') ? 'catch.env' : 'catch.env.set']);
+      if (!envBody.startsWith('  env: CI')) {
+        expect(config?.catch?.env?.inherit).toEqual(['CI']);
+      }
+    }
+  });
 });
