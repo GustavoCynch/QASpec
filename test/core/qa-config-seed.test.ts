@@ -132,6 +132,55 @@ describe('qa-config-seed', () => {
     }
   });
 
+  it('serializeConfig for qaspec-pr-review includes a commented catch example that parses cleanly', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+    const lines = yaml.split('\n');
+    const start = lines.indexOf('# catch:');
+    expect(start).toBeGreaterThan(-1);
+    const end = lines.indexOf('#', start);
+    const example = lines
+      .slice(start, end)
+      .map((line) => line.slice(2))
+      .join('\n');
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-seed-'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fs.mkdirSync(path.join(tempDir, 'qaspec'));
+      fs.writeFileSync(
+        path.join(tempDir, 'qaspec', 'config.yaml'),
+        `schema: qaspec-pr-review\n${example}\n`
+      );
+      const config = readProjectConfig(tempDir);
+
+      expect(config?.catch?.baseRef).toBeDefined();
+      expect(config?.catch?.setup?.commands?.length).toBeGreaterThan(0);
+      expect(config?.catch?.setup?.reinstallWhenChanged?.length).toBeGreaterThan(0);
+      expect(config?.catch?.runner?.adapter).toBe('jest');
+      expect(config?.catch?.runner?.command).toBeDefined();
+      expect(config?.catch?.env?.set).toBeDefined();
+      expect(config?.catch?.rulesFile).toBeDefined();
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('catch seed example and seed values contain no adopter-specific values', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+    const lines = yaml.split('\n');
+    const start = lines.indexOf('# catch:');
+    expect(start).toBeGreaterThan(-1);
+    const catchExample = lines.slice(start, lines.indexOf('#', start)).join('\n').toLowerCase();
+    const seed = JSON.stringify(getQaspecPrReviewConfigSeed()).toLowerCase();
+
+    for (const adopterValue of ['cynch', 'orderstorm', 'wsservice']) {
+      expect(catchExample).not.toContain(adopterValue);
+      expect(seed).not.toContain(adopterValue);
+    }
+  });
+
   it('serializeConfig for qaspec-pr-review contains no adopter-specific values', () => {
     const yaml = serializeConfig({ schema: 'qaspec-pr-review' }).toLowerCase();
 

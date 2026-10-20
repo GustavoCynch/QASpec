@@ -771,6 +771,62 @@ tcms:
       });
     });
 
+    describe('catch block', () => {
+      const writeConfig = (body: string) => {
+        const configDir = path.join(tempDir, 'qaspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(path.join(configDir, 'config.yaml'), `schema: qaspec-pr-review\n${body}`);
+      };
+
+      it('should parse a catch block next to the execution block', () => {
+        writeConfig(`execution:
+  dataPrefix: QA-AGENT
+catch:
+  runner:
+    command: npx jest
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.execution).toEqual({ dataPrefix: 'QA-AGENT' });
+        expect(config?.catch).toEqual({
+          runner: { command: 'npx jest', timeoutSeconds: 300 },
+          setup: { timeoutSeconds: 900 },
+          gates: { parentRuns: 5, childRuns: 3 },
+          judges: 3,
+        });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn and ignore catch when it is not an object', () => {
+        writeConfig(`catch: [npm ci]
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.catch).toBeUndefined();
+        expect(config?.schema).toBe('qaspec-pr-review');
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid 'catch'"));
+      });
+
+      it('should parse an execution block without a catch block exactly as before', () => {
+        writeConfig(`execution:
+  app:
+    url: https://app.example.test
+  dataPrefix: QA-AGENT
+`);
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config).toEqual({
+          schema: 'qaspec-pr-review',
+          execution: { app: { url: 'https://app.example.test' }, dataPrefix: 'QA-AGENT' },
+        });
+        expect(config).not.toHaveProperty('catch');
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+    });
+
     describe('multi-line and special characters', () => {
       it('should preserve multi-line context', () => {
         const configDir = path.join(tempDir, 'qaspec');

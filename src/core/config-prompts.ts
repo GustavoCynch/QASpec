@@ -39,6 +39,29 @@ const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 #       command: ./scripts/check-backend-deployed.sh
 #   dataPrefix: QASPEC                       # prefix for data the agent creates
 #
+# catch — settings for /qsx:catch (tests generated for a PR's change). Uncomment and edit.
+# Paths are relative to the project root. Commands run with your permissions in a worktree
+# outside the project; QASpec does not sandbox them, so pass only the environment they need (env).
+# catch:
+#   baseRef: origin/main                        # base the PR is compared with (parent = merge-base with the head)
+#   setup:
+#     commands: [npm ci]                        # install commands, run in the worktree in order
+#     reinstallWhenChanged: [package-lock.json] # reinstall only when the child differs in these paths
+#     timeoutSeconds: 900
+#   runner:
+#     adapter: jest
+#     command: npx jest                         # base test command the adapter runs
+#     timeoutSeconds: 300
+#   env:
+#     inherit: [CI]                             # variables passed from your environment, on top of the built-in ones
+#     set:
+#       TZ: UTC                                 # explicit values passed to the child processes
+#   gates:
+#     parentRuns: 5                             # passing runs of a catching test on the parent
+#     childRuns: 3                              # repeats of a child failure, to rule out flakiness
+#   judges: 3                                   # odd number from 1 to 9: judges that may only discard findings
+#   rulesFile: qaspec/references/catch-rules.md # per-project assessor rules
+#
 # workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
 # workflow.multipleSubagents.cases — dual Task analysts for /qsx:cases (default: false)
 # When false, the orchestrator does the phase with no Task subagents (not a single subagent).
