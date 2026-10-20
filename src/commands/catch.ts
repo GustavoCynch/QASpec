@@ -11,6 +11,7 @@ import {
   CATCH_RUNS_DIRNAME,
   CHILD_SETUP_OUTPUT_FILE,
   RESULTS_DIRNAME,
+  catchPrecision,
   describeCatchFunnel,
   describeCatchRun,
   describeChangeRuns,
@@ -27,8 +28,10 @@ import { loadCatchContext, recordRisk, type CatchContext, type CatchRisk } from 
 import { recordEquivalence, recordMutant, type CatchMutant } from '../core/catch-mutant.js';
 import { recordTest, type CatchTest } from '../core/catch-test.js';
 import { runChildPhase, type CatchResult } from '../core/catch-child.js';
+import { assessCatchRun, judgeCatchReport, type AssessedReport } from '../core/catch-assess.js';
+import { answerCatchFinding, reportCatchFinding } from '../core/catch-findings.js';
 import { getChangeDir, resolveCurrentPlanningHomeSync, type PlanningHome } from '../core/planning-home.js';
-import { readJsonInput } from './shared/file-input.js';
+import { readJsonInput, readTextInput } from './shared/file-input.js';
 import { validateChangeExists } from './workflow/shared.js';
 
 export interface CatchIntentCommandOptions {
@@ -248,12 +251,23 @@ function formatCounts(counts: Record<string, number>): string {
   return entries.length === 0 ? 'none' : entries.map(([key, count]) => `${key} ${count}`).join(', ');
 }
 
-/** The funnel of a run on one line: risks, mutants and tests by outcome, classified results by action. */
+/** The funnel of a run on one line: risks, mutants and tests by outcome, classified, assessed and judged results, findings. */
 function describeFunnel(funnel: CatchFunnel): string {
   return (
     `Funnel: risks ${funnel.risks}; mutants ${formatCounts(funnel.mutants)}; ` +
-    `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}`
+    `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}; ` +
+    `assessed ${formatCounts(funnel.assessed)}; judged ${formatCounts(funnel.judged)}; ` +
+    `reported ${funnel.reported.reported} (confirmed ${funnel.reported.confirmed}, dismissed ${funnel.reported.dismissed})`
   );
+}
+
+/** The precision of the answered findings on one line: confirmed over confirmed plus dismissed, or none yet. */
+function describePrecision(funnel: CatchFunnel): string {
+  const { confirmed, dismissed } = funnel.reported;
+  const precision = catchPrecision(funnel.reported);
+  return precision === null
+    ? 'Precision: none (no finding answered yet)'
+    : `Precision: ${precision.toFixed(2)} (confirmed ${confirmed}, dismissed ${dismissed})`;
 }
 
 function statusPayload(status: CatchRunStatus, runFolder: string, funnel: CatchFunnel) {
@@ -279,6 +293,7 @@ function statusPayload(status: CatchRunStatus, runFolder: string, funnel: CatchF
     runDir: runFolder,
     ledger: status.ledger,
     funnel,
+    precision: catchPrecision(funnel.reported),
   };
 }
 
@@ -301,6 +316,7 @@ function printStatus(status: CatchRunStatus, runFolder: string, funnel: CatchFun
     .join(', ');
   console.log(`  Ledger: ${counts || 'empty'}`);
   console.log(`  ${describeFunnel(funnel)}`);
+  console.log(`  ${describePrecision(funnel)}`);
   console.log(`  Run folder: ${runFolder}`);
 }
 
@@ -690,4 +706,202 @@ export async function catchChildCommand(options: CatchChildCommandOptions): Prom
     }
     console.log(`  Results: ${path.join(runFolder, RESULTS_DIRNAME)}`);
   }
+}
+
+/* Assessors and findings (T9, T10): assess once, judge each kept report, report it once and answer its finding. */
+
+export interface CatchAssessCommandOptions {
+  run: string;
+  json?: boolean;
+}
+
+export interface CatchJudgeCommandOptions {
+  run: string;
+  test: string;
+  input: string;
+  json?: boolean;
+}
+
+export interface CatchReportCommandOptions {
+  run: string;
+  test: string;
+  input: string;
+  json?: boolean;
+}
+
+export interface CatchAnswerCommandOptions {
+  run: string;
+  finding: string;
+  intended: string;
+  noteFile?: string;
+  json?: boolean;
+}
+
+function describeAssessedReport(report: AssessedReport): string {
+  const rule = report.rule === undefined ? '' : ` (rule ${report.rule})`;
+  const signals = report.signals.length === 0 ? '' : `; signals ${report.signals.join(', ')}`;
+  return `${report.test}: ${report.outcome}${rule}${signals}`;
+}
+
+/**
+ * Assesses the reports of a classified run, once: the generic and per-project rules discard the false positives, and the
+ * reports that survive carry their signals. A refusal creates nothing; the run moves to assessed on success.
+ */
+export async function catchAssessCommand(options: CatchAssessCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const outcome = assessCatchRun({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Assessment was not recorded', outcome.issues, options.json);
+    return;
+  }
+  const { assessment } = outcome;
+  const kept = assessment.reports.filter((report) => report.outcome === 'kept').length;
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          recorded: true,
+          run: options.run,
+          state: 'assessed',
+          lowConfidence: assessment.lowConfidence,
+          rulesFile: assessment.rulesFile,
+          reports: assessment.reports,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  console.log(
+    chalk.green(`✓ Run ${options.run} assessed: ${kept} report(s) kept, ${assessment.reports.length - kept} discarded by the rules`)
+  );
+  for (const report of assessment.reports) {
+    console.log(`  ${describeAssessedReport(report)}`);
+  }
+  console.log(`Judge each kept report with: qaspec catch judge --run ${options.run} --test <id> --input <file>`);
+}
+
+/** Records the verdicts of the judges on one kept report, from --input: one verdict per judge of catch.judges. */
+export async function catchJudgeCommand(options: CatchJudgeCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'verdict file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Judgement was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = judgeCatchReport({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    test: options.test,
+    value: input.value,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Judgement was not recorded', outcome.issues, options.json);
+    return;
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          recorded: true,
+          run: options.run,
+          test: outcome.test,
+          outcome: outcome.outcome,
+          median: outcome.median,
+          scores: outcome.scores,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  if (outcome.outcome === 'kept') {
+    console.log(chalk.green(`✓ ${outcome.test} kept by the judges (median ${outcome.median})`));
+  } else {
+    console.log(chalk.yellow(`✓ ${outcome.test} discarded by the judges (median ${outcome.median})`));
+  }
+}
+
+/** Records the finding of one kept report, from --input: { before, after }; the question is composed by the CLI. */
+export async function catchReportCommand(options: CatchReportCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'report file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Finding was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = reportCatchFinding({
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    test: options.test,
+    value: input.value,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Finding was not recorded', outcome.issues, options.json);
+    return;
+  }
+  const { finding } = outcome;
+  if (options.json) {
+    console.log(JSON.stringify({ recorded: true, run: options.run, finding }, null, 2));
+    return;
+  }
+  console.log(chalk.green(`✓ Finding ${finding.id} recorded for ${finding.test}`));
+  console.log(`  ${finding.question}`);
+  console.log(`  Answer it with: qaspec catch answer --run ${options.run} --finding ${finding.id} --intended yes|no`);
+}
+
+/**
+ * Records the person's answer to one finding, once: yes (intended) dismisses it, no confirms it. The note comes from
+ * --note-file only, so text never travels on the command line.
+ */
+export async function catchAnswerCommand(options: CatchAnswerCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  let note: string | undefined;
+  if (options.noteFile !== undefined) {
+    const file = readTextInput(options.noteFile, 'note file');
+    if (!file.ok) {
+      const issues = file.issues.map((issue) => ({ code: 'note-invalid', message: issue.message }));
+      printRefusal(options.run, `Answer not recorded for finding ${options.finding}`, issues, options.json);
+      return;
+    }
+    note = file.text;
+  }
+  const outcome = answerCatchFinding({
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    finding: options.finding,
+    intended: options.intended,
+    ...(note === undefined ? {} : { note }),
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, `Answer not recorded for finding ${options.finding}`, outcome.issues, options.json);
+    return;
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          run: outcome.run,
+          finding: outcome.finding,
+          intended: outcome.intended,
+          stage: outcome.stage,
+          note: outcome.note ?? null,
+          answeredAt: outcome.answeredAt,
+          secondsToAnswer: outcome.secondsToAnswer,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  const meaning = outcome.intended === 'yes' ? 'intended (dismissed)' : 'not intended (confirmed)';
+  console.log(chalk.green(`✓ Finding ${outcome.finding} recorded: ${meaning}, ${outcome.secondsToAnswer} s after it was reported`));
 }

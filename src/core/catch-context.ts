@@ -259,10 +259,15 @@ function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 }
 
-/** The one requirement with this name, when it is a preserved, modified or added requirement of the intent. */
-function findRequirement(
+/**
+ * The one requirement with this name across the capabilities of the intent, for a risk or a test (the subject is named
+ * in the ambiguity message). Refused when no capability lists it, or when more than one does. Each caller then checks
+ * the status its own record allows, so the lookup is one step and the messages stay per record.
+ */
+export function findIntentRequirement(
   intent: CatchIntentArtifact,
-  name: string
+  name: string,
+  subject: 'risk' | 'test'
 ): { ok: true; capability: string; requirement: CatchRequirement } | { ok: false; issue: CatchRecordIssue } {
   const matches = intent.capabilities.flatMap((capability: CatchCapability) =>
     capability.requirements
@@ -278,21 +283,30 @@ function findRequirement(
       ok: false,
       issue: {
         code: 'requirement-ambiguous',
-        message: `"${name}" is a requirement of more than one capability (${capabilities}), so the risk cannot name one.`,
+        message: `"${name}" is a requirement of more than one capability (${capabilities}), so the ${subject} cannot name one.`,
       },
     };
   }
   const [match] = matches;
-  if (!RISK_STATUSES.includes(match.requirement.status)) {
-    return {
-      ok: false,
-      issue: {
-        code: 'requirement-status',
-        message: `"${name}" is ${match.requirement.status}: a risk names a preserved, modified or added requirement.`,
-      },
-    };
-  }
   return { ok: true, capability: match.capability, requirement: match.requirement };
+}
+
+/** The requirement a risk names: found in the intent, and a preserved, modified or added one. */
+function riskRequirement(
+  intent: CatchIntentArtifact,
+  name: string
+): { ok: true; capability: string; requirement: CatchRequirement } | { ok: false; issue: CatchRecordIssue } {
+  const found = findIntentRequirement(intent, name, 'risk');
+  if (!found.ok || RISK_STATUSES.includes(found.requirement.status)) {
+    return found;
+  }
+  return {
+    ok: false,
+    issue: {
+      code: 'requirement-status',
+      message: `"${name}" is ${found.requirement.status}: a risk names a preserved, modified or added requirement.`,
+    },
+  };
 }
 
 /** Validates the parsed risk file against the run's intent and changed files. Lists every problem it finds. */
@@ -338,7 +352,7 @@ function checkRiskValue(
         message: 'A risk of this run names a requirement of the intent: requirement must be a non-empty string.',
       });
     } else {
-      const found = findRequirement(context.intent, requirementName);
+      const found = riskRequirement(context.intent, requirementName);
       if (found.ok) {
         fields.capability = found.capability;
         fields.requirement = requirementName;

@@ -1,13 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { startCatchRun, type CatchRunRecord } from '../../src/core/catch-run.js';
-import { recordRisk } from '../../src/core/catch-context.js';
+import { findIntentRequirement, recordRisk } from '../../src/core/catch-context.js';
 import { recordEquivalence, recordMutant } from '../../src/core/catch-mutant.js';
 import { recordTest } from '../../src/core/catch-test.js';
 import { CHANGE, makeProjectFixture, readRunsLog, type ProjectFixture } from '../fixtures/catch-jest/catch-project.js';
+
+// Each test drives real git repositories and several runner processes; the default 10 s is too short under a full parallel suite.
+vi.setConfig({ testTimeout: 30_000 });
 
 let tmp: string;
 let envBackup: NodeJS.ProcessEnv;
@@ -191,6 +194,24 @@ describe('recordTest validation', () => {
     expect(unknown).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'requirement-unknown' })] });
     expect(missing).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'requirement-required' })] });
     expect(scenario).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'scenario-unknown' })] });
+  });
+
+  it('words the refused functionality requirement as a test, and keeps the message of an unknown name', async () => {
+    const ready = await readyRun(makeProjectFixture({ root: tmp }));
+    const base = { kind: 'functionality', path: 'test/catch-currency.spec.ts', content: spec('x') };
+
+    const preserved = await recordTest(testInput(ready, { ...base, requirement: 'Tax rounding' }));
+    const unknown = await recordTest(testInput(ready, { ...base, requirement: 'Nope' }));
+
+    expect(preserved.ok).toBe(false);
+    expect(unknown.ok).toBe(false);
+    if (preserved.ok || unknown.ok) {
+      throw new Error('both functionality tests should be refused');
+    }
+    expect(preserved.issues[0].message).toBe(
+      '"Tax rounding" is preserved: a functionality test covers an added or modified requirement.'
+    );
+    expect(unknown.issues[0].message).toBe('"Nope" is not a requirement of this intent.');
   });
 
   it('refuses a path that exists on the parent, leaves the project, or is absolute', async () => {
@@ -456,5 +477,56 @@ describe('recordTest functionality and dodgy-diff tests', () => {
 
     expect(first).toMatchObject({ ok: true, test: { id: 'T1', content: 'tests/T1/catch-a.spec.ts' } });
     expect(second).toMatchObject({ ok: true, test: { id: 'T2', content: 'tests/T2/catch-b.spec.ts' } });
+  });
+});
+
+describe('findIntentRequirement, the one requirement lookup of risks and tests (T10)', () => {
+  const intent = {
+    schema: 'qaspec.catch-intent/v1' as const,
+    change: CHANGE,
+    intentClass: 'behavior-change' as const,
+    capabilities: [
+      { name: 'billing', requirements: [{ name: 'Currency', status: 'modified' as const, scenarios: [] }] },
+      {
+        name: 'reports',
+        requirements: [
+          { name: 'Currency', status: 'added' as const, scenarios: [] },
+          { name: 'Totals', status: 'preserved' as const, scenarios: [] },
+        ],
+      },
+    ],
+  };
+
+  it('returns the one requirement with the name, with the capability that lists it', () => {
+    expect(findIntentRequirement(intent, 'Totals', 'risk')).toMatchObject({
+      ok: true,
+      capability: 'reports',
+      requirement: { name: 'Totals', status: 'preserved' },
+    });
+  });
+
+  it('refuses an unknown name with one message for a risk and a test alike', () => {
+    expect(findIntentRequirement(intent, 'Nope', 'risk')).toEqual({
+      ok: false,
+      issue: { code: 'requirement-unknown', message: '"Nope" is not a requirement of this intent.' },
+    });
+    expect(findIntentRequirement(intent, 'Nope', 'test')).toEqual({
+      ok: false,
+      issue: { code: 'requirement-unknown', message: '"Nope" is not a requirement of this intent.' },
+    });
+  });
+
+  it('names the subject that cannot name an ambiguous requirement: a risk or a test', () => {
+    expect(findIntentRequirement(intent, 'Currency', 'risk')).toEqual({
+      ok: false,
+      issue: {
+        code: 'requirement-ambiguous',
+        message: '"Currency" is a requirement of more than one capability (billing, reports), so the risk cannot name one.',
+      },
+    });
+    expect(findIntentRequirement(intent, 'Currency', 'test')).toMatchObject({
+      ok: false,
+      issue: { message: expect.stringMatching(/so the test cannot name one\.$/) },
+    });
   });
 });

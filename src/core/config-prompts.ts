@@ -60,7 +60,7 @@ const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 #     parentRuns: 5                             # passing runs of a catching test on the parent
 #     childRuns: 3                              # repeats of a child failure, to rule out flakiness
 #   judges: 3                                   # odd number from 1 to 9: judges that may only discard findings
-#   rulesFile: qaspec/references/catch-rules.md # per-project assessor rules
+#   rulesFile: qaspec/references/catch-rules.yaml # per-project assessor rules (YAML: rules: [{ id, kind, match, reason }])
 #
 # workflow.multipleSubagents.review — dual Task analysts for /qsx:analyze (default: false)
 # workflow.multipleSubagents.cases — dual Task analysts for /qsx:cases (default: false)

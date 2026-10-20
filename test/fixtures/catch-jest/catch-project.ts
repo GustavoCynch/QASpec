@@ -152,6 +152,10 @@ export interface ProjectFixtureOptions {
   headApp?: string;
   /** Files the feature branch adds or changes besides src/app.ts (path to contents). */
   headFiles?: Record<string, string>;
+  /** catch.judges in the catch block (the config default when absent). */
+  judges?: number;
+  /** catch.rulesFile in the catch block; with content, the rules file is committed on main at that path. */
+  rulesFile?: { path: string; content?: string };
 }
 
 export interface ProjectFixture {
@@ -200,12 +204,15 @@ export function makeProjectFixture(options: ProjectFixtureOptions): ProjectFixtu
       ...(options.timeoutSeconds === undefined ? {} : { timeoutSeconds: options.timeoutSeconds }),
     },
     ...(options.gates === undefined ? {} : { gates: options.gates }),
+    ...(options.judges === undefined ? {} : { judges: options.judges }),
+    ...(options.rulesFile === undefined ? {} : { rulesFile: options.rulesFile.path }),
   });
   writeFiles(project, {
     'src/app.ts': options.baseApp ?? BASE_APP,
     'src/util.ts': BASE_UTIL,
     'test/app.spec.ts': SPEC_APP,
     'qaspec/specs/billing-export/spec.md': CHANGE_FILES.base,
+    ...(options.rulesFile?.content === undefined ? {} : { [options.rulesFile.path]: options.rulesFile.content }),
   });
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'base');

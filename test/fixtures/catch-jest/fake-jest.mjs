@@ -63,6 +63,7 @@ function writeFixtureReport(name) {
 //   // fake: exit3 on head   the run exits 3 without a report
 //   // fake: flaky on head   every odd run of such a test fails; the count of those runs lives in <record>.flaky
 //   // fake: broken on head  the test does not build: a suite that failed to run, with no assertion
+//   // fake: message on head: connect ECONNREFUSED  the run fails one assertion with this message (one line per message)
 // Every test run appends the text each named test had at that moment to <record>.runs, one JSON line per run.
 const BASE_MARKER = 'export const value = 1;';
 const HEAD_MARKER = 'export const value = 2;';
@@ -75,17 +76,32 @@ function expectations(text) {
   return [...text.matchAll(/^\/\/ expect: (.+?)\s*$/gm)].map((match) => match[1]);
 }
 
-function directivesOf(name) {
+/** The side a test file runs on: the checkout of the source it covers (base or head), or undefined. */
+function sideOf(name) {
   const text = fs.readFileSync(name, 'utf8');
   const covered = coveredSources(text)[0];
   if (covered === undefined) {
-    return [];
+    return undefined;
   }
   const source = fs.readFileSync(path.join(cwd, covered), 'utf8');
-  const side = source.includes(HEAD_MARKER) ? 'head' : source.includes(BASE_MARKER) ? 'base' : undefined;
+  return source.includes(HEAD_MARKER) ? 'head' : source.includes(BASE_MARKER) ? 'base' : undefined;
+}
+
+function directivesOf(name) {
+  const text = fs.readFileSync(name, 'utf8');
+  const side = sideOf(name);
   return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken) on (base|head)\s*$/gm)]
     .filter((match) => match[2] === side)
     .map((match) => match[1]);
+}
+
+/** The failure messages a test file scripts for its side: one assertion failure per line. */
+function messagesOf(name) {
+  const text = fs.readFileSync(name, 'utf8');
+  const side = sideOf(name);
+  return [...text.matchAll(/^\/\/ fake: message on (base|head): (.+?)\s*$/gm)]
+    .filter((match) => match[1] === side)
+    .map((match) => match[2]);
 }
 
 function existingText(name) {
@@ -157,6 +173,10 @@ function runContracts(variant) {
       }
       return { title: expected, status: kept ? 'passed' : 'failed', failureMessages: kept ? [] : [`no longer kept: ${expected}`] };
     });
+    for (const message of messagesOf(name)) {
+      failed = true;
+      assertionResults.push({ title: 'reported', status: 'failed', failureMessages: [message] });
+    }
     if (oddRun && directives[index].includes('flaky')) {
       failed = true;
       assertionResults.push({ title: 'flaky', status: 'failed', failureMessages: ['flaky: an odd run fails'] });
