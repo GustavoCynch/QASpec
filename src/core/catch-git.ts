@@ -2,16 +2,16 @@
  * Git revisions, worktrees and the child environment for /qsx:catch. Library only.
  *
  * Git runs through execFile without a shell and with a timeout. Every git call of this module runs with hooks
- * disabled (core.hooksPath points at an empty folder that catch owns) and with the allowlisted environment only,
- * so no hook that the PR commits or setup leaves in the worktree runs here, and tokens are not visible to git.
- * Catch never changes the user's checkout: it reads commits, and it adds or removes worktrees under
- * <tmpdir>/qaspec-catch (git also records them in the repository's .git). Setup and test processes get only
- * the environment that buildChildEnv returns.
+ * disabled (core.hooksPath points at an empty folder made for that call and removed when the call returns) and with
+ * the allowlisted environment only, so no hook that the PR commits or setup leaves in the worktree runs here, and
+ * tokens are not visible to git. Catch never changes the user's checkout: it reads commits, and it adds or removes
+ * worktrees under <tmpdir>/qaspec-catch (git also records them in the repository's .git). Setup and test processes
+ * get only the environment that buildChildEnv returns.
  */
 
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { promises as fs, realpathSync } from 'node:fs';
+import { promises as fs, realpathSync, type Stats } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -21,11 +21,8 @@ import { runInProcessGroup } from './process-group.js';
 const GIT_TIMEOUT_MS = 120_000;
 const GIT_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
 const CATCH_ROOT_NAME = 'qaspec-catch';
-/**
- * Empty folder under a project's catch root that core.hooksPath points at. It starts with a dot, which no run
- * id may, so a run folder can never take its name.
- */
-const NO_HOOKS_DIR_NAME = '.no-hooks';
+/** Prefix of the empty hooks folder that one git call uses. The call removes it when it returns. */
+const NO_HOOKS_PREFIX = 'qaspec-no-hooks-';
 const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const GITDIR_LINE = /^gitdir:[ \t]*(.*?)\s*$/m;
 /** Output kept per setup command for diagnostics: the last 4 KiB of its combined stdout and stderr. */
@@ -98,17 +95,15 @@ function realProjectPath(projectRoot: string): string {
   }
 }
 
+/** <tmpdir>/qaspec-catch: the folder that holds the catch root of every project. */
+function sharedCatchRoot(): string {
+  return path.join(os.tmpdir(), CATCH_ROOT_NAME);
+}
+
 /** <tmpdir>/qaspec-catch/<first 12 hex of sha256(real path of projectRoot)>: where one project's worktrees live. */
 function projectCatchRoot(projectRoot: string): string {
   const hash = createHash('sha256').update(realProjectPath(projectRoot)).digest('hex').slice(0, 12);
-  return path.join(os.tmpdir(), CATCH_ROOT_NAME, hash);
-}
-
-/** The empty folder that core.hooksPath points at for every git call of this project. Created on demand. */
-async function noHooksDir(projectRoot: string): Promise<string> {
-  const dir = path.join(projectCatchRoot(projectRoot), NO_HOOKS_DIR_NAME);
-  await fs.mkdir(dir, { recursive: true });
-  return dir;
+  return path.join(sharedCatchRoot(), hash);
 }
 
 /** The named variables that are set in parentEnv. Unset names are skipped. */
@@ -129,38 +124,38 @@ function gitEnvironment(): Record<string, string> {
 }
 
 /**
- * Runs git in cwd for one project, without a shell. Hooks are disabled with the project's empty hooks folder,
- * and config entries (key=value) are passed as -c options before the subcommand.
- * Resolves with the exit code; rejects only when git cannot run or times out.
+ * Runs git in cwd, without a shell. Hooks are disabled with an empty folder that exists only for this call, and
+ * config entries (key=value) are passed as -c options before the subcommand.
+ * Resolves with the exit code; rejects only when git cannot run, exceeds its output cap or times out.
  */
-async function runGit(
-  projectRoot: string,
-  cwd: string,
-  args: string[],
-  config: readonly string[] = []
-): Promise<GitResult> {
-  const hooks = await noHooksDir(projectRoot);
-  const options = ['-c', `core.hooksPath=${hooks}`, ...config.flatMap((entry) => ['-c', entry])];
-  return new Promise((resolve, reject) => {
-    execFile(
-      'git',
-      [...options, ...args],
-      { cwd, env: gitEnvironment(), timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER_BYTES, encoding: 'utf8' },
-      (error, stdout, stderr) => {
-        if (!error) {
-          resolve({ code: 0, stdout, stderr });
-        } else if (typeof error.code === 'number') {
-          resolve({ code: error.code, stdout, stderr });
-        } else if (error.killed) {
-          reject(new Error(`git ${args[0]} timed out after ${GIT_TIMEOUT_MS / 1000} seconds`));
-        } else if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-          reject(new Error(`git ${args[0]} output is larger than ${GIT_MAX_BUFFER_BYTES / (1024 * 1024)} MiB`));
-        } else {
-          reject(new Error(`QASpec could not run git ${args[0]}: ${error.message}`));
+async function runGit(cwd: string, args: string[], config: readonly string[] = []): Promise<GitResult> {
+  const hooks = await fs.mkdtemp(path.join(os.tmpdir(), NO_HOOKS_PREFIX));
+  try {
+    const options = ['-c', `core.hooksPath=${hooks}`, ...config.flatMap((entry) => ['-c', entry])];
+    return await new Promise((resolve, reject) => {
+      execFile(
+        'git',
+        [...options, ...args],
+        { cwd, env: gitEnvironment(), timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER_BYTES, encoding: 'utf8' },
+        (error, stdout, stderr) => {
+          if (!error) {
+            resolve({ code: 0, stdout, stderr });
+          } else if (typeof error.code === 'number') {
+            resolve({ code: error.code, stdout, stderr });
+          } else if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+            // Checked before killed: the overflow kills git as well, and that kill is not a timeout.
+            reject(new Error(`git ${args[0]} output is larger than ${GIT_MAX_BUFFER_BYTES / (1024 * 1024)} MiB`));
+          } else if (error.killed) {
+            reject(new Error(`git ${args[0]} timed out after ${GIT_TIMEOUT_MS / 1000} seconds`));
+          } else {
+            reject(new Error(`QASpec could not run git ${args[0]}: ${error.message}`));
+          }
         }
-      }
-    );
-  });
+      );
+    });
+  } finally {
+    await fs.rm(hooks, { recursive: true, force: true });
+  }
 }
 
 function gitError(args: string[], result: GitResult): Error {
@@ -168,13 +163,12 @@ function gitError(args: string[], result: GitResult): Error {
   return new Error(`git ${args[0]} failed: ${detail}`);
 }
 
-async function gitOutput(
-  projectRoot: string,
-  cwd: string,
-  args: string[],
-  config?: readonly string[]
-): Promise<string> {
-  const result = await runGit(projectRoot, cwd, args, config);
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function gitOutput(cwd: string, args: string[], config?: readonly string[]): Promise<string> {
+  const result = await runGit(cwd, args, config);
   if (result.code !== 0) {
     throw gitError(args, result);
   }
@@ -190,7 +184,7 @@ function assertRef(ref: string, label: string): void {
 
 /** Full commit id of ref, or undefined when git does not know it (exit 1 with --quiet). */
 async function commitOf(projectRoot: string, ref: string): Promise<string | undefined> {
-  const result = await runGit(projectRoot, projectRoot, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  const result = await runGit(projectRoot, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
   if (result.code === 0) {
     return result.stdout.trim();
   }
@@ -229,7 +223,7 @@ export async function resolveRevisions(input: ResolveRevisionsInput): Promise<Gi
     );
   }
 
-  const merge = await runGit(projectRoot, projectRoot, ['merge-base', base, head]);
+  const merge = await runGit(projectRoot, ['merge-base', base, head]);
   if (merge.code === 1) {
     throw new Error(`Base ref "${baseRef}" and approved head ${headSha} have no merge base: they share no history.`);
   }
@@ -244,7 +238,6 @@ export async function changedFiles(projectRoot: string, parentSha: string, headS
   assertRef(headSha, 'head revision');
   // --no-renames lists both paths of a rename, so every touched path is visible to the caller.
   const output = await gitOutput(
-    projectRoot,
     projectRoot,
     ['diff', '--name-status', '-z', '--no-renames', parentSha, headSha, '--'],
     NEUTRAL_DIFF_CONFIG
@@ -262,7 +255,6 @@ export async function diffPatch(projectRoot: string, parentSha: string, headSha:
   assertRef(parentSha, 'parent revision');
   assertRef(headSha, 'head revision');
   return gitOutput(
-    projectRoot,
     projectRoot,
     [
       'diff',
@@ -310,11 +302,72 @@ async function pathExists(target: string): Promise<boolean> {
   }
 }
 
+/** The entry at target, or undefined when nothing is there. A link is not followed. */
+async function lstatOrUndefined(target: string): Promise<Stats | undefined> {
+  try {
+    return await fs.lstat(target);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Refuses a catch folder that is a link, is not a folder, belongs to another user, or that group or others can
+ * write to. A folder that does not exist yet passes. Windows has no owner or permission bits to compare (its uid is
+ * 0, and its mode bits copy the owner's write bit for everyone), so only the link and folder checks apply there.
+ */
+async function assertPrivateFolder(folder: string): Promise<void> {
+  const entry = await lstatOrUndefined(folder);
+  if (entry === undefined) {
+    return;
+  }
+  const refuse = (reason: string) =>
+    new Error(`Refusing to use ${folder}: ${reason}. Remove it and run the command again so QASpec can create it.`);
+  if (entry.isSymbolicLink()) {
+    throw refuse('it is a symbolic link');
+  }
+  if (!entry.isDirectory()) {
+    throw refuse('it is not a folder');
+  }
+  if (process.platform === 'win32') {
+    return;
+  }
+  if (typeof process.getuid === 'function' && entry.uid !== process.getuid()) {
+    throw refuse('it is owned by another user');
+  }
+  if ((entry.mode & 0o022) !== 0) {
+    throw refuse('group or others can write to it');
+  }
+}
+
+/**
+ * Creates <tmpdir>/qaspec-catch and then the project's root with mode 0700 when they are missing. Each folder is
+ * proved private before the next one is created under it, so nothing is written through a link.
+ */
+async function ensureCatchRoots(projectRoot: string): Promise<void> {
+  for (const folder of [sharedCatchRoot(), projectCatchRoot(projectRoot)]) {
+    if ((await lstatOrUndefined(folder)) === undefined) {
+      await fs.mkdir(folder, { mode: 0o700 }).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
+      });
+    }
+    await assertPrivateFolder(folder);
+  }
+}
+
 /**
  * Proves that target is exactly <project catch root>/<run id>, with symlinks resolved, and returns its
  * canonical path. A link at the run folder is refused, so the check cannot be steered to another folder.
  */
 async function assertRunFolder(projectRoot: string, target: string, action: string): Promise<string> {
+  // Both catch folders must be private before a path under them is trusted (assertPrivateFolder).
+  await assertPrivateFolder(sharedCatchRoot());
+  await assertPrivateFolder(projectCatchRoot(projectRoot));
   const root = await canonicalPath(projectCatchRoot(projectRoot));
   const entry = await fs.lstat(path.resolve(target)).catch(() => undefined);
   if (entry?.isSymbolicLink()) {
@@ -334,7 +387,7 @@ async function assertRunFolder(projectRoot: string, target: string, action: stri
 
 /** Canonical path of the git common directory of the project's repository: the .git folder all worktrees share. */
 async function commonGitDir(projectRoot: string): Promise<string> {
-  const output = await gitOutput(projectRoot, projectRoot, ['rev-parse', '--git-common-dir']);
+  const output = await gitOutput(projectRoot, ['rev-parse', '--git-common-dir']);
   // Git prints the path relative to the folder it ran in, which is the project folder.
   return canonicalPath(path.resolve(projectRoot, output.replace(/\r?\n$/, '')));
 }
@@ -366,19 +419,66 @@ async function assertCatchWorktree(projectRoot: string, worktree: string, action
   return folder;
 }
 
+/**
+ * Deletes the git record of each worktree whose .git link is the given folder's. No other record is touched, unlike
+ * git worktree prune, which removes every stale record of the repository.
+ */
+async function removeRecordsOf(projectRoot: string, folder: string): Promise<void> {
+  const records = path.join(await commonGitDir(projectRoot), 'worktrees');
+  const link = await canonicalPath(path.join(folder, '.git'));
+  const names = await fs.readdir(records).catch(() => [] as string[]);
+  for (const name of names) {
+    const record = path.join(records, name);
+    const back = (await fs.readFile(path.join(record, 'gitdir'), 'utf8').catch(() => '')).trim();
+    if (back !== '' && (await canonicalPath(back)) === link) {
+      await fs.rm(record, { recursive: true, force: true });
+    }
+  }
+}
+
+/**
+ * Undoes a worktree add that failed after it started. A folder that git still knows as a catch worktree goes through
+ * git worktree remove. Any other folder is deleted, and only its own git record is deleted by hand, so no
+ * repository-wide prune runs. Empty catch folders are removed afterwards.
+ */
+async function rollbackWorktreeAdd(projectRoot: string, worktree: string): Promise<void> {
+  const folder = await assertRunFolder(projectRoot, worktree, 'roll back');
+  const linked = await assertCatchWorktree(projectRoot, folder, 'roll back').then(
+    () => true,
+    () => false
+  );
+  if (linked) {
+    await gitOutput(projectRoot, ['worktree', 'remove', '--force', folder]);
+  } else {
+    await fs.rm(folder, { recursive: true, force: true });
+    await removeRecordsOf(projectRoot, folder);
+  }
+  await removeEmptyCatchFolders(projectRoot);
+}
+
 /** Creates a detached worktree at parentSha, outside the project, and returns its path. */
 export async function createCatchWorktree(projectRoot: string, runId: string, parentSha: string): Promise<string> {
   if (!RUN_ID_PATTERN.test(runId)) {
     throw new Error(`Invalid catch run id "${runId}": use letters, digits, dots, dashes and underscores.`);
   }
   assertRef(parentSha, 'parent revision');
-  const root = projectCatchRoot(projectRoot);
-  const worktree = path.join(root, runId);
+  await ensureCatchRoots(projectRoot);
+  const worktree = path.join(projectCatchRoot(projectRoot), runId);
   if (await pathExists(worktree)) {
     throw new Error(`A catch worktree already exists at ${worktree}.`);
   }
-  await fs.mkdir(root, { recursive: true });
-  await gitOutput(projectRoot, projectRoot, ['worktree', 'add', '--detach', worktree, parentSha]);
+  try {
+    await gitOutput(projectRoot, ['worktree', 'add', '--detach', worktree, parentSha]);
+  } catch (error) {
+    try {
+      await rollbackWorktreeAdd(projectRoot, worktree);
+    } catch (rollbackError) {
+      throw new Error(
+        `${errorText(error)} The rollback failed too (${errorText(rollbackError)}): remove ${worktree} by hand.`
+      );
+    }
+    throw error;
+  }
   return worktree;
 }
 
@@ -386,8 +486,8 @@ export async function createCatchWorktree(projectRoot: string, runId: string, pa
 export async function switchRevision(projectRoot: string, worktree: string, revisionSha: string): Promise<void> {
   assertRef(revisionSha, 'revision');
   const folder = await assertCatchWorktree(projectRoot, worktree, 'switch');
-  await gitOutput(projectRoot, folder, ['checkout', '--detach', '--force', revisionSha, '--']);
-  await gitOutput(projectRoot, folder, ['clean', '-fd']);
+  await gitOutput(folder, ['checkout', '--detach', '--force', revisionSha, '--']);
+  await gitOutput(folder, ['clean', '-fd']);
 }
 
 /** True when any listed path differs between the two revisions. An empty list always needs a reinstall. */
@@ -404,7 +504,6 @@ export async function needsReinstall(
   }
   const result = await runGit(
     projectRoot,
-    projectRoot,
     ['diff', '--quiet', '--no-ext-diff', parentSha, childSha, '--', ...paths],
     NEUTRAL_DIFF_CONFIG
   );
@@ -417,12 +516,11 @@ export async function needsReinstall(
   throw gitError(['diff'], result);
 }
 
-/** Removes the project's no-hooks folder and then its catch root, each only when it is empty. */
-async function removeEmptyProjectFolders(projectRoot: string): Promise<void> {
-  const root = projectCatchRoot(projectRoot);
-  // rmdir removes only empty folders, so a folder that still holds a run is left alone.
-  await fs.rmdir(path.join(root, NO_HOOKS_DIR_NAME)).catch(() => undefined);
-  await fs.rmdir(root).catch(() => undefined);
+/** Removes the project's catch root, then <tmpdir>/qaspec-catch, each only when it is empty. */
+async function removeEmptyCatchFolders(projectRoot: string): Promise<void> {
+  // rmdir removes only empty folders, so a folder that still holds a run or anything else is left alone.
+  await fs.rmdir(projectCatchRoot(projectRoot)).catch(() => undefined);
+  await fs.rmdir(sharedCatchRoot()).catch(() => undefined);
 }
 
 /**
@@ -433,12 +531,12 @@ async function removeEmptyProjectFolders(projectRoot: string): Promise<void> {
 export async function removeCatchWorktree(projectRoot: string, worktree: string): Promise<void> {
   if (await pathExists(worktree)) {
     const folder = await assertCatchWorktree(projectRoot, worktree, 'remove');
-    await gitOutput(projectRoot, projectRoot, ['worktree', 'remove', '--force', folder]);
+    await gitOutput(projectRoot, ['worktree', 'remove', '--force', folder]);
   } else {
     await assertRunFolder(projectRoot, worktree, 'remove');
-    await gitOutput(projectRoot, projectRoot, ['worktree', 'prune']);
+    await gitOutput(projectRoot, ['worktree', 'prune']);
   }
-  await removeEmptyProjectFolders(projectRoot);
+  await removeEmptyCatchFolders(projectRoot);
 }
 
 /**
@@ -494,7 +592,7 @@ async function projectFolderIn(checkout: string, prefix: string): Promise<string
 
 /** The project's path inside its git checkout, as git reports it: "packages/app", or "" at the checkout root. */
 export async function projectPrefix(projectRoot: string): Promise<string> {
-  const output = await gitOutput(projectRoot, projectRoot, ['rev-parse', '--show-prefix']);
+  const output = await gitOutput(projectRoot, ['rev-parse', '--show-prefix']);
   return output.replace(/\r?\n$/, '').replace(/\/$/, '');
 }
 

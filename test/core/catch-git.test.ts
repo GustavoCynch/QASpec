@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { execFileSync, type ExecFileException, type ExecFileOptions } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -18,7 +18,57 @@ import {
   switchRevision,
 } from '../../src/core/catch-git.js';
 
+/**
+ * Faults for the git calls of catch-git. All are off unless a test sets one, and afterEach resets them.
+ * maxBuffer lowers the output cap of every git call. overflowKilled flags the max-buffer error as killed, the shape
+ * the output-limit check must win over. afterWorktreeAdd makes the next worktree add fail once git has created the
+ * folder and its record: 'linked' keeps the .git link, 'unlinked' removes it, as a git killed mid-add leaves it.
+ */
+const gitFaults = vi.hoisted(() => ({
+  maxBuffer: undefined as number | undefined,
+  overflowKilled: false,
+  afterWorktreeAdd: undefined as 'linked' | 'unlinked' | undefined,
+}));
+
+type ExecCallback = (error: ExecFileException | null, stdout: string, stderr: string) => void;
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  const fsActual = await import('node:fs');
+  const pathActual = await import('node:path');
+  const execFileWithFaults = (file: string, args: string[], options: ExecFileOptions, callback: ExecCallback) => {
+    if (file !== 'git') {
+      return actual.execFile(file, args, options, callback);
+    }
+    const worktreeFault = gitFaults.afterWorktreeAdd;
+    const isWorktreeAdd = args.includes('worktree') && args.includes('add');
+    const capped = gitFaults.maxBuffer === undefined ? options : { ...options, maxBuffer: gitFaults.maxBuffer };
+    return actual.execFile(file, args, capped, (error, stdout, stderr) => {
+      if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' && gitFaults.overflowKilled) {
+        Object.assign(error, { killed: true });
+      }
+      if (isWorktreeAdd && worktreeFault !== undefined && error === null) {
+        gitFaults.afterWorktreeAdd = undefined;
+        if (worktreeFault === 'unlinked') {
+          // The args end with <worktree path> <parent sha>: the folder and its record exist, the .git link does not.
+          fsActual.rmSync(pathActual.join(args[args.length - 2], '.git'), { force: true });
+        }
+        const killed = Object.assign(new Error('git worktree add was killed'), {
+          code: null,
+          killed: true,
+          signal: 'SIGTERM',
+        });
+        callback(killed, stdout, stderr);
+        return;
+      }
+      callback(error, stdout, stderr);
+    });
+  };
+  return { ...actual, execFile: execFileWithFaults as unknown as typeof actual.execFile };
+});
+
 const NODE = process.execPath;
+const windows = process.platform === 'win32';
 const RUN_ID = '20261019T120000Z-a1b2c3';
 const OTHER_RUN_ID = '20261019T120500Z-d4e5f6';
 const quote = (value: string) => JSON.stringify(value);
@@ -29,6 +79,25 @@ const envDumpHook = (dump: string): string => `#!/bin/sh\nenv > ${shellWord(dump
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+/** The message of the error that the call rejects with. Fails the test when the call resolves. */
+async function messageOf(call: Promise<unknown>): Promise<string> {
+  try {
+    await call;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error('expected the call to reject');
+}
+
+/** The core.hooksPath of the git call that ran a smudge filter, read from the filter's environment dump. */
+function hooksPathSeenBy(dump: string): string {
+  const seen = /'core\.hooksPath'='([^']*)'/.exec(fs.readFileSync(dump, 'utf8'));
+  if (seen === null) {
+    throw new Error('the filter did not see a core.hooksPath');
+  }
+  return seen[1];
 }
 
 /** The parsed catch block (defaults applied) for one setup section, as readProjectConfig returns it. */
@@ -45,6 +114,7 @@ describe('catch-git', () => {
   let extraDirs: string[];
   let catchRoots: string[];
   let envBackup: NodeJS.ProcessEnv;
+  let privateTmp: string;
 
   /** The documented catch root: <tmpdir>/qaspec-catch/<first 12 hex of sha256(real path of project)>. */
   const rootFor = (project: string): string => {
@@ -118,17 +188,17 @@ describe('catch-git', () => {
     extraDirs = [];
     catchRoots = [];
     envBackup = { ...process.env };
+    // Catch roots, hook folders and repositories of one test all live in a private temp folder, so no test leaves
+    // a qaspec-catch folder in the real temp directory.
+    privateTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-git-tmp-'));
+    process.env.TMPDIR = privateTmp;
+    process.env.TMP = privateTmp;
+    process.env.TEMP = privateTmp;
   });
 
   afterEach(() => {
     for (const dir of [...catchRoots, ...repos, ...extraDirs]) {
       fs.rmSync(dir, { recursive: true, force: true });
-    }
-    try {
-      // Removes the shared parent only when it is empty; other projects' roots are never touched.
-      fs.rmdirSync(path.join(os.tmpdir(), 'qaspec-catch'));
-    } catch {
-      // Not empty, or already gone.
     }
     for (const key of Object.keys(process.env)) {
       if (!(key in envBackup)) {
@@ -136,6 +206,10 @@ describe('catch-git', () => {
       }
     }
     Object.assign(process.env, envBackup);
+    fs.rmSync(privateTmp, { recursive: true, force: true });
+    gitFaults.maxBuffer = undefined;
+    gitFaults.overflowKilled = false;
+    gitFaults.afterWorktreeAdd = undefined;
   });
 
   describe('resolveRevisions', () => {
@@ -278,6 +352,91 @@ describe('catch-git', () => {
     });
   });
 
+  describe('git runner', () => {
+    it('runs no hook that setup plants in the catch root', async () => {
+      const repo = createRepo();
+      const dump = path.join(scratchDir(), 'hook-env.txt');
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const head = commit(repo, { 'a.txt': 'a2\n' }, 'head');
+      const worktree = await createCatchWorktree(repo, RUN_ID, parent);
+      const source = path.join(scratchDir(), 'post-checkout');
+      fs.writeFileSync(source, envDumpHook(dump), { mode: 0o755 });
+      // The setup command runs in the worktree, so ../.no-hooks is the folder the catch root holds.
+      const writeHookScript = [
+        "const fs = require('node:fs');",
+        "fs.mkdirSync('../.no-hooks', { recursive: true });",
+        `fs.writeFileSync('../.no-hooks/post-checkout', fs.readFileSync('${source}'), { mode: 0o755 });`,
+      ].join(' ');
+      const plant = `${quote(NODE)} -e "${writeHookScript}"`;
+      await expect(runSetup(repo, worktree, catchConfig({ commands: [plant] }))).resolves.toMatchObject({ ok: true });
+
+      await switchRevision(repo, worktree, head);
+
+      expect(fs.existsSync(dump)).toBe(false);
+    });
+
+    it('keeps no hook folder in the catch root after git runs', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+
+      await createCatchWorktree(repo, RUN_ID, parent);
+
+      expect(fs.existsSync(path.join(rootFor(repo), '.no-hooks'))).toBe(false);
+    });
+
+    it('gives each git call an empty hooks folder and removes it when the call returns', async () => {
+      const repo = createRepo();
+      const dump = path.join(scratchDir(), 'filter-env.txt');
+      git(repo, 'config', 'filter.probe.smudge', `env > ${shellWord(dump)} && cat`);
+      const parent = commit(repo, { '.gitattributes': '* filter=probe\n', 'a.txt': 'a\n' }, 'parent');
+      const worktree = await createCatchWorktree(repo, RUN_ID, parent);
+      const child = commit(repo, { 'a.txt': 'a2\n' }, 'child');
+
+      await switchRevision(repo, worktree, child);
+
+      const hooks = hooksPathSeenBy(dump);
+      expect(path.dirname(hooks)).toBe(os.tmpdir());
+      expect(path.basename(hooks)).toMatch(/^qaspec-no-hooks-/);
+      expect(fs.existsSync(hooks)).toBe(false);
+    });
+
+    it('removes the hooks folder when git fails too', async () => {
+      const repo = createRepo();
+      const dump = path.join(scratchDir(), 'filter-env.txt');
+      const parent = commit(repo, { '.gitattributes': '* filter=probe\n', 'a.txt': 'a\n' }, 'parent');
+      const worktree = await createCatchWorktree(repo, RUN_ID, parent);
+      const child = commit(repo, { 'a.txt': 'a2\n' }, 'child');
+      // A required smudge filter that exits 1 fails the checkout after git has started with the call's hooks folder.
+      // Its clean side is the identity: git runs the clean filter of a required filter during checkout as well.
+      git(repo, 'config', 'filter.probe.clean', 'cat');
+      git(repo, 'config', 'filter.probe.smudge', `env > ${shellWord(dump)} && exit 1`);
+      git(repo, 'config', 'filter.probe.required', 'true');
+
+      await expect(switchRevision(repo, worktree, child)).rejects.toThrow(/git checkout failed/);
+
+      expect(fs.existsSync(hooksPathSeenBy(dump))).toBe(false);
+    });
+
+    it('reports output over the cap as an output limit', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'old\n' }, 'parent');
+      const head = commitOn(repo, parent, { 'a.txt': 'new line\n'.repeat(500) }, 'head');
+      gitFaults.maxBuffer = 1024;
+
+      await expect(diffPatch(repo, parent, head)).rejects.toThrow(/output is larger than/);
+    });
+
+    it('reports output over the cap as an output limit even when the error is also flagged as killed', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'old\n' }, 'parent');
+      const head = commitOn(repo, parent, { 'a.txt': 'new line\n'.repeat(500) }, 'head');
+      gitFaults.maxBuffer = 1024;
+      gitFaults.overflowKilled = true;
+
+      await expect(diffPatch(repo, parent, head)).rejects.toThrow(/output is larger than/);
+    });
+  });
+
   describe('createCatchWorktree', () => {
     it('creates the worktree outside the project at the documented root, detached at the parent', async () => {
       const repo = createRepo();
@@ -326,6 +485,122 @@ describe('catch-git', () => {
       await createCatchWorktree(repo, RUN_ID, parent);
 
       expect(fs.existsSync(dump)).toBe(false);
+    });
+  });
+
+  describe('catch root folders', () => {
+    it.skipIf(windows)('creates the shared and the project catch folders with mode 0700', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+
+      await createCatchWorktree(repo, RUN_ID, parent);
+
+      expect(fs.statSync(path.dirname(rootFor(repo))).mode & 0o777).toBe(0o700);
+      expect(fs.statSync(rootFor(repo)).mode & 0o777).toBe(0o700);
+    });
+
+    it.skipIf(windows)('refuses a catch root that is a symbolic link, and writes nothing through it', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const target = scratchDir();
+      fs.mkdirSync(path.dirname(rootFor(repo)), { mode: 0o700 });
+      fs.symlinkSync(target, rootFor(repo));
+
+      const message = await messageOf(createCatchWorktree(repo, RUN_ID, parent));
+
+      expect(message).toContain(rootFor(repo));
+      expect(message).toMatch(/symbolic link/);
+      expect(fs.readdirSync(target)).toEqual([]);
+    });
+
+    it.skipIf(windows)('refuses a catch root that group or others can write to', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      fs.mkdirSync(rootFor(repo), { recursive: true });
+      fs.chmodSync(rootFor(repo), 0o777);
+
+      const message = await messageOf(createCatchWorktree(repo, RUN_ID, parent));
+
+      expect(message).toContain(rootFor(repo));
+      expect(message).toMatch(/group or others/);
+      expect(fs.readdirSync(rootFor(repo))).toEqual([]);
+    });
+
+    it.skipIf(windows)('refuses a catch root that another user owns', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      fs.mkdirSync(rootFor(repo), { recursive: true, mode: 0o700 });
+      // Handing a folder to another user needs root privileges, so the current user is made a different one.
+      const current = process.getuid!();
+      const spy = vi.spyOn(process, 'getuid').mockReturnValue(current + 1);
+      try {
+        await expect(messageOf(createCatchWorktree(repo, RUN_ID, parent))).resolves.toMatch(/owned by another user/);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it.skipIf(windows)('refuses the shared qaspec-catch folder when it is a symbolic link', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const shared = path.dirname(rootFor(repo));
+      fs.symlinkSync(scratchDir(), shared);
+
+      const message = await messageOf(createCatchWorktree(repo, RUN_ID, parent));
+
+      expect(message).toContain(shared);
+      expect(message).toMatch(/symbolic link/);
+    });
+  });
+
+  describe('createCatchWorktree rollback', () => {
+    /** The path git lists for a run folder of this project: the real temp directory, the root, then the run id. */
+    const listedAs = (repo: string, runId: string): string =>
+      path.join(fs.realpathSync(os.tmpdir()), 'qaspec-catch', path.basename(rootFor(repo)), runId);
+
+    it('removes the folder and its git record when worktree add is killed after it created them', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      gitFaults.afterWorktreeAdd = 'unlinked';
+
+      await expect(createCatchWorktree(repo, RUN_ID, parent)).rejects.toThrow(/timed out/);
+
+      expect(fs.existsSync(path.join(rootFor(repo), RUN_ID))).toBe(false);
+      expect(git(repo, 'worktree', 'list', '--porcelain')).not.toContain(`worktree ${listedAs(repo, RUN_ID)}`);
+      expect(fs.existsSync(rootFor(repo))).toBe(false);
+    });
+
+    it('removes a complete worktree that worktree add left behind before it reported the failure', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      gitFaults.afterWorktreeAdd = 'linked';
+
+      await expect(createCatchWorktree(repo, RUN_ID, parent)).rejects.toThrow(/timed out/);
+
+      expect(fs.existsSync(path.join(rootFor(repo), RUN_ID))).toBe(false);
+      expect(git(repo, 'worktree', 'list', '--porcelain')).not.toContain(`worktree ${listedAs(repo, RUN_ID)}`);
+    });
+
+    it('removes only its own record and keeps an unrelated worktree whose folder is missing', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const unrelated = await createCatchWorktree(repo, OTHER_RUN_ID, parent);
+      const unrelatedListed = fs.realpathSync(unrelated);
+      fs.rmSync(unrelated, { recursive: true, force: true });
+      gitFaults.afterWorktreeAdd = 'unlinked';
+
+      await expect(createCatchWorktree(repo, RUN_ID, parent)).rejects.toThrow(/timed out/);
+
+      expect(git(repo, 'worktree', 'list', '--porcelain')).toContain(`worktree ${unrelatedListed}`);
+    });
+
+    it('leaves no catch folder behind when worktree add refuses the parent', async () => {
+      const repo = createRepo();
+      commit(repo, { 'a.txt': 'a\n' }, 'parent');
+
+      await expect(createCatchWorktree(repo, RUN_ID, 'f'.repeat(40))).rejects.toThrow(/invalid reference/);
+
+      expect(fs.existsSync(path.dirname(rootFor(repo)))).toBe(false);
     });
   });
 
@@ -580,6 +855,35 @@ describe('catch-git', () => {
       expect(fs.existsSync(path.join(nested, '.git'))).toBe(true);
       expect(git(runPath, 'rev-parse', 'HEAD')).toBe(otherBase);
       expect(git(repo, 'rev-parse', 'HEAD')).toBe(parent);
+    });
+
+    it('removes the shared qaspec-catch folder only with its last project root', async () => {
+      const repo = createRepo();
+      const other = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const otherParent = commit(other, { 'b.txt': 'b\n' }, 'other parent');
+      const first = await createCatchWorktree(repo, RUN_ID, parent);
+      const second = await createCatchWorktree(other, RUN_ID, otherParent);
+      const shared = path.dirname(path.dirname(first));
+
+      await removeCatchWorktree(repo, first);
+      expect(fs.existsSync(shared)).toBe(true);
+
+      await removeCatchWorktree(other, second);
+      expect(fs.existsSync(shared)).toBe(false);
+    });
+
+    it('never removes a shared qaspec-catch folder that holds anything else', async () => {
+      const repo = createRepo();
+      const parent = commit(repo, { 'a.txt': 'a\n' }, 'parent');
+      const worktree = await createCatchWorktree(repo, RUN_ID, parent);
+      const shared = path.dirname(path.dirname(worktree));
+      fs.writeFileSync(path.join(shared, 'notes.txt'), 'not ours\n');
+
+      await removeCatchWorktree(repo, worktree);
+
+      expect(fs.existsSync(path.dirname(worktree))).toBe(false);
+      expect(fs.readFileSync(path.join(shared, 'notes.txt'), 'utf8')).toBe('not ours\n');
     });
 
     it('refuses a path outside the catch root, including a sibling that shares its prefix', async () => {
