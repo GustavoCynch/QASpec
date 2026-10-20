@@ -234,7 +234,7 @@ describe('config profile command', () => {
     const result = getGlobalConfig();
     expect(result.profile).toBe('core');
     expect(result.delivery).toBe('skills'); // preserved
-    expect(result.workflows).toEqual(['analyze', 'cases', 'publish', 'execute', 'archive']);
+    expect(result.workflows).toEqual(['analyze', 'cases', 'publish', 'execute', 'catch', 'archive']);
   });
 
   it('custom workflow selection should set profile to custom', async () => {

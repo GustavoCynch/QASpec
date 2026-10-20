@@ -9,14 +9,14 @@ import {
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return five QASpec skills when unfiltered', () => {
+    it('should return six QASpec skills when unfiltered', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(6);
     });
 
     it('should return QASpec core skills for CORE_WORKFLOWS', () => {
       const templates = getSkillTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(6);
       const dirNames = templates.map((t) => t.dirName);
       expect(dirNames).toEqual(
         expect.arrayContaining([
@@ -24,6 +24,7 @@ describe('skill-generation', () => {
           'qaspec-cases',
           'qaspec-publish',
           'qaspec-execute',
+          'qaspec-catch',
           'qaspec-archive',
         ])
       );
@@ -105,16 +106,16 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandTemplates', () => {
-    it('should return five QASpec commands when unfiltered', () => {
+    it('should return six QASpec commands when unfiltered', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(6);
     });
 
-    it('should return five QASpec commands for CORE_WORKFLOWS', () => {
+    it('should return six QASpec commands for CORE_WORKFLOWS', () => {
       const templates = getCommandTemplates(CORE_WORKFLOWS);
-      expect(templates).toHaveLength(5);
+      expect(templates).toHaveLength(6);
       expect(templates.map((t) => t.id).sort()).toEqual(
-        ['analyze', 'archive', 'cases', 'execute', 'publish'].sort()
+        ['analyze', 'archive', 'catch', 'cases', 'execute', 'publish'].sort()
       );
     });
 
@@ -151,9 +152,9 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandContents', () => {
-    it('should return five command contents when unfiltered', () => {
+    it('should return six command contents when unfiltered', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(5);
+      expect(contents).toHaveLength(6);
     });
 
     it('should return the execute command for the execute workflow', () => {

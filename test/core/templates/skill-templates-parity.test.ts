@@ -7,11 +7,13 @@ import {
   getQasCasesSkillTemplate,
   getQasPublishSkillTemplate,
   getQasExecuteSkillTemplate,
+  getQasCatchSkillTemplate,
   getQasArchiveSkillTemplate,
   getQasAnalyzeCommandTemplate,
   getQasCasesCommandTemplate,
   getQasPublishCommandTemplate,
   getQasExecuteCommandTemplate,
+  getQasCatchCommandTemplate,
   getQasArchiveCommandTemplate,
   getFeedbackSkillTemplate,
 } from '../../../src/core/templates/skill-templates.js';
@@ -44,11 +46,13 @@ describe('skill templates split parity', () => {
       getQasCasesSkillTemplate,
       getQasPublishSkillTemplate,
       getQasExecuteSkillTemplate,
+      getQasCatchSkillTemplate,
       getQasArchiveSkillTemplate,
       getQasAnalyzeCommandTemplate,
       getQasCasesCommandTemplate,
       getQasPublishCommandTemplate,
       getQasExecuteCommandTemplate,
+      getQasCatchCommandTemplate,
       getQasArchiveCommandTemplate,
       getFeedbackSkillTemplate,
     };
@@ -66,6 +70,7 @@ describe('skill templates split parity', () => {
       ['qaspec-cases', getQasCasesSkillTemplate],
       ['qaspec-publish', getQasPublishSkillTemplate],
       ['qaspec-execute', getQasExecuteSkillTemplate],
+      ['qaspec-catch', getQasCatchSkillTemplate],
       ['qaspec-archive', getQasArchiveSkillTemplate],
     ];
 

@@ -19,6 +19,7 @@ export const SKILL_NAMES = CORE_WORKFLOWS.map((id) => qaspecSkillDirName(id)) as
   'qaspec-cases',
   'qaspec-publish',
   'qaspec-execute',
+  'qaspec-catch',
   'qaspec-archive',
 ];
 

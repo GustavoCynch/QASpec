@@ -75,6 +75,15 @@ describe('showWelcomeScreen', () => {
     expect(output.indexOf('/qsx:execute')).toBeGreaterThan(output.indexOf('/qsx:publish'));
   });
 
+  it('lists /qsx:catch in the quick-start after execute', async () => {
+    setTty(false);
+    await showWelcomeScreen();
+
+    const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+    expect(output).toContain('/qsx:catch');
+    expect(output.indexOf('/qsx:catch')).toBeGreaterThan(output.indexOf('/qsx:execute'));
+  });
+
   it('does not write terminal redraw escape sequences to stdout', async () => {
     setTty(false);
     const stdoutWrites: string[] = [];

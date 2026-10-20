@@ -25,6 +25,7 @@ function printWelcomeContent(): void {
   console.log(`  ${chalk.yellow('/qsx:cases')}     ${chalk.dim('Test cases')}`);
   console.log(`  ${chalk.yellow('/qsx:publish')}   ${chalk.dim('Publish to your TCMS')}`);
   console.log(`  ${chalk.yellow('/qsx:execute')}   ${chalk.dim('Run approved cases in a browser')}`);
+  console.log(`  ${chalk.yellow('/qsx:catch')}     ${chalk.dim('Catch regressions in a PR')}`);
   console.log();
   console.log(chalk.cyan('Press Enter to select tools...'));
 }
