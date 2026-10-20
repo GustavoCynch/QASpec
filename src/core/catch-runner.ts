@@ -57,8 +57,8 @@ export interface FileRunResult {
 export interface RunResult {
   outcome: RunOutcome;
   /**
-   * Per-file outcomes of a readable report. Empty when there is none, except that runner-error keeps them when a
-   * passing report was followed by a non-zero exit code.
+   * Per-file outcomes of a readable report. Empty when there is none, or when a worker crashed (runner-error), except
+   * that runner-error keeps them when a passing report was followed by a non-zero exit code.
    */
   files: FileRunResult[];
   durationMs: number;

@@ -1,0 +1,36 @@
+{
+  "numFailedTestSuites": 2,
+  "numFailedTests": 0,
+  "numPassedTestSuites": 0,
+  "numPassedTests": 0,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 2,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 2,
+  "numTotalTests": 0,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [],
+      "endTime": 1792425600150,
+      "message": "Test suite failed to run\n\n    Your test suite must contain at least one test.\n",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [],
+      "endTime": 1792425600250,
+      "message": "Test suite failed to run\n\n    src/other.ts:1:1 - error TS1005: ';' expected.\n",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600200,
+      "status": "failed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}
