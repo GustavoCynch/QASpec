@@ -1,0 +1,106 @@
+# Feature: /qsx:catch — per-PR catching and hardening tests from the approved change intent
+
+Objective: add a `catch` phase that generates tests for a PR's code changes (Meta JiT Catching, ACH, TestGen-LLM, Harden and Catch), using the change's approved analysis as the oracle, and surfaces each likely regression as one cheap sense-check question; the core stays project-agnostic.
+Branch: `feat/qsx-catch` from `main` · Delivery: `single-pr` (`size:exception`, L8) · Test runner: `pnpm test` (vitest) · Status: implementation (L1, decisions L3–L10); T1 in progress.
+
+## Specs
+
+**S1 — Project-agnostic core with a test-runner adapter.** User: "Herramienta genérica (S1): los valores del adopter van en la config del proyecto. Runner de tests detrás de una interfaz de adaptador; primera implementación Jest/TypeScript."
+- Adopter values live only in `qaspec/config.yaml` (a new `catch` block) and `qaspec/references/`. The generated catch skill/command and the config seed pass the same adopter denylist test as execute.
+- Test execution goes through an adapter interface; the first adapter is Jest/TypeScript.
+
+**S2 — The approved analysis is the oracle.** User: "/qsx:catch usa por defecto el análisis APROBADO del change (analysis.md + deltas WHEN/THEN). Los deltas definen la intención y los tests de funcionalidad nueva. Las specs base que el delta no toca definen el comportamiento a preservar. La clase de intención (refactor / aditivo / cambio de comportamiento) alimenta las reglas de falsos positivos. La aprobación humana rompe la circularidad del oráculo."
+- Catch refuses to run without a valid analyze approval (`evaluateAnalyzeApproval`), except in the degraded mode (S3).
+- Verified gap: `analysis.md` records no intent class; the analyze template has no such section.
+- (D2, L5) The analyze template gains an "Intent class" section in `analysis.md` with exactly one of `refactor`, `additive`, `behavior-change`, approved by the person with the rest of the analysis. The per-requirement map still comes from the deltas: untouched base requirements are preserved, MODIFIED may change, ADDED is new functionality, REMOVED is intended removal.
+- (Assumption, L5) Catch refuses when the section is missing (older approvals: adding it changes the approval hash, so the change is approved again) and when the class contradicts the deltas (`refactor` with any delta; `additive` with MODIFIED, REMOVED or RENAMED).
+
+**S3 — Degraded mode.** User: "Modo degradado --without-analysis: solo el diff ("dodgy diff" + hardening), con hallazgos marcados de menor confianza."
+
+**S4 — Placement and revisions.** User: "Corre después de analyze, en paralelo a cases → publish → execute. No necesita testcases.md. Compara la revisión padre (merge-base) con el head del PR guardado en el ledger de aprobación."
+- Verified gap: the approval record (`qaspec/changes/<name>/.qaspec.yaml`, `approvals.analyze`) holds `approvedAt`, `contentHash` and an optional `headSha` typed by the user (`qaspec approve analyze --head-sha`, optional in the analyze template). It stores no base or merge-base, and nothing in QASpec computes merge-base, diffs or worktrees.
+- (D3, L6) One isolated git worktree per run. Catch checks out the parent there (and applies each mutant in turn), then the child, sequentially; the user's checkout is never touched. Dependencies are installed with the configured `catch.setup` commands (for example `npm ci`) through the process-group runner, and installed again only when the child differs from the parent in the paths listed in the config (for example the lockfile).
+- (Assumption, L6) The worktree lives outside the project directory and is removed when the run ends; with no paths listed, catch installs again on every revision switch. No lockfile name is hard-coded in the core (S1).
+- (D1, L3) The child is the approval record's `headSha`; catch refuses when it is missing and tells the user to approve again with `--head-sha`. The parent is `git merge-base <base> <headSha>`, with the base from `catch.baseRef` in the config or a `--base` flag. The approval format does not change.
+
+**S5 — Catching pipeline.** User: "Riesgos desde la intención → mutantes del padre → gates: el mutante compila y los tests existentes no lo detectan; el test compila, pasa N veces en el padre y falla en el mutante; luego se corre en el hijo y se clasifica con la tabla de Harden & Catch (aterrizar / reportar / señal / descartar)."
+- Classification on parent/child (Harden and Catch, Table 3):
+
+| Parent | Child | Action |
+|---|---|---|
+| pass | pass | land |
+| pass | fail | report |
+| fail | pass | land |
+| no build | pass | land |
+| no build | fail | report |
+| any | no build | signal |
+| fail | fail | discard |
+
+- (D5, L10) Mutants and generated tests are code written by the agent and run by the adopter's test runner with the developer's permissions. Containment: everything runs in the worktree outside the project; child processes inherit only an environment allowlist (built-in essentials plus `catch.env` names, explicit values from the config), so tokens such as `GH_TOKEN` or `NPM_TOKEN` are not passed; every command has a timeout with process-group kill. The docs state there is no network or filesystem sandbox: the trust level is that of running the PR's tests locally.
+
+**S6 — Mutant equivalence filter.** User: "Filtro de equivalencia de mutantes: quitar comentarios y comparar, y después un juez."
+
+**S7 — Assessors.** User: "Assessors: reglas tipo RubFake genéricas más reglas por proyecto en qaspec/references, y un ensemble de jueces que SOLO descarta."
+
+**S8 — Findings as cheap questions.** User: "Cada captura sale como pregunta barata: "antes hacía X, ahora Y, el escenario dice Z: ¿es intencional?"."
+
+**S9 — Hardening tests.** User: "Los tests de hardening que pasan se ofrecen para aterrizar."
+- (D4, L7) Catch writes each test classified `land` into the run folder plus one `.patch` against the head. The workflow asks once; on yes, the agent applies it in the user's checkout after `git apply --check` and a check that the checkout is at the PR head. QASpec never commits; the person reviews and commits.
+
+**S10 — Ledger.** User: "Ledger con todas las etapas, para medir la precisión real."
+
+**S11 — Reuse the execute infrastructure.** User: reuse "ledger, juez en subagente con fail-closed (D4), hallazgos como pregunta de verificación, `qaspec execute answer`, entradas por archivo (nunca texto de la app en la línea de comandos), process-group runner y lock por corrida."
+- Verified map: generic and reusable as-is: `runInProcessGroup` (`process-group.ts`), `withRunLock`, `writeFileAtomic`, `appendLedgerEntry`, `generateRunId` (`execution-run.ts`); `readTextInput` is private to `src/commands/execute.ts`. Coupled to execute: `RunRecord`, `startRun`, `triageCase` (cases, plans, control case), and `answer`, which lives under `qaspec execute`.
+
+**S12 — Original prompts.** User: "Prompts originales; no copiar los de los papers (S14)."
+
+**S13 — Process.** User: "Sigue mi flujo ODD y hazme las preguntas que veas necesarias." Tracked in this document.
+
+**Decisions:** D1 and D3 in S4, D2 in S2, D5 in S5, D4 in S9; dogfood target cynch14 (assumption, L4); delivery `single-pr` (L8). No open questions.
+
+## Tasks
+
+| ID | Specs | Task | Route | Status | Commit |
+|----|-------|------|-------|--------|--------|
+| T1 | S1 | `catch` config block: zod schema, resilient parser, adopter-neutral seed comment | — | pending | — |
+| T2 | S2 | Analyze template: "Intent class" section (D2), tests, parity snapshot | — | pending | — |
+| T3 | S2, S3 | Intent extraction: intent class, consistency with deltas, per-requirement map, WHEN/THEN scenarios; degraded mode | — | pending | — |
+| T4 | S4 | Git revisions and worktree: head from the approval, merge-base, worktree outside the project, setup and reinstall (D1, D3) | — | pending | — |
+| T5 | S10, S11 | Shared run infrastructure extracted from execute (lock, ledger, atomic write, run id, file inputs, findings, answer) and `qaspec catch start|status|finish` | — | pending | — |
+| T6 | S1 | Test-runner adapter interface and Jest/TypeScript adapter (related tests, run, pass/fail/no-build) | — | pending | — |
+| T7 | S5, S6 | Risks, mutant gates, comment-stripped equivalence, equivalence judge record | — | pending | — |
+| T8 | S5 | Test gates (N parent runs, fails on mutant), child run, Table 3 classification; functionality tests from scenarios | — | pending | — |
+| T9 | S7 | Assessors: generic rules, per-project rules file, discard-only judge ensemble | — | pending | — |
+| T10 | S8, S11 | Findings as sense-check questions; `qaspec catch answer` on the shared core | — | pending | — |
+| T11 | S9 | Landing: tests and `.patch` (D4) | — | pending | — |
+| T12 | S1, S12 | `/qsx:catch` workflow template, core set, parity, denylist and CLI-contract tests | — | pending | — |
+| T13 | S1–S13 | Docs | — | pending | — |
+| T14 | S1 | Dogfood on a cynch14 PR | — | pending | — |
+
+Route evidence: decided per task; the parent context is near the long-session backstop, so units are expected to be delegated (context).
+Risk forecast: T2 and T12 change what installed projects receive (item 3); T4 creates and removes git worktrees (item 5); T5 changes run infrastructure execute consumes (item 3); T6–T8 run adopter commands and agent-written code (item 2, Q7).
+
+## Log
+
+- **L1** (2026-10-19, user, original request): "Quiero iniciar una feature nueva en QASpec: la fase /qsx:catch, generación de tests "catching" por PR basada en los papers de Meta (JiT Catching, ACH, TestGen-LLM, Harden & Catch). Contexto que debes cargar antes de proponer nada: 1. Engram, proyecto "qaspec": topic "research/meta-llm-testing" (investigación completa de los papers de Meta) y topic "odd/qsx-execute/tasks" (la feature /qsx:execute ya construida, PR #2). 2. El documento odd/tasks/qsx-execute.md, para reutilizar su infraestructura: ledger, juez en subagente con fail-closed (D4), hallazgos como pregunta de verificación, `qaspec execute answer`, entradas por archivo (nunca texto de la app en la línea de comandos), process-group runner y lock por corrida. Decisiones ya tomadas: - /qsx:catch usa por defecto el análisis APROBADO del change (analysis.md + deltas WHEN/THEN). Los deltas definen la intención y los tests de funcionalidad nueva. Las specs base que el delta no toca definen el comportamiento a preservar. La clase de intención (refactor / aditivo / cambio de comportamiento) alimenta las reglas de falsos positivos. La aprobación humana rompe la circularidad del oráculo. - Modo degradado --without-analysis: solo el diff ("dodgy diff" + hardening), con hallazgos marcados de menor confianza. - Corre después de analyze, en paralelo a cases → publish → execute. No necesita testcases.md. Compara la revisión padre (merge-base) con el head del PR guardado en el ledger de aprobación. - Herramienta genérica (S1): los valores del adopter van en la config del proyecto. Runner de tests detrás de una interfaz de adaptador; primera implementación Jest/TypeScript. - Prompts originales; no copiar los de los papers (S14). Lo que espero del flujo: - Riesgos desde la intención → mutantes del padre → gates: el mutante compila y los tests existentes no lo detectan; el test compila, pasa N veces en el padre y falla en el mutante; luego se corre en el hijo y se clasifica con la tabla de Harden & Catch (aterrizar / reportar / señal / descartar). - Filtro de equivalencia de mutantes: quitar comentarios y comparar, y después un juez. - Assessors: reglas tipo RubFake genéricas más reglas por proyecto en qaspec/references, y un ensemble de jueces que SOLO descarta. - Cada captura sale como pregunta barata: "antes hacía X, ahora Y, el escenario dice Z: ¿es intencional?". - Los tests de hardening que pasan se ofrecen para aterrizar. - Ledger con todas las etapas, para medir la precisión real. Sigue mi flujo ODD y hazme las preguntas que veas necesarias."
+- **L2** (exploration, 2026-10-19): PR #2 (`feat/qsx-execute`) is merged into `main`; `feat/qsx-catch` branched from `main` at `5baadfe`. CodeGraph index initialized. Verified facts folded into S2, S4 and S11: approval record fields (`src/core/approval-ledger.ts:16-20`; head check only when both sides supply a SHA, :164-188; execute passes none, `execution-run.ts:600`); no intent class in `schemas/qaspec-pr-review/templates/analysis.md`; delta specs at `qaspec/changes/<name>/specs/<capability>/spec.md` with ADDED/MODIFIED/REMOVED/RENAMED sections, `parseDeltaSpec` in `src/core/parsers/requirement-blocks.ts:99`; base specs at `qaspec/specs/<capability>/spec.md`; the PR diff is fetched only by the analyze agent through `gh`/`git` prompt text; `qaspec/references/` is read by prompt text only.
+- **L3** (2026-10-19, user, Q1): "Head aprobado + merge-base (Recomendado)" → D1 in S4.
+- **L4** (evidence): the cynch14 checkout is `~/cynch14` (also `~/orca/workspaces/cynch14`); `package.json` runs `cross-env TZ=America/Chicago jest` with `jest@^30`, `jest-preset-angular@^16.1.2`, `ts-jest@^29.4.9`, `typescript@~5.9.2`; 992 `*.spec.ts` files under `src/`. The Jest adapter can be dogfooded there; the adapter must run the project's configured test command, since the environment (here `TZ`) matters.
+- **L5** (2026-10-19, user, Q2): "Sección nueva en analysis.md" (recommended alternative was deriving the class from the deltas) → D2 in S2. Consequences recorded as assumptions in S2. Adds a task: the analyze template and its tests change (item 3: template received by installed projects; requested by the user).
+- **L6** (2026-10-19, user, Q3): "Un worktree, revisiones alternadas (Recomendado)" → D3 in S4, with location and reinstall assumptions.
+- **L7** (2026-10-19, user, Q4): "Patch + una confirmación (Recomendado)" → D4 in S9.
+- **L8** (2026-10-19, user, Q6): "PR única (Recomendado)" → delivery `single-pr` with `size:exception`, work-unit commits, RDD per commit slice.
+- **L9** (design, proposed by the parent; Q7 open). Same split as qsx-execute: the agent writes risks, mutants, tests and judge verdicts as files; the `qaspec catch` CLI validates them, runs every gate through the adapter, and owns run state, ledger and findings. The agent never decides a gate outcome.
+  - **Run folder:** `qaspec/changes/<name>/catch/<run-id>/` (self-ignoring `.gitignore`, as execute's `runs/`): `run.json`, `intent.json`, `diff.patch`, `risks/`, `mutants/`, `tests/`, `results/`, `ledger.jsonl`, `findings.json`/`findings.md`, `land/`.
+  - `qaspec catch start --change <name> [--base <ref>] [--without-analysis --head <sha>] [--json]`: gates (valid approval with `headSha`, intent class present and consistent, `catch` config); parent = merge-base; worktree outside the project; `catch.setup`; writes `intent.json` (class, preserved/modified/added/removed requirements with WHEN/THEN scenarios), `diff.patch`, changed files and the existing tests related to them (adapter). Degraded mode marks the run `low-confidence` and has no intent.
+  - `qaspec catch risk|mutant|test --run <id> --input <file>`: one record per call. `mutant`: comment-stripped comparison with the parent (discard as `syntactic-equivalent`), builds, related existing tests still pass (otherwise `caught-by-existing`); a surviving mutant waits for `qaspec catch equivalence --input <verdict>` from a fresh-context judge. `test` (kind `catching` with a mutant, or `functionality` from an ADDED/MODIFIED scenario, or `dodgy-diff` in degraded mode): builds; catching tests pass `catch.gates.parentRuns` times on the parent and fail on the mutant; then run on the child (a child failure repeats to rule out flakiness) and classified by the Table 3 in S5.
+  - **Assessors** on every `report`: deterministic generic rules plus per-project rules from a structured file in `qaspec/references/` (ledger `rule-filtered`), then `qaspec catch judge --input <verdicts>` with `catch.judges` fresh-context verdicts that may only discard (aggregated by median, ledger `judge-filtered`); D4 of qsx-execute applies (fail closed without subagents).
+  - **Findings:** one question per surviving report: before (parent), now (child), what the scenario says, "Is this intended?"; `qaspec catch answer` on the core shared with `qaspec execute answer`. Ledger stages: `risk`, `mutant`, `equivalence`, `test`, `classified`, `rule-filtered`, `judge-filtered`, `reported`, `confirmed`/`dismissed` (with time to answer), `landed`; `status --json` prints the funnel and precision (confirmed / reported).
+  - `qaspec catch land --run <id>`: writes `land/` and `land.patch` against the head (D4). `qaspec catch finish` removes the worktree.
+  - **Q7 premise:** mutants and generated tests are code written by the agent and executed by the adopter's test runner with the developer's permissions, as running the PR's own tests already does. Proposed containment: worktree outside the project, environment allowlist from the config (nothing else inherited), timeouts with process-group kill, and no network guarantee (documented).
+- **L10** (2026-10-19, user, Q7): "Contención en el worktree (Recomendado)" → D5 in S5.
+- **L11** (design for T1, `catch` config block: S1, D1, D3, D5, S5, S7). Route: delegated writer, reason: long-session context backstop.
+  - `src/core/catch-config.ts`: `CatchConfigSchema` and `parseCatchConfig(raw)` following the per-field resilient pattern of `execution-config.ts` (warn with a `catch.x.y` label, drop the invalid field, keep valid siblings), wired into `readProjectConfig`. Reuse `ProjectRelativePathSchema` and the read helpers of `execution-config.ts` by exporting them; no copies.
+  - Fields: `baseRef` (string, no whitespace, must not start with `-`); `setup.commands` (list of non-empty shell commands), `setup.reinstallWhenChanged` (list of project-relative paths), `setup.timeoutSeconds` (positive integer, default 900); `runner.adapter` (enum `jest`), `runner.command` (non-empty base test command), `runner.timeoutSeconds` (positive integer, default 300); `env.inherit` (variable names matching `^[A-Za-z_][A-Za-z0-9_]*$`, added to the built-in allowlist), `env.set` (map of such names to strings); `gates.parentRuns` (integer 1–20, default 5), `gates.childRuns` (integer 1–20, default 3); `judges` (odd integer 1–9, default 3); `rulesFile` (project-relative path).
+  - Seed: a commented, adopter-neutral `catch` example after the `execution` block in `QASPEC_PR_REVIEW_CONFIG_FOOTER` (`config-prompts.ts`).
+- **Next:** T1.
