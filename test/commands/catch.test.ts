@@ -855,7 +855,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
       classified: { land: 1 },
       assessed: {},
       judged: {},
-      reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
       unreadable: 0,
     });
   });
@@ -875,6 +875,32 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     expect(text.stdout).toMatch(/unreadable 1/);
   });
 
+  it('status with a corrupt assessment.json or findings.json still succeeds, and counts each under unreadable (T9-F1)', async () => {
+    const runId = await startRun();
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    fsSync.writeFileSync(path.join(folder, 'assessment.json'), '{"reports": [');
+    fsSync.writeFileSync(path.join(folder, 'findings.json'), '[oops');
+
+    const result = await cli(['status', '--run', runId, '--json']);
+    const text = await cli(['status', '--run', runId]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout).funnel).toMatchObject({ assessed: {}, findings: { count: 0 }, unreadable: 2 });
+    expect(text.exitCode).toBe(0);
+    expect(text.stdout).toMatch(/unreadable 2/);
+  });
+
+  it('status does not count a findings entry that is not an object as a finding, and counts it under unreadable (T9-F1)', async () => {
+    const runId = await startRun();
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    fsSync.writeFileSync(path.join(folder, 'findings.json'), JSON.stringify([null, { id: 'F1', test: 'T1' }]));
+
+    const result = await cli(['status', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout).funnel).toMatchObject({ findings: { count: 1, unanswered: 1 }, unreadable: 1 });
+  });
+
   it('status --run prints a Funnel block in text, and status --change --json gives each run its funnel', async () => {
     const runId = await startRun();
 
@@ -882,6 +908,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     const listed = await cli(['status', '--change', CHANGE, '--json']);
 
     expect(text.stdout).toMatch(/^\s+Funnel: .*risks 0/m);
+    expect(text.stdout).toMatch(/findings 0 \(confirmed 0, dismissed 0, unanswered 0\)/);
     expect(JSON.parse(listed.stdout).runs).toEqual([
       expect.objectContaining({
         run: runId,
@@ -892,7 +919,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
           classified: {},
           assessed: {},
           judged: {},
-          reported: { reported: 0, confirmed: 0, dismissed: 0 },
+          findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
           unreadable: 0,
         },
       }),
@@ -1144,11 +1171,12 @@ describe('qaspec catch assess, judge, report and answer (T9, T10)', () => {
       funnel: {
         assessed: { kept: 1 },
         judged: { kept: 1 },
-        reported: { reported: 1, confirmed: 1, dismissed: 0 },
+        findings: { count: 1, confirmed: 1, dismissed: 0, unanswered: 0 },
       },
     });
     const text = await cli(['status', '--run', runId]);
     expect(text.stdout).toMatch(/Precision: 1\.00 \(confirmed 1, dismissed 0\)/);
+    expect(text.stdout).toMatch(/findings 1 \(confirmed 1, dismissed 0, unanswered 0\)/);
   });
 
   it('answer refuses an intended value that is not yes or no, a second answer, and a --note text on the command line', async () => {
@@ -1175,5 +1203,64 @@ describe('qaspec catch assess, judge, report and answer (T9, T10)', () => {
     expect(JSON.parse(first.stdout)).toMatchObject({ stage: 'dismissed', intended: 'yes' });
     expect(second.exitCode).toBe(1);
     expect(JSON.parse(second.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'finding-answered' })] });
+  });
+});
+
+describe('qaspec catch assess refuses a rules file it cannot read (T9-F1)', () => {
+  let tmp: string;
+  const env = () => ({ TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+
+  beforeEach(() => {
+    tmp = fsSync.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-rules-cli-'));
+  });
+
+  afterEach(() => {
+    fsSync.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('assess exits 1 and names the unreadable rules file, in text and JSON, and the change folder does not change', async () => {
+    const fx = makeProjectFixture({
+      root: tmp,
+      gates: { parentRuns: 1, childRuns: 1 },
+      judges: 3,
+      rulesFile: { path: 'qaspec/references/catch-rules.yaml' },
+    });
+    const cli = (args: string[]) => runCLI(['catch', ...args], { cwd: fx.project, env: env() });
+    const started = await cli(['start', '--change', CHANGE, '--json']);
+    expect(started.exitCode).toBe(0);
+    const runId = JSON.parse(started.stdout).run as string;
+    const input = path.join(tmp, 'inputs', 'test.json');
+    fsSync.mkdirSync(path.dirname(input), { recursive: true });
+    fsSync.writeFileSync(
+      input,
+      JSON.stringify({
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: 'test/catch-currency.spec.ts',
+        content: '// covers: src/app.ts\n// expect: export const value = 1;\n',
+      })
+    );
+    expect((await cli(['test', '--run', runId, '--input', input])).exitCode).toBe(0);
+    expect((await cli(['child', '--run', runId])).exitCode).toBe(0);
+    fsSync.mkdirSync(path.join(fx.project, 'qaspec', 'references', 'catch-rules.yaml'), { recursive: true });
+    const before = await snapshot(fx.changeDir);
+
+    const json = await cli(['assess', '--run', runId, '--json']);
+    const text = await cli(['assess', '--run', runId]);
+
+    expect(json.exitCode).toBe(1);
+    expect(JSON.parse(json.stdout)).toMatchObject({
+      recorded: false,
+      run: runId,
+      errors: [
+        expect.objectContaining({
+          code: 'rules-file-unreadable',
+          message: expect.stringMatching(/^qaspec\/references\/catch-rules\.yaml cannot be read: /),
+        }),
+      ],
+    });
+    expect(text.exitCode).toBe(1);
+    expect(text.stdout).toMatch(/cannot be read/);
+    expect(await snapshot(fx.changeDir)).toEqual(before);
   });
 });

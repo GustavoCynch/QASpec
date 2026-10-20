@@ -1294,7 +1294,7 @@ qaspec catch status --change <name> [--json]
 
 `--run` shows one run: its state, mode, revisions, worktree, setup results, failure, ledger count per stage, funnel and precision. `--change` narrows the lookup to that change. `--change` alone lists the runs of the change, one block per run.
 
-The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, and reported findings with their answers. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
+The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, and findings with their answers (`funnel.findings`: `count`, `confirmed`, `dismissed` and `unanswered`). A corrupt or unreadable record, ledger line, assessment or findings file is left out of its count and counted under `unreadable`, so `status` still succeeds. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
 
 **Exit:** 0; 1 when the run or the change is unknown.
 
@@ -1475,7 +1475,7 @@ Assesses the reports of a `classified` run, once. A report is a test with action
 2. **Project rules** from `catch.rulesFile`, in file order. A matching `false-positive` rule discards it as `rule-filtered`, with the rule id.
 3. Otherwise the report is `kept`, with intent signals: `unexpected-for-intent` (it names a preserved requirement, or the class is `refactor`), `possibly-intended` (a modified requirement), `low-confidence` (degraded run) and `true-positive:<id>` for each matching `true-positive` rule.
 
-A kept report then goes to the judges. The output lists each report with its outcome, rule and signals. **Exit:** 0 when assessed; 1 when refused, which covers a run that is not `classified` and a `catch.rulesFile` that is missing or invalid. A refusal changes nothing.
+A kept report then goes to the judges. The output lists each report with its outcome, rule and signals. **Exit:** 0 when assessed; 1 when refused, which covers a run that is not `classified` and a `catch.rulesFile` that is missing, unreadable (a folder at its path, for example), larger than 64 KB or invalid. A refusal changes nothing.
 
 ### `qaspec catch judge`
 
@@ -1608,7 +1608,7 @@ Keep secrets out of `env.set`, because its values are written in the config file
 
 ### The rules file
 
-`catch.rulesFile` points to a YAML file with project rules for the assessor. The seed path is `qaspec/references/catch-rules.yaml`, and the example below is the content of that file. QASpec does not create the file. Without `rulesFile`, only the generic rules run. A configured file that is missing or invalid refuses `qaspec catch assess`.
+`catch.rulesFile` points to a YAML file with project rules for the assessor. The seed path is `qaspec/references/catch-rules.yaml`, and the example below is the content of that file. QASpec does not create the file. Without `rulesFile`, only the generic rules run. A configured file that is missing, unreadable, larger than 64 KB or invalid refuses `qaspec catch assess`, which then changes nothing.
 
 ```yaml
 # qaspec/references/catch-rules.yaml

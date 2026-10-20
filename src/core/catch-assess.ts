@@ -53,7 +53,7 @@ export const CATCH_ASSESSMENT_SCHEMA = 'qaspec.catch-assessment/v1' as const;
 export const CATCH_JUDGEMENT_SCHEMA = 'qaspec.catch-judgement/v1' as const;
 
 /** Bytes of a rules file the CLI reads: a rules file is small, and a larger one is refused rather than cut. */
-const RULES_FILE_MAX_BYTES = 64 * 1024;
+export const RULES_FILE_MAX_BYTES = 64 * 1024;
 const RULE_ID = /^[a-z0-9][a-z0-9-]*$/;
 const GENERIC_PREFIX = 'generic-';
 const TEST_ID = /^T[1-9]\d*$/;
@@ -331,7 +331,8 @@ function readRulesFile(
     return { ok: false, issues: [{ code: 'rules-file-unreadable', message: `${rulesFile} cannot be read: ${errorText(error)}` }] };
   }
   if (bytes.length > RULES_FILE_MAX_BYTES) {
-    return { ok: false, issues: [{ code: 'rules-file-invalid', message: `${rulesFile} is larger than 64 KB` }] };
+    const limit = `${RULES_FILE_MAX_BYTES / 1024} KB`;
+    return { ok: false, issues: [{ code: 'rules-file-invalid', message: `${rulesFile} is larger than ${limit}` }] };
   }
   const parsed = parseAssessRules(bytes.toString('utf-8'));
   if (!parsed.ok) {

@@ -10,6 +10,7 @@ import {
   globMatches,
   judgeCatchReport,
   medianOf,
+  RULES_FILE_MAX_BYTES,
   parseAssessRules,
   scoreOf,
   testPattern,
@@ -519,6 +520,96 @@ describe('qaspec catch assess and judge on a real run (S7)', () => {
       issues: [expect.objectContaining({ code: 'rules-file-missing', message: expect.stringMatching(/missing-rules\.yaml/) })],
     });
     expect(fs.existsSync(path.join(runDir, 'assessment.json'))).toBe(false);
+    expect(readCatchRun(runDir).state).toBe('classified');
+  });
+
+  /** Every file under a folder, keyed by its path with the text it holds: a refusal must leave each one as it was. */
+  const folderFiles = (dir: string, prefix = ''): Record<string, string> =>
+    fs.readdirSync(path.join(dir, prefix), { withFileTypes: true }).reduce<Record<string, string>>((files, entry) => {
+      const relative = path.join(prefix, entry.name);
+      return entry.isDirectory()
+        ? { ...files, ...folderFiles(dir, relative) }
+        : { ...files, [relative]: fs.readFileSync(path.join(dir, relative), 'utf8') };
+    }, {});
+
+  it('refuses a rules file larger than the limit, names the limit, and changes nothing', async () => {
+    const rulesPath = 'qaspec/references/catch-rules.yaml';
+    const fx = makeProjectFixture({
+      root: tmp,
+      gates: { parentRuns: 1, childRuns: 1 },
+      rulesFile: { path: rulesPath, content: '#'.repeat(RULES_FILE_MAX_BYTES + 1) },
+    });
+    const { runId, runDir } = await reportRun(fx);
+    await classify(fx, runId);
+    const before = folderFiles(runDir);
+
+    expect(await assess(fx, runId)).toMatchObject({
+      ok: false,
+      issues: [
+        expect.objectContaining({
+          code: 'rules-file-invalid',
+          message: `${rulesPath} is larger than ${RULES_FILE_MAX_BYTES / 1024} KB`,
+        }),
+      ],
+    });
+    expect(folderFiles(runDir)).toEqual(before);
+    expect(readCatchRun(runDir).state).toBe('classified');
+  });
+
+  it('reads a rules file of exactly the limit: only a larger file is refused', async () => {
+    const head = 'rules: []\n';
+    const fx = makeProjectFixture({
+      root: tmp,
+      gates: { parentRuns: 1, childRuns: 1 },
+      rulesFile: { path: 'qaspec/references/catch-rules.yaml', content: head + '#'.repeat(RULES_FILE_MAX_BYTES - head.length) },
+    });
+    const { runId } = await reportRun(fx);
+    await classify(fx, runId);
+
+    expect(await assess(fx, runId)).toMatchObject({ ok: true, assessment: { rulesFile: { rules: 0 } } });
+  });
+
+  const UNUSABLE_RULES: Array<[string, string, RegExp]> = [
+    ['is not YAML', 'rules: [\n', /^The rules file is not valid YAML: /],
+    [
+      'has a rule the schema does not accept',
+      'rules:\n  - id: value-wording\n    kind: sometimes\n    match: { failure: "x" }\n    reason: The wording.\n',
+      /^rules\[0\]\.kind: /,
+    ],
+  ];
+  it.each(UNUSABLE_RULES)('refuses a rules file that %s, names the problem, and changes nothing', async (_label, content, message) => {
+    const rulesPath = 'qaspec/references/catch-rules.yaml';
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 1, childRuns: 1 }, rulesFile: { path: rulesPath, content } });
+    const { runId, runDir } = await reportRun(fx);
+    await classify(fx, runId);
+    const before = folderFiles(runDir);
+
+    expect(await assess(fx, runId)).toMatchObject({
+      ok: false,
+      issues: [expect.objectContaining({ code: 'rules-file-invalid', message: expect.stringMatching(message) })],
+    });
+    expect(folderFiles(runDir)).toEqual(before);
+    expect(readCatchRun(runDir).state).toBe('classified');
+  });
+
+  it('refuses a rules file path that is a folder, says it cannot be read, and changes nothing', async () => {
+    const rulesPath = 'qaspec/references/catch-rules.yaml';
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 1, childRuns: 1 }, rulesFile: { path: rulesPath } });
+    const { runId, runDir } = await reportRun(fx);
+    await classify(fx, runId);
+    fs.mkdirSync(path.join(fx.project, rulesPath), { recursive: true });
+    const before = folderFiles(runDir);
+
+    expect(await assess(fx, runId)).toMatchObject({
+      ok: false,
+      issues: [
+        expect.objectContaining({
+          code: 'rules-file-unreadable',
+          message: expect.stringMatching(/^qaspec\/references\/catch-rules\.yaml cannot be read: /),
+        }),
+      ],
+    });
+    expect(folderFiles(runDir)).toEqual(before);
     expect(readCatchRun(runDir).state).toBe('classified');
   });
 
