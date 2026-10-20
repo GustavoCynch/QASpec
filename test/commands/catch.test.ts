@@ -6,7 +6,7 @@ import path from 'path';
 import { stringify } from 'yaml';
 import { runCLI } from '../helpers/run-cli.js';
 import * as fsSync from 'node:fs';
-import { CHANGE, makeProjectFixture, type ProjectFixture } from '../fixtures/catch-jest/catch-project.js';
+import { CHANGE, contractRunner, makeProjectFixture, type ProjectFixture } from '../fixtures/catch-jest/catch-project.js';
 
 const ADD_EXPORT = 'add-export';
 
@@ -652,7 +652,7 @@ describe('qaspec catch context, risk, mutant and equivalence (T7)', () => {
     expect(Object.keys(output).sort()).toEqual(
       [
         'run', 'change', 'state', 'mode', 'lowConfidence', 'baseRef', 'baseSha', 'headSha', 'parentSha', 'projectPrefix',
-        'worktree', 'installedFor', 'setup', 'failure', 'createdAt', 'updatedAt', 'finishedAt', 'runDir', 'ledger',
+        'worktree', 'installedFor', 'setup', 'failure', 'createdAt', 'updatedAt', 'finishedAt', 'runDir', 'ledger', 'funnel',
       ].sort()
     );
     expect(output.ledger).toEqual({ started: 1, setup: 1, ready: 1 });
@@ -674,5 +674,242 @@ describe('qaspec catch context, risk, mutant and equivalence (T7)', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Object.keys(JSON.parse(result.stdout)).sort()).toEqual(['capabilities', 'change', 'intentClass', 'schema']);
+  });
+});
+
+describe('qaspec catch test, child and the funnel (T8)', () => {
+  let tmp: string;
+  let fx: ProjectFixture;
+  const env = () => ({ TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+  const cli = (args: string[]) => runCLI(['catch', ...args], { cwd: fx.project, env: env() });
+
+  /** Writes a JSON input outside the repository and returns its path. */
+  const inputFile = (name: string, value: unknown): string => {
+    const file = path.join(tmp, 'inputs', name);
+    fsSync.mkdirSync(path.dirname(file), { recursive: true });
+    fsSync.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+
+  /** Starts the run through the CLI, approved with its head, and returns its id. */
+  const startRun = async (): Promise<string> => {
+    const started = await cli(['start', '--change', CHANGE, '--json']);
+    expect(started.exitCode).toBe(0);
+    return JSON.parse(started.stdout).run as string;
+  };
+
+  const CURRENCY_CONTRACT = '// covers: src/app.ts\n// expect: export const value = 2;\n';
+
+  /** A functionality test of the Currency requirement, written as the agent writes it: a JSON file of the test. */
+  const currencyTest = (content = CURRENCY_CONTRACT) => ({
+    kind: 'functionality',
+    requirement: 'Currency',
+    path: 'test/catch-currency.spec.ts',
+    content,
+  });
+
+  beforeEach(() => {
+    tmp = fsSync.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-cli-child-'));
+    fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+  });
+
+  afterEach(() => {
+    fsSync.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('catch --help lists test and child next to the existing commands', async () => {
+    const result = await runCLI(['catch', '--help'], { cwd: fx.project, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    for (const command of ['test', 'child']) {
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${command}\\b`, 'm'));
+    }
+  });
+
+  it('catch test --help and catch child --help name their inputs and options', async () => {
+    const test = await runCLI(['catch', 'test', '--help'], { cwd: fx.project, env: env() });
+    const child = await runCLI(['catch', 'child', '--help'], { cwd: fx.project, env: env() });
+
+    expect(test.exitCode).toBe(0);
+    expect(test.stdout).toMatch(/--run <id>/);
+    expect(test.stdout).toMatch(/--input <file>/);
+    expect(child.exitCode).toBe(0);
+    expect(child.stdout).toMatch(/--run <id>/);
+  });
+
+  it('catch test records a functionality test from --input, runs its parent gates and --json reports the test', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      recorded: true,
+      run: runId,
+      test: { id: 'T1', kind: 'functionality', requirement: 'Currency', outcome: 'gated', parentOutcomes: ['fail'] },
+    });
+  });
+
+  it('catch test refuses an invalid input, lists each error in --json and exits 1', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['test', '--run', runId, '--input', inputFile('test.json', { kind: 'exploratory' }), '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({ recorded: false, errors: expect.arrayContaining([expect.objectContaining({ code: 'kind-invalid' })]) });
+  });
+
+  it('catch child runs the gated test on the head, prints its classification and exits 0', async () => {
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+
+    const text = await cli(['child', '--run', runId]);
+    const json = await cli(['status', '--run', runId, '--json']);
+
+    expect(text.exitCode).toBe(0);
+    expect(text.stdout).toContain('T1');
+    expect(text.stdout).toContain('land');
+    expect(JSON.parse(json.stdout)).toMatchObject({ state: 'classified' });
+  });
+
+  it('catch child --json prints the status, the state and each result', async () => {
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+
+    const result = await cli(['child', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      status: 'classified',
+      run: runId,
+      state: 'classified',
+      results: [expect.objectContaining({ test: 'T1', parent: 'fail', child: ['pass', 'pass'], action: 'land' })],
+    });
+  });
+
+  it('catch child refuses a run with no gated test and exits 1', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['child', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: 'refused', errors: [expect.objectContaining({ code: 'no-gated-test' })] });
+  });
+
+  it('catch child that fails to set up exits 1 and keeps the setup output in the run folder only', async () => {
+    // The setup prints a marker and fails only in the head checkout, so the child reinstall is the one that fails. The
+    // marker is joined at run time: the command text itself never carries it, only the output does.
+    const marker = 'CHILD-SETUP-MARKER';
+    const failingSetup = nodeEval(
+      `console.log(['CHILD', 'SETUP', 'MARKER'].join('-')); process.exit(require('fs').readFileSync('src/app.ts', 'utf8').includes('value = 2') ? 3 : 0)`
+    );
+    fx.writeConfig({
+      baseRef: 'main',
+      setup: { commands: [failingSetup], reinstallWhenChanged: ['src/app.ts'] },
+      runner: { adapter: 'jest', command: contractRunner(fx.recordPath), timeoutSeconds: 30 },
+      gates: { parentRuns: 2, childRuns: 2 },
+    });
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+
+    const result = await cli(['child', '--run', runId, '--json']);
+    const text = await cli(['status', '--run', runId]);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: 'setup-failed', state: 'child-setup-failed' });
+    expect(`${result.stdout}${result.stderr}`).not.toContain(marker);
+    expect(text.stdout).not.toContain(marker);
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    expect(fsSync.readFileSync(path.join(folder, 'child-setup-output.json'), 'utf8')).toContain(marker);
+  });
+
+  it('status --run --json adds a funnel of risks, mutants and tests by outcome, and classified results by action', async () => {
+    const runId = await startRun();
+    expect(
+      (await cli(['risk', '--run', runId, '--input', inputFile('risk.json', { requirement: 'Currency', summary: 'x' })])).exitCode
+    ).toBe(0);
+    expect(
+      (
+        await cli([
+          'mutant',
+          '--run',
+          runId,
+          '--input',
+          inputFile('mutant.json', { risk: 'R1', file: 'src/app.ts', original: 'export const value = 1;', replacement: 'export const value = 2;' }),
+        ])
+      ).exitCode
+    ).toBe(0);
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+    expect((await cli(['child', '--run', runId, '--json'])).exitCode).toBe(0);
+
+    const result = await cli(['status', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout).funnel).toEqual({
+      risks: 1,
+      mutants: { 'caught-by-existing': 1 },
+      tests: { gated: 1 },
+      classified: { land: 1 },
+    });
+  });
+
+  it('status --run prints a Funnel block in text, and status --change --json gives each run its funnel', async () => {
+    const runId = await startRun();
+
+    const text = await cli(['status', '--run', runId]);
+    const listed = await cli(['status', '--change', CHANGE, '--json']);
+
+    expect(text.stdout).toMatch(/^\s+Funnel: .*risks 0/m);
+    expect(JSON.parse(listed.stdout).runs).toEqual([
+      expect.objectContaining({ run: runId, funnel: { risks: 0, mutants: {}, tests: {}, classified: {} } }),
+    ]);
+  });
+
+  it('catch test and catch child are refused after the child phase classified the run', async () => {
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+    expect((await cli(['child', '--run', runId])).exitCode).toBe(0);
+
+    const late = await cli(['test', '--run', runId, '--input', inputFile('late.json', { ...currencyTest(), path: 'test/catch-late.spec.ts' })]);
+    const again = await cli(['child', '--run', runId]);
+
+    expect(late.exitCode).toBe(1);
+    expect(`${late.stdout}${late.stderr}`).toMatch(/is classified.*needs a ready run/);
+    expect(again.exitCode).toBe(1);
+    expect(`${again.stdout}${again.stderr}`).toMatch(/is classified.*needs a ready run/);
+  });
+
+  it('catch context, risk, mutant and equivalence keep their record keys (existing commands, T7 pins)', async () => {
+    const runId = await startRun();
+    const risk = await cli(['risk', '--run', runId, '--input', inputFile('risk.json', { requirement: 'Currency', summary: 'x' }), '--json']);
+    const mutant = await cli([
+      'mutant',
+      '--run',
+      runId,
+      '--input',
+      inputFile('mutant.json', { risk: 'R1', file: 'src/app.ts', original: "export const label = 'value';", replacement: "export const label = 'other';" }),
+      '--json',
+    ]);
+    const equivalence = await cli([
+      'equivalence',
+      '--run',
+      runId,
+      '--mutant',
+      'M1',
+      '--input',
+      inputFile('verdict.json', { equivalent: false, rationale: 'The label changes behavior.' }),
+      '--json',
+    ]);
+    const context = await cli(['context', '--run', runId, '--json']);
+
+    expect(Object.keys(JSON.parse(risk.stdout)).sort()).toEqual(['recorded', 'risk', 'run']);
+    expect(Object.keys(JSON.parse(mutant.stdout)).sort()).toEqual(['mutant', 'recorded', 'run']);
+    expect(Object.keys(JSON.parse(equivalence.stdout)).sort()).toEqual(['mutant', 'recorded', 'run']);
+    expect(Object.keys(JSON.parse(context.stdout)).sort()).toEqual(
+      [
+        'baseRef', 'baseSha', 'change', 'changedFiles', 'diff', 'headSha', 'intent', 'lowConfidence', 'mode', 'parentSha',
+        'projectPrefix', 'relatedTests', 'run', 'schema',
+      ].sort()
+    );
   });
 });
