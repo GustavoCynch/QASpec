@@ -38,7 +38,7 @@ function isProjectRelativePath(value: string): boolean {
 
 const HttpUrlSchema = z.string().refine(isHttpUrl);
 const HttpOriginSchema = HttpUrlSchema.transform((value) => new URL(value).origin);
-const ProjectRelativePathSchema = z.string().refine(isProjectRelativePath);
+export const ProjectRelativePathSchema = z.string().refine(isProjectRelativePath);
 const NonEmptyStringSchema = z.string().min(1);
 const ReadinessModeSchema = z.enum(['manual', 'probe']);
 
@@ -85,7 +85,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /** Reads a nested section; warns when it is present but not an object. */
-function readSection(value: unknown, label: string): Record<string, unknown> | undefined {
+export function readSection(value: unknown, label: string): Record<string, unknown> | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -97,7 +97,7 @@ function readSection(value: unknown, label: string): Record<string, unknown> | u
 }
 
 /** Reads one optional field; warns and drops it when it is present but invalid. */
-function readField<T>(
+export function readField<T>(
   value: unknown,
   schema: z.ZodType<T>,
   label: string,
@@ -115,7 +115,7 @@ function readField<T>(
 }
 
 /** Reads a list entry by entry, keeping valid entries and warning about the rest. */
-function readList<T>(
+export function readList<T>(
   value: unknown,
   schema: z.ZodType<T>,
   label: string,
@@ -139,12 +139,12 @@ function readList<T>(
 }
 
 /** Drops undefined keys; returns undefined when nothing valid remains. */
-function compact<T extends Record<string, unknown>>(value: T): T | undefined {
+export function compact<T extends Record<string, unknown>>(value: T): T | undefined {
   const entries = Object.entries(value).filter(([, entry]) => entry !== undefined);
   return entries.length > 0 ? (Object.fromEntries(entries) as T) : undefined;
 }
 
-const PATH_EXPECTATION = 'a path relative to the project root, inside it';
+export const PATH_EXPECTATION = 'a path relative to the project root, inside it';
 
 /**
  * Resilient parsing of the `execution` block, field by field, like the rest of the config:

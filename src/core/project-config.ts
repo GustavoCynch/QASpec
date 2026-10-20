@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
+import { CatchConfigSchema, parseCatchConfig } from './catch-config.js';
 import { ExecutionConfigSchema, parseExecutionConfig } from './execution-config.js';
 import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js';
 
@@ -67,6 +68,10 @@ export const ProjectConfigSchema = z.object({
   // Optional: project-specific settings for /qsx:execute (app URL, credentials files,
   // blocked origins, control case, readiness checks). See execution-config.ts.
   execution: ExecutionConfigSchema.optional(),
+
+  // Optional: project-specific settings for /qsx:catch (base ref, setup and test commands,
+  // environment, gate runs, judges, rules file). See catch-config.ts.
+  catch: CatchConfigSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
@@ -302,6 +307,14 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
       const execution = parseExecutionConfig(raw.execution);
       if (execution) {
         config.execution = execution;
+      }
+    }
+
+    // Parse catch block (resilient per field, defaults applied)
+    if (raw.catch !== undefined) {
+      const catchConfig = parseCatchConfig(raw.catch);
+      if (catchConfig) {
+        config.catch = catchConfig;
       }
     }
 
