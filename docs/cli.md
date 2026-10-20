@@ -1200,7 +1200,8 @@ intent.json           the intent (not written in degraded mode)
 diff.patch            the PR diff, from the parent to the head
 changed-files.json    changed files, repository-relative
 related-tests.json    existing tests related to the changes, cached on the parent
-setup-output.json     tails of the setup output, never printed
+baselines.json        related-test outcomes on the unmutated parent, cached per test set
+setup-output.json     tails of the setup output per phase (parent, child), never printed
 ledger.jsonl          one line per stage
 risks/ mutants/ tests/ results/ judges/ runner-output/
 assessment.json       the assessed reports
@@ -1209,7 +1210,7 @@ findings.md           the same findings as questions
 land/ land.patch land.json    the landing (see catch land)
 ```
 
-`ledger.jsonl` has one line per stage: `started`, `setup`, `worktree-failed`, `risk`, `mutant`, `equivalence`, `test`, `classified`, `child-setup-failed`, `rule-filtered`, `assessed`, `judged`, `judge-filtered`, `reported`, `confirmed`, `dismissed`, `landed` and `finished`. `catch status` counts them per stage.
+`ledger.jsonl` has one line per stage: `started`, `setup`, `worktree-failed`, `risk`, `mutant`, `equivalence`, `test`, `child-running`, `child-failed`, `classified`, `child-setup-failed`, `rule-filtered`, `assessed`, `judged`, `judge-filtered`, `reported`, `confirmed`, `dismissed`, `landed` and `finished`. `catch status` counts them per stage.
 
 ### `qaspec catch intent`
 

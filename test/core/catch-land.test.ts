@@ -169,11 +169,11 @@ const landedLines = (runDir: string) => readLedger(runDir).filter((entry) => ent
 const SLOW_RUNS = { timeout: 30_000 };
 
 describe('prepareLanding', SLOW_RUNS, () => {
-  it('refuses every state before classified and finished, and writes nothing', async () => {
+  it('refuses every state but classified and assessed, including an unfinished child phase, and writes nothing', async () => {
     const run = await classifiedRun([{ path: LABEL_PATH, content: LABEL_SPEC }]);
     const before = snapshot(tmp, run.runDir);
 
-    for (const state of ['ready', 'setting-up', 'worktree-failed', 'setup-failed', 'child-setup-failed', 'finished'] as const) {
+    for (const state of ['ready', 'setting-up', 'worktree-failed', 'setup-failed', 'child-running', 'child-setup-failed', 'child-failed', 'finished'] as const) {
       setRunState(run.runDir, state);
       const outcome = await prepare(run);
       expect(outcome, `state ${state}`).toMatchObject({ status: 'refused', issues: [{ code: 'run-state' }] });
