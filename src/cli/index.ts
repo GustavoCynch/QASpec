@@ -56,7 +56,12 @@ import {
   executeTriageContextCommand,
   executeValidatePlanCommand,
 } from '../commands/execute.js';
-import { catchIntentCommand } from '../commands/catch.js';
+import {
+  catchFinishCommand,
+  catchIntentCommand,
+  catchStartCommand,
+  catchStatusCommand,
+} from '../commands/catch.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -883,6 +888,59 @@ catchCmd
   .action(async (options: { change: string; json?: boolean }) => {
     try {
       await catchIntentCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('start')
+  .description(
+    'Start a catch run for a change: checks the approval, intent, catch config and revisions, then creates the worktree and runs catch.setup (a refusal creates nothing)'
+  )
+  .requiredOption('--change <id>', 'Change name')
+  .option('--base <ref>', 'Base ref the PR branched from (default: catch.baseRef from qaspec/config.yaml)')
+  .option('--without-analysis', 'Degraded mode: diff only, no approval or intent; the run is marked low confidence')
+  .option('--head <sha>', 'PR head commit to catch (with --without-analysis only)')
+  .option('--json', 'Output as JSON')
+  .action(
+    async (options: { change: string; base?: string; withoutAnalysis?: boolean; head?: string; json?: boolean }) => {
+      try {
+        await catchStartCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    }
+  );
+
+catchCmd
+  .command('status')
+  .description('Show one catch run (--run; --change narrows the search) or list the runs of a change (--change)')
+  .option('--run <id>', 'Run id printed by catch start')
+  .option('--change <id>', 'Change name: lists its runs, or limits the --run lookup to it')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run?: string; change?: string; json?: boolean }) => {
+    try {
+      await catchStatusCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('finish')
+  .description('Close a catch run: removes its worktree and keeps the run folder (a second call changes nothing)')
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchFinishCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
