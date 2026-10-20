@@ -57,6 +57,7 @@ import {
   executeValidatePlanCommand,
 } from '../commands/execute.js';
 import {
+  catchChildCommand,
   catchContextCommand,
   catchEquivalenceCommand,
   catchFinishCommand,
@@ -65,6 +66,7 @@ import {
   catchRiskCommand,
   catchStartCommand,
   catchStatusCommand,
+  catchTestCommand,
 } from '../commands/catch.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
@@ -1017,6 +1019,41 @@ catchCmd
   .action(async (options: { run: string; mutant: string; input: string; json?: boolean }) => {
     try {
       await catchEquivalenceCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('test')
+  .description(
+    'Record a test from a JSON file (--input): { "kind": "catching", "mutant", "path", "content" } must pass on the parent in every run and fail on the mutated parent; { "kind": "functionality", "requirement", "scenario"? } and { "kind": "dodgy-diff" } record the parent outcome once. The content is stored in the run folder and written into the worktree only while a run uses it'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--input <file>', 'JSON file with the test (the content is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; input: string; json?: boolean }) => {
+    try {
+      await catchTestCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('child')
+  .description(
+    'Run every gated test on the PR head (catch.setup runs again only when a configured path changed) and classify each one as land, report, signal or discard (S5 Table 3); the run ends classified and the worktree stays at the head'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchChildCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

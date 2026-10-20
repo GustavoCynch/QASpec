@@ -8,6 +8,7 @@ import { stringify } from 'yaml';
 import { computeAnalyzeContentHash, writeApprovalRecord } from '../../src/core/approval-ledger.js';
 import { createCatchWorktree } from '../../src/core/catch-git.js';
 import {
+  describeCatchFunnel,
   describeCatchRun,
   describeChangeRuns,
   findCatchRun,
@@ -1023,5 +1024,62 @@ describe('catch run helpers of the parent phase (T7)', () => {
     await expect(
       settled(() => projectDirInWorktree(fx.project, runWith('ready', { runId: PARENT_RUN, worktree: other, projectPrefix: '' })))
     ).rejects.toThrow(/is not the worktree of run/);
+  });
+});
+
+describe('catch run helpers of the child phase (T8)', () => {
+  const runWith = (state: CatchRunState): CatchRunRecord =>
+    ({ runId: '20261020T100000Z-abcdef', state }) as CatchRunRecord;
+
+  it('requireReadyRun names the classified and child-setup-failed states, with the hint of each', () => {
+    expect(() => requireReadyRun(runWith('classified'), 'qaspec catch test')).toThrow(
+      /is classified.*qaspec catch test needs a ready run.*Start a new run to catch again/
+    );
+    expect(() => requireReadyRun(runWith('child-setup-failed'), 'qaspec catch child')).toThrow(
+      /is child-setup-failed.*qaspec catch child needs a ready run.*catch.setup is fixed/
+    );
+  });
+
+  it('nextRecordId and the record helpers accept test ids (T1, T2, ...) and refuse other prefixes', () => {
+    const dir = path.join(tmp, 'tests');
+    expect(nextRecordId(dir, 'T')).toBe('T1');
+
+    writeRecord(dir, 'T1', { id: 'T1', outcome: 'gated' });
+    writeRecord(dir, 'T2', { id: 'T2', outcome: 'parent-not-passing' });
+
+    expect(nextRecordId(dir, 'T')).toBe('T3');
+    expect(readRecord(dir, 'T2')).toEqual({ id: 'T2', outcome: 'parent-not-passing' });
+    expect(() => writeRecord(dir, 'X1', {})).toThrow(/Invalid record id "X1"/);
+  });
+
+  it('describeCatchFunnel counts the risks, the mutants and tests by outcome, and the results by action', () => {
+    const runDir = path.join(tmp, 'run');
+    fs.mkdirSync(path.join(runDir, 'risks'), { recursive: true });
+    fs.mkdirSync(path.join(runDir, 'mutants'));
+    fs.mkdirSync(path.join(runDir, 'tests'));
+    fs.mkdirSync(path.join(runDir, 'results'));
+    fs.writeFileSync(path.join(runDir, 'risks', 'R1.json'), '{}');
+    fs.writeFileSync(path.join(runDir, 'risks', 'R2.json'), '{}');
+    fs.writeFileSync(path.join(runDir, 'mutants', 'M1.json'), JSON.stringify({ outcome: 'surviving' }));
+    fs.writeFileSync(path.join(runDir, 'mutants', 'M2.json'), JSON.stringify({ outcome: 'caught-by-existing' }));
+    fs.writeFileSync(path.join(runDir, 'mutants', 'M3.json'), JSON.stringify({ outcome: 'surviving' }));
+    fs.writeFileSync(path.join(runDir, 'tests', 'T1.json'), JSON.stringify({ outcome: 'gated' }));
+    fs.mkdirSync(path.join(runDir, 'tests', 'T1'));
+    fs.writeFileSync(path.join(runDir, 'tests', 'T1', 'catch-a.spec.ts'), 'content');
+    fs.writeFileSync(path.join(runDir, 'results', 'T1.json'), JSON.stringify({ action: 'land' }));
+
+    expect(describeCatchFunnel(runDir)).toEqual({
+      risks: 2,
+      mutants: { 'caught-by-existing': 1, surviving: 2 },
+      tests: { gated: 1 },
+      classified: { land: 1 },
+    });
+  });
+
+  it('describeCatchFunnel of a run folder with no record folders is empty', () => {
+    const runDir = path.join(tmp, 'empty-run');
+    fs.mkdirSync(runDir);
+
+    expect(describeCatchFunnel(runDir)).toEqual({ risks: 0, mutants: {}, tests: {}, classified: {} });
   });
 });

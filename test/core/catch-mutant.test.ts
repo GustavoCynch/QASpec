@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { finishCatchRun, startCatchRun, type CatchRunRecord } from '../../src/core/catch-run.js';
 import { recordRisk } from '../../src/core/catch-context.js';
-import { recordEquivalence, recordMutant } from '../../src/core/catch-mutant.js';
+import { recordEquivalence, recordMutant, replaceOnce, restoreFile } from '../../src/core/catch-mutant.js';
 import {
   BASE_APP,
   CHANGE,
@@ -365,5 +365,21 @@ describe('recordEquivalence', () => {
     const codes = (outcome as { issues: Array<{ code: string }> }).issues.map((issue) => issue.code);
     expect(codes).toEqual(expect.arrayContaining(['equivalent-invalid', 'rationale-missing', 'unknown-field']));
     expect(ledgerOf(ready.runDir).filter((line) => line.stage === 'equivalence')).toHaveLength(0);
+  });
+});
+
+describe('mutant helpers shared with the test stage (T8)', () => {
+  it('replaceOnce replaces the one occurrence of the original text and keeps every other character', () => {
+    expect(replaceOnce('const a = 1;\nconst b = 2;\n', 'const b = 2;', 'const b = 3;')).toBe('const a = 1;\nconst b = 3;\n');
+  });
+
+  it('restoreFile writes the original bytes back, byte for byte', () => {
+    const file = path.join(tmp, 'app.ts');
+    fs.writeFileSync(file, 'changed');
+    const original = Buffer.from('﻿export const value = 1;\r\n');
+
+    restoreFile(file, original);
+
+    expect(fs.readFileSync(file).equals(original)).toBe(true);
   });
 });

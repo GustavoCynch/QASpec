@@ -51,15 +51,21 @@ export const INTENT_FILE = 'intent.json';
 export const DIFF_FILE = 'diff.patch';
 export const CHANGED_FILES_FILE = 'changed-files.json';
 const SETUP_OUTPUT_FILE = 'setup-output.json';
+/** The setup tails of a child reinstall (T8): kept apart from the setup of the parent, never printed. */
+export const CHILD_SETUP_OUTPUT_FILE = 'child-setup-output.json';
 /** Records of the parent phase (T7): one JSON file per risk and per mutant, named by its id. */
 export const RISKS_DIRNAME = 'risks';
 export const MUTANTS_DIRNAME = 'mutants';
+/** Tests (T8): one JSON record per test named by its id, and the test's content in a folder of that id. */
+export const TESTS_DIRNAME = 'tests';
+/** Child results (T8): one JSON file per gated test, named by the test's id. */
+export const RESULTS_DIRNAME = 'results';
 /** The related existing tests of the changed sources, computed once on the parent and cached. */
 export const RELATED_TESTS_FILE = 'related-tests.json';
 /** Runner output files (Jest's JSON report) of a run: outside the worktree, inside the git-ignored run folder. */
 export const RUNNER_OUTPUT_DIRNAME = 'runner-output';
-/** Record ids: R for risks, M for mutants, a number from 1 with no leading zero. */
-const RECORD_ID = /^[RM][1-9]\d*$/;
+/** Record ids: R for risks, M for mutants, T for tests, a number from 1 with no leading zero. */
+const RECORD_ID = /^[RMT][1-9]\d*$/;
 
 /** One problem with a record the agent sent. When one is found, nothing is written. */
 export interface CatchRecordIssue {
@@ -68,8 +74,18 @@ export interface CatchRecordIssue {
 }
 
 export type CatchRunMode = 'analysis' | 'without-analysis';
-/** setting-up while the worktree and setup run; then ready, or one of the failure states, and finished at the end. */
-export type CatchRunState = 'setting-up' | 'ready' | 'worktree-failed' | 'setup-failed' | 'finished';
+/**
+ * setting-up while the worktree and setup run; then ready (parent phase), classified (child phase) or a failure state,
+ * and finished at the end. child-setup-failed: the child phase could not install the head.
+ */
+export type CatchRunState =
+  | 'setting-up'
+  | 'ready'
+  | 'worktree-failed'
+  | 'setup-failed'
+  | 'child-setup-failed'
+  | 'classified'
+  | 'finished';
 
 /** One refusal reason of start: a stable code, what is wrong, and how to resolve it. */
 export interface CatchBlocker {
@@ -217,7 +233,8 @@ export function readCatchRun(runDir: string): CatchRunRecord {
   return run;
 }
 
-function writeRunRecord(runDir: string, run: CatchRunRecord): void {
+/** Stores the run record atomically. Callers hold the run lock, as every step that changes run state does. */
+export function writeRunRecord(runDir: string, run: CatchRunRecord): void {
   writeFileAtomic(path.join(runDir, RUN_FILE), jsonText(run));
 }
 
@@ -247,6 +264,8 @@ const STATE_HINTS: Record<CatchRunState, string> = {
   ready: '',
   'worktree-failed': 'Start a new run after the worktree problem is fixed.',
   'setup-failed': 'Start a new run after catch.setup is fixed.',
+  'child-setup-failed': 'Start a new run after catch.setup is fixed.',
+  classified: 'Start a new run to catch again.',
   finished: 'Start a new run to catch again.',
 };
 
@@ -286,16 +305,30 @@ function isInside(child: string, parent: string): boolean {
   return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-/** The next id of a record folder: one above the highest existing id, so a removed record never reuses an id. */
-export function nextRecordId(recordsDir: string, prefix: 'R' | 'M'): string {
+export type RecordPrefix = 'R' | 'M' | 'T';
+
+/** The numbers of the record files of a folder that carry the prefix: R1.json gives 1; temporary files do not match. */
+function recordNumbers(recordsDir: string, prefix: RecordPrefix): number[] {
+  if (!existsSync(recordsDir)) {
+    return [];
+  }
   const pattern = new RegExp(`^${prefix}([1-9]\\d*)\\.json$`);
-  const numbers = existsSync(recordsDir)
-    ? readdirSync(recordsDir).flatMap((name) => {
-        const match = pattern.exec(name);
-        return match ? [Number(match[1])] : [];
-      })
-    : [];
-  return `${prefix}${Math.max(0, ...numbers) + 1}`;
+  return readdirSync(recordsDir).flatMap((name) => {
+    const match = pattern.exec(name);
+    return match ? [Number(match[1])] : [];
+  });
+}
+
+/** The next id of a record folder: one above the highest existing id, so a removed record never reuses an id. */
+export function nextRecordId(recordsDir: string, prefix: RecordPrefix): string {
+  return `${prefix}${Math.max(0, ...recordNumbers(recordsDir, prefix)) + 1}`;
+}
+
+/** The ids of the records of a folder in numeric order (T2 before T10). An absent folder has none. */
+export function listRecordIds(recordsDir: string, prefix: RecordPrefix): string[] {
+  return recordNumbers(recordsDir, prefix)
+    .sort((a, b) => a - b)
+    .map((number) => `${prefix}${number}`);
 }
 
 /** A record of a record folder, or undefined when no record has that id. */
@@ -385,13 +418,14 @@ function countStages(entries: Array<Record<string, unknown>>): Record<string, nu
   return counts;
 }
 
-function withoutOutput(result: SetupCommandResult): CatchRunSetupCommand {
+/** One setup command as run.json keeps it: the output is left out, it lives in a setup output file. */
+export function withoutOutput(result: SetupCommandResult): CatchRunSetupCommand {
   const { command, exitCode, durationMs, timedOut } = result;
   return { command, exitCode, durationMs, timedOut };
 }
 
 /** The first failing setup command, described without its output. */
-function describeSetupFailure(result: SetupResult): string {
+export function describeSetupFailure(result: SetupResult): string {
   const failed = result.commands.find((entry) => entry.timedOut || entry.exitCode !== 0);
   if (failed === undefined) {
     return 'Setup failed.';
@@ -777,6 +811,46 @@ export function findCatchRun(changesDir: string, runId: string, changeName?: str
   const changeDir = path.join(changesDir, name);
   const runDir = path.join(changeDir, CATCH_RUNS_DIRNAME, runId);
   return { changeName: name, changeDir, runDir, run: readCatchRun(runDir) };
+}
+
+/**
+ * What the parent and child phases produced in one run, as counts: risks; mutants and tests by their outcome; the
+ * classified results by their action. Counts only the outcomes that occur. Reads only: it takes no lock.
+ */
+export interface CatchFunnel {
+  risks: number;
+  mutants: Record<string, number>;
+  tests: Record<string, number>;
+  classified: Record<string, number>;
+}
+
+/** The records of a folder, read in id order; a missing folder has none. */
+function recordsIn(recordsDir: string, prefix: RecordPrefix): Array<Record<string, unknown>> {
+  return listRecordIds(recordsDir, prefix).map(
+    (id) => readRecord<Record<string, unknown>>(recordsDir, id) ?? {}
+  );
+}
+
+/** Counts the values of one field across records, with the keys in sorted order. */
+function countField(records: Array<Record<string, unknown>>, field: string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const record of records) {
+    if (record[field] === undefined) {
+      continue;
+    }
+    const value = String(record[field]);
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)));
+}
+
+export function describeCatchFunnel(runDir: string): CatchFunnel {
+  return {
+    risks: listRecordIds(path.join(runDir, RISKS_DIRNAME), 'R').length,
+    mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M'), 'outcome'),
+    tests: countField(recordsIn(path.join(runDir, TESTS_DIRNAME), 'T'), 'outcome'),
+    classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T'), 'action'),
+  };
 }
 
 /** The record and the ledger line counts per stage of one run folder. Reads only: it takes no lock. */

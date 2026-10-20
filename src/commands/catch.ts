@@ -9,18 +9,24 @@ import path from 'node:path';
 import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent, type CatchRequirement } from '../core/catch-intent.js';
 import {
   CATCH_RUNS_DIRNAME,
+  CHILD_SETUP_OUTPUT_FILE,
+  RESULTS_DIRNAME,
+  describeCatchFunnel,
   describeCatchRun,
   describeChangeRuns,
   findCatchRun,
   finishCatchRun,
   startCatchRun,
   type CatchBlocker,
+  type CatchFunnel,
   type CatchRecordIssue,
   type CatchRunRecord,
   type CatchRunStatus,
 } from '../core/catch-run.js';
 import { loadCatchContext, recordRisk, type CatchContext, type CatchRisk } from '../core/catch-context.js';
 import { recordEquivalence, recordMutant, type CatchMutant } from '../core/catch-mutant.js';
+import { recordTest, type CatchTest } from '../core/catch-test.js';
+import { runChildPhase, type CatchResult } from '../core/catch-child.js';
 import { getChangeDir, resolveCurrentPlanningHomeSync, type PlanningHome } from '../core/planning-home.js';
 import { readJsonInput } from './shared/file-input.js';
 import { validateChangeExists } from './workflow/shared.js';
@@ -236,7 +242,21 @@ export async function catchStartCommand(options: CatchStartCommandOptions): Prom
   }
 }
 
-function statusPayload(status: CatchRunStatus, runFolder: string) {
+/** A count per key as one short phrase: "surviving 2, no-build 1", or "none". */
+function formatCounts(counts: Record<string, number>): string {
+  const entries = Object.entries(counts);
+  return entries.length === 0 ? 'none' : entries.map(([key, count]) => `${key} ${count}`).join(', ');
+}
+
+/** The funnel of a run on one line: risks, mutants and tests by outcome, classified results by action. */
+function describeFunnel(funnel: CatchFunnel): string {
+  return (
+    `Funnel: risks ${funnel.risks}; mutants ${formatCounts(funnel.mutants)}; ` +
+    `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}`
+  );
+}
+
+function statusPayload(status: CatchRunStatus, runFolder: string, funnel: CatchFunnel) {
   const { run } = status;
   return {
     run: run.runId,
@@ -258,10 +278,11 @@ function statusPayload(status: CatchRunStatus, runFolder: string) {
     finishedAt: run.finishedAt ?? null,
     runDir: runFolder,
     ledger: status.ledger,
+    funnel,
   };
 }
 
-function printStatus(status: CatchRunStatus, runFolder: string): void {
+function printStatus(status: CatchRunStatus, runFolder: string, funnel: CatchFunnel): void {
   const { run } = status;
   console.log(`Catch run ${run.runId} (change "${run.change}"): ${run.state}`);
   const confidence = run.lowConfidence ? ' (low confidence: no approved intent)' : '';
@@ -279,6 +300,7 @@ function printStatus(status: CatchRunStatus, runFolder: string): void {
     .map(([stage, count]) => `${stage} ${count}`)
     .join(', ');
   console.log(`  Ledger: ${counts || 'empty'}`);
+  console.log(`  ${describeFunnel(funnel)}`);
   console.log(`  Run folder: ${runFolder}`);
 }
 
@@ -296,11 +318,12 @@ export async function catchStatusCommand(options: CatchStatusCommandOptions): Pr
         : await validateChangeExists(options.change, planningHome.root, planningHome.changesDir);
     const location = findCatchRun(planningHome.changesDir, options.run, changeName);
     const status = describeCatchRun(location);
+    const funnel = describeCatchFunnel(location.runDir);
     const runFolder = path.relative(planningHome.root, location.runDir);
     if (options.json) {
-      console.log(JSON.stringify(statusPayload(status, runFolder), null, 2));
+      console.log(JSON.stringify(statusPayload(status, runFolder, funnel), null, 2));
     } else {
-      printStatus(status, runFolder);
+      printStatus(status, runFolder, funnel);
     }
     return;
   }
@@ -308,10 +331,10 @@ export async function catchStatusCommand(options: CatchStatusCommandOptions): Pr
   const changeName = await validateChangeExists(options.change, planningHome.root, planningHome.changesDir);
   const changeDir = getChangeDir(planningHome, changeName);
   const statuses = describeChangeRuns(changeDir);
-  const runFolderOf = (status: CatchRunStatus): string =>
-    path.relative(planningHome.root, path.join(changeDir, CATCH_RUNS_DIRNAME, status.run.runId));
+  const runDirOf = (status: CatchRunStatus): string => path.join(changeDir, CATCH_RUNS_DIRNAME, status.run.runId);
+  const runFolderOf = (status: CatchRunStatus): string => path.relative(planningHome.root, runDirOf(status));
   if (options.json) {
-    const runs = statuses.map((status) => statusPayload(status, runFolderOf(status)));
+    const runs = statuses.map((status) => statusPayload(status, runFolderOf(status), describeCatchFunnel(runDirOf(status))));
     console.log(JSON.stringify({ change: changeName, runs }, null, 2));
   } else if (statuses.length === 0) {
     console.log(`No catch runs for change "${changeName}"`);
@@ -321,7 +344,7 @@ export async function catchStatusCommand(options: CatchStatusCommandOptions): Pr
       if (index > 0) {
         console.log('');
       }
-      printStatus(status, runFolderOf(status));
+      printStatus(status, runFolderOf(status), describeCatchFunnel(runDirOf(status)));
     });
   }
 }
@@ -527,5 +550,144 @@ export async function catchEquivalenceCommand(options: CatchEquivalenceCommandOp
   } else {
     console.log(describeMutantLine(outcome.mutant));
     console.log(`  ${outcome.mutant.equivalence?.rationale ?? ''}`);
+  }
+}
+
+/* Child phase (T8): tests from --input, their parent gates, then every gated test on the head. */
+
+export interface CatchTestCommandOptions {
+  run: string;
+  input: string;
+  json?: boolean;
+}
+
+export interface CatchChildCommandOptions {
+  run: string;
+  json?: boolean;
+}
+
+function describeTestLine(test: CatchTest): string {
+  const subject = test.mutant === undefined ? test.kind : `${test.kind}, ${test.mutant}`;
+  return `Test ${test.id} (${subject}, ${test.path}): ${test.outcome}`;
+}
+
+/**
+ * Records a test from --input and runs its parent gates. The recorded test is kept whatever its gate outcome; exit code
+ * 1 is only for a refused test.
+ */
+export async function catchTestCommand(options: CatchTestCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'test file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Test was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = await recordTest({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    value: input.value,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Test was not recorded', outcome.issues, options.json);
+    return;
+  }
+  const { test } = outcome;
+  if (options.json) {
+    console.log(JSON.stringify({ recorded: true, run: options.run, test }, null, 2));
+  } else {
+    console.log(describeTestLine(test));
+    console.log(`  ${test.reason}`);
+  }
+}
+
+/** A result without its per-run messages: the classification, which the run folder keeps in full. */
+function compactResult(result: CatchResult) {
+  return {
+    test: result.test,
+    kind: result.kind,
+    parent: result.parent,
+    child: result.child,
+    action: result.action,
+    ...(result.reason === undefined ? {} : { reason: result.reason }),
+    ...(result.detail === undefined ? {} : { detail: result.detail }),
+  };
+}
+
+function describeResult(result: CatchResult): string {
+  const reason = result.reason === undefined ? '' : ` (${result.reason})`;
+  const child = result.child.length === 0 ? 'not run' : result.child.join(', ');
+  return `${result.test} (${result.kind}): ${result.action}${reason}; parent ${result.parent}, child ${child}`;
+}
+
+/**
+ * Runs every gated test on the PR head and classifies it (Table 3). A refused child phase changes nothing; a failed
+ * reinstall ends the run in child-setup-failed with its setup output kept in the run folder only (exit code 1).
+ */
+export async function catchChildCommand(options: CatchChildCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const outcome = await runChildPhase({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+  });
+
+  if (outcome.status === 'refused') {
+    if (options.json) {
+      console.log(JSON.stringify({ status: 'refused', run: options.run, errors: outcome.issues }, null, 2));
+    } else {
+      console.log(chalk.red(`✗ The child phase did not run for run ${options.run}`));
+      for (const issue of outcome.issues) {
+        console.log(chalk.red(`  • ${issue.message}`));
+      }
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const { run } = outcome;
+  const runFolder = path.relative(planningHome.root, path.join(planningHome.changesDir, run.change, CATCH_RUNS_DIRNAME, run.runId));
+  if (outcome.status === 'setup-failed') {
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          { status: 'setup-failed', run: run.runId, change: run.change, state: run.state, failure: run.failure ?? null, setup: run.setup },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(chalk.red(`✗ Catch run ${run.runId} stopped: catch.setup failed on the PR head`));
+      if (run.failure) {
+        console.log(chalk.red(`  ${run.failure}`));
+      }
+      console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, CHILD_SETUP_OUTPUT_FILE)}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const { results } = outcome;
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          status: 'classified',
+          run: run.runId,
+          change: run.change,
+          state: run.state,
+          installedFor: run.installedFor,
+          results: results.map(compactResult),
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    console.log(chalk.green(`✓ Catch run ${run.runId} is classified: ${results.length} gated test(s) run on the head`));
+    for (const result of results) {
+      console.log(`  ${describeResult(result)}`);
+    }
+    console.log(`  Results: ${path.join(runFolder, RESULTS_DIRNAME)}`);
   }
 }

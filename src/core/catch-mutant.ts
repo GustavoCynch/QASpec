@@ -133,10 +133,10 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
+export const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
 
 /** The file as text, with a byte order mark kept as a character so that writing it back restores its bytes. */
-function decodeText(bytes: Buffer): string | undefined {
+export function decodeText(bytes: Buffer): string | undefined {
   try {
     return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
@@ -229,11 +229,17 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
 }
 
 /** Writes the original bytes back and proves they are back: a run never leaves the parent changed. */
-function restoreFile(target: string, original: Buffer): void {
+export function restoreFile(target: string, original: Buffer): void {
   writeFileSync(target, original);
   if (!readFileSync(target).equals(original)) {
     throw new Error(`Could not restore ${target} in the catch worktree: run qaspec catch finish and start a new run.`);
   }
+}
+
+/** The text with its one occurrence of original replaced by replacement. The caller has checked the single occurrence. */
+export function replaceOnce(text: string, original: string, replacement: string): string {
+  const index = text.indexOf(original);
+  return `${text.slice(0, index)}${replacement}${text.slice(index + original.length)}`;
 }
 
 interface MutantRunInput {
@@ -336,8 +342,7 @@ export async function recordMutant(input: RecordMutantInput): Promise<RecordMuta
         return { ok: false, issues };
       }
 
-      const index = text.indexOf(original);
-      const mutated = `${text.slice(0, index)}${replacement}${text.slice(index + original.length)}`;
+      const mutated = replaceOnce(text, original, replacement);
       const id = nextRecordId(mutantsDir, 'M');
       const gate: GateResult =
         adapter.normalizeSource(relative, text) === adapter.normalizeSource(relative, mutated)

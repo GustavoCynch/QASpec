@@ -26,6 +26,36 @@ const nodeEval = (code: string): string => `${shellWord(process.execPath)} -e ${
 export const SETUP_OK = nodeEval(`require('fs').writeFileSync(${JSON.stringify(SETUP_MARKER)}, 'ok')`);
 /** Setup that fails. */
 export const SETUP_FAILS = nodeEval('process.exit(3)');
+/** Setup that fails only in a checkout of the PR head (its source holds the head value). */
+export const SETUP_FAILS_ON_HEAD = nodeEval(
+  "process.exit(require('fs').readFileSync('src/app.ts', 'utf8').includes('value = 2') ? 3 : 0)"
+);
+
+/** Setup that appends one line to logPath each time it runs: how many installs a run made. */
+export const setupLogging = (logPath: string): string =>
+  nodeEval(`require('fs').appendFileSync(${JSON.stringify(logPath)}, 'setup\\n')`);
+
+/** The lines the setup logger wrote, one per install. */
+export const readSetupLog = (logPath: string): string[] =>
+  fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8').split('\n').filter((line) => line !== '') : [];
+
+/** One entry per test run of the fake runner: the named test files and the text each had when the run started. */
+export interface RecordedTestRun {
+  name: string;
+  text: string | null;
+}
+
+/** The test runs the fake runner recorded for a fixture, in order (empty when it never ran a test). */
+export const readRunsLog = (recordPath: string): RecordedTestRun[][] => {
+  const file = `${recordPath}.runs`;
+  return fs.existsSync(file)
+    ? fs
+        .readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as RecordedTestRun[])
+    : [];
+};
 
 /** The base test command: fake-jest in the given contract variant, recording its starts in recordPath. */
 export function contractRunner(recordPath: string, variant = ''): string {
@@ -112,8 +142,16 @@ export interface ProjectFixtureOptions {
   runnerVariant?: string;
   /** runner.timeoutSeconds in the catch block. */
   timeoutSeconds?: number;
+  /** gates.parentRuns and gates.childRuns in the catch block (the defaults when absent). */
+  gates?: { parentRuns?: number; childRuns?: number };
   /** Setup command; SETUP_OK by default. */
   setupCommand?: string;
+  /** setup.reinstallWhenChanged in the catch block: the project paths whose change means a new install. */
+  reinstallWhenChanged?: string[];
+  /** Contents of src/app.ts on the feature branch; HEAD_APP by default. */
+  headApp?: string;
+  /** Files the feature branch adds or changes besides src/app.ts (path to contents). */
+  headFiles?: Record<string, string>;
 }
 
 export interface ProjectFixture {
@@ -152,12 +190,16 @@ export function makeProjectFixture(options: ProjectFixtureOptions): ProjectFixtu
     writeFiles(project, { 'qaspec/config.yaml': stringify({ schema: 'qaspec-pr-review', catch: catchBlock }) });
   writeConfig({
     baseRef: 'main',
-    setup: { commands: [options.setupCommand ?? SETUP_OK] },
+    setup: {
+      commands: [options.setupCommand ?? SETUP_OK],
+      ...(options.reinstallWhenChanged === undefined ? {} : { reinstallWhenChanged: options.reinstallWhenChanged }),
+    },
     runner: {
       adapter: 'jest',
       command: runner,
       ...(options.timeoutSeconds === undefined ? {} : { timeoutSeconds: options.timeoutSeconds }),
     },
+    ...(options.gates === undefined ? {} : { gates: options.gates }),
   });
   writeFiles(project, {
     'src/app.ts': options.baseApp ?? BASE_APP,
@@ -170,7 +212,7 @@ export function makeProjectFixture(options: ProjectFixtureOptions): ProjectFixtu
   const base = git(repo, 'rev-parse', 'HEAD');
 
   git(repo, 'checkout', '-q', '-b', 'feature');
-  writeFiles(project, { 'src/app.ts': HEAD_APP });
+  writeFiles(project, { 'src/app.ts': options.headApp ?? HEAD_APP, ...(options.headFiles ?? {}) });
   if (subfolder !== '') {
     writeFiles(repo, { 'README.md': 'outside the project\n' });
   }

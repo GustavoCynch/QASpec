@@ -55,12 +55,49 @@ function writeFixtureReport(name) {
 // Listing returns the specs that cover a requested source. A run fails an expectation the source no longer keeps,
 // and a source that contains the marker @@BROKEN@@ does not build. Variants: contracts:sleep never ends a run,
 // contracts:exit3 exits 3 with no report, contracts:list-fail exits 2 while listing.
+//
+// Directives (T8): a test file may say how it behaves on one side of the change. The side is the checkout of the
+// source it covers: base (the parent's value 1) or head (the PR's value 2). Only the test files a run names are read,
+// so the existing specs behave as before:
+//   // fake: sleep on head   the run never ends
+//   // fake: exit3 on head   the run exits 3 without a report
+//   // fake: flaky on head   every odd run of such a test fails; the count of those runs lives in <record>.flaky
+//   // fake: broken on head  the test does not build: a suite that failed to run, with no assertion
+// Every test run appends the text each named test had at that moment to <record>.runs, one JSON line per run.
+const BASE_MARKER = 'export const value = 1;';
+const HEAD_MARKER = 'export const value = 2;';
+
 function coveredSources(text) {
   return [...text.matchAll(/^\/\/ covers: (.+?)\s*$/gm)].map((match) => match[1]);
 }
 
 function expectations(text) {
   return [...text.matchAll(/^\/\/ expect: (.+?)\s*$/gm)].map((match) => match[1]);
+}
+
+function directivesOf(name) {
+  const text = fs.readFileSync(name, 'utf8');
+  const covered = coveredSources(text)[0];
+  if (covered === undefined) {
+    return [];
+  }
+  const source = fs.readFileSync(path.join(cwd, covered), 'utf8');
+  const side = source.includes(HEAD_MARKER) ? 'head' : source.includes(BASE_MARKER) ? 'base' : undefined;
+  return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken) on (base|head)\s*$/gm)]
+    .filter((match) => match[2] === side)
+    .map((match) => match[1]);
+}
+
+function existingText(name) {
+  return fs.existsSync(name) ? fs.readFileSync(name, 'utf8') : null;
+}
+
+/** Counts the runs that carry a flaky directive and returns the count of this one (1, 2, ...). */
+function nextFlakyCount() {
+  const countPath = `${recordPath}.flaky`;
+  const count = fs.existsSync(countPath) ? Number(fs.readFileSync(countPath, 'utf8')) : 0;
+  fs.writeFileSync(countPath, String(count + 1));
+  return count + 1;
 }
 
 function runContracts(variant) {
@@ -92,12 +129,24 @@ function runContracts(variant) {
     return;
   }
   const tests = jestArgs.slice(jestArgs.indexOf('--runTestsByPath') + 1);
+  const names = tests.map((file) => path.resolve(cwd, file));
+  fs.appendFileSync(`${recordPath}.runs`, `${JSON.stringify(names.map((name) => ({ name, text: existingText(name) })))}\n`);
+  const directives = names.map((name) => directivesOf(name));
+  if (directives.some((list) => list.includes('sleep'))) {
+    setInterval(() => {}, 1_000);
+    return;
+  }
+  if (directives.some((list) => list.includes('exit3'))) {
+    process.stderr.write('boom from the runner\n');
+    process.exitCode = 3;
+    return;
+  }
+  const oddRun = directives.some((list) => list.includes('flaky')) && nextFlakyCount() % 2 === 1;
   let failed = false;
-  const testResults = tests.map((file) => {
-    const name = path.resolve(cwd, file);
+  const testResults = names.map((name, index) => {
     const text = fs.readFileSync(name, 'utf8');
     const source = fs.readFileSync(path.join(cwd, coveredSources(text)[0]), 'utf8');
-    if (source.includes('@@BROKEN@@')) {
+    if (source.includes('@@BROKEN@@') || directives[index].includes('broken')) {
       failed = true;
       return { name, status: 'failed', message: 'SyntaxError: the source does not build', startTime: 1_000, endTime: 1_010, assertionResults: [] };
     }
@@ -108,6 +157,10 @@ function runContracts(variant) {
       }
       return { title: expected, status: kept ? 'passed' : 'failed', failureMessages: kept ? [] : [`no longer kept: ${expected}`] };
     });
+    if (oddRun && directives[index].includes('flaky')) {
+      failed = true;
+      assertionResults.push({ title: 'flaky', status: 'failed', failureMessages: ['flaky: an odd run fails'] });
+    }
     const status = assertionResults.some((assertion) => assertion.status === 'failed') ? 'failed' : 'passed';
     return { name, status, message: '', startTime: 1_000, endTime: 1_010, assertionResults };
   });
