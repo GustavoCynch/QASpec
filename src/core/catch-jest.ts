@@ -7,11 +7,15 @@
  *   run:          --json --outputFile=<scratch report> --ci --colors=false --runTestsByPath <files>
  *   relatedTests: --listTests --findRelatedTests <source files>
  *
- * Each suite of Jest's JSON report is one test file:
- *   passed, some test executed     -> pass
- *   passed, no test executed       -> no-tests (all skipped, pending or todo, or none): not a pass
- *   failed, no test executed       -> no-build (compile, type or import error: "Test suite failed to run")
- *   failed, some test executed     -> fail (the messages are the failed assertions)
+ * Each suite of Jest's JSON report is one test file. Jest 30 gives a suite the status passed, failed or skipped;
+ * each assertion is passed, failed, pending (skipped) or todo. By suite:
+ *   passed, some test executed                  -> pass
+ *   passed, no test executed                    -> no-tests (all skipped, pending or todo, or none): not a pass
+ *   skipped                                     -> no-tests (the whole file is skipped: its assertions are pending)
+ *   failed, some test executed                  -> fail (the messages are the failed assertions)
+ *   failed, no test executed, "Your test suite must contain at least one test." -> no-tests
+ *   failed, no test executed, a worker crashed or ran out of memory -> runner-error for the run, never no-build
+ *   failed, no test executed, otherwise        -> no-build (compile, type or import: "Test suite failed to run")
  * Jest lists a file once per project it ran in: the file takes the worst outcome of its suites, the messages of
  * the suites that have it, and the sum of their durations.
  *
@@ -21,6 +25,9 @@
  * report decides the file outcomes. The exit code matters when the command was stopped, left no readable report,
  * or exited non-zero after a passing report: a failed globalTeardown or a coverage threshold leaves every suite
  * passed, so that run is runner-error, with its file outcomes kept.
+ *
+ * Failure messages and the output tail lose their ANSI escape sequences (control sequences and operating system
+ * commands, 7-bit and 8-bit) before they are bounded, so a cut never leaves a partial sequence.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -51,6 +58,26 @@ const MAX_MESSAGES_PER_FILE = 10;
 /** Lower is worse: the order of catch-runner.ts. A run takes the worst outcome of its files. */
 const SEVERITY: Record<FileOutcome, number> = { 'no-build': 0, fail: 1, 'no-tests': 2, pass: 3 };
 const NO_TESTS_MESSAGE = 'No test was executed: every test is skipped, pending or todo, or the file has none.';
+/** Jest's message for a test file that has no test at all. */
+const NO_TESTS_SUITE_MESSAGE = 'Your test suite must contain at least one test.';
+/** Jest's messages for a worker that crashed, was force-exited or ran out of memory while it ran a test file. */
+const WORKER_CRASH = new RegExp(
+  [
+    'jest worker encountered',
+    'worker (?:process )?crashed',
+    'call retries were exceeded',
+    'a worker process has failed to exit gracefully',
+    'out of memory',
+  ].join('|'),
+  'i'
+);
+/**
+ * Escape sequences a terminal draws instead of showing: control sequences (ESC [, parameters, final byte: colors and
+ * styles) and operating system commands (ESC ], text, ended by BEL or ESC \: hyperlinks), with their 8-bit forms. An
+ * operating system command that is never ended stops at the line break, so it cannot swallow the text after it.
+ */
+const ANSI_SEQUENCE =
+  /(?:\u001b\[|\u009b)[0-?]*[ -/]*[@-~]|(?:\u001b\]|\u009d)[^\u0007\u001b\u009c\r\n]*(?:\u0007|\u001b\\|\u009c)?/g;
 
 type JsonObject = Record<string, unknown>;
 
@@ -153,7 +180,7 @@ async function classifyRun(
   } catch (error) {
     return runnerError(`The test command could not start: ${errorText(error)}`, 0, '');
   }
-  const outputTail = keepTail(execution.output, MAX_TEXT_BYTES);
+  const outputTail = keepTail(stripAnsi(execution.output), MAX_TEXT_BYTES);
   const durationMs = Math.round(performance.now() - started);
   if (execution.timedOut) {
     const reason = `The test command timed out after ${ctx.timeoutMs / 1000} s.`;
@@ -194,7 +221,8 @@ async function relatedTests(ctx: RunnerContext, sourceFiles: readonly string[]):
   const folder = await openProjectFolder(ctx.projectDir);
   const files = await resolveProjectPaths(folder, sourceFiles);
   const execution = await runRunnerCommand(ctx, jestCommand(ctx, ['--listTests', '--findRelatedTests'], files));
-  const outputTail = keepTail(execution.output, MAX_TEXT_BYTES);
+  const output = stripAnsi(execution.output);
+  const outputTail = keepTail(output, MAX_TEXT_BYTES);
   // A failed listing must not read as "no related tests": the gates would then pass without running anything.
   if (execution.timedOut) {
     throw new Error(`Finding related tests timed out after ${ctx.timeoutMs / 1000} s.`);
@@ -208,7 +236,7 @@ async function relatedTests(ctx: RunnerContext, sourceFiles: readonly string[]):
 
   const tests = new Set<string>();
   // The output interleaves standard error, and npm prints a banner too: only absolute paths of files count.
-  for (const line of execution.output.split(/\r?\n/)) {
+  for (const line of output.split(/\r?\n/)) {
     const candidate = line.trim();
     if (!path.isAbsolute(candidate)) {
       continue;
@@ -266,14 +294,16 @@ function parseSuite(value: unknown): JestSuite | undefined {
     ? value.assertionResults.filter(isObject).map((assertion) => ({
         status: typeof assertion.status === 'string' ? assertion.status : '',
         failureMessages: Array.isArray(assertion.failureMessages)
-          ? assertion.failureMessages.filter((message): message is string => typeof message === 'string')
+          ? assertion.failureMessages
+              .filter((message): message is string => typeof message === 'string')
+              .map((message) => stripAnsi(message))
           : [],
       }))
     : [];
   return {
     name: value.name,
     status: value.status,
-    message: typeof value.message === 'string' ? value.message : '',
+    message: typeof value.message === 'string' ? stripAnsi(value.message) : '',
     startTime: typeof value.startTime === 'number' ? value.startTime : undefined,
     endTime: typeof value.endTime === 'number' ? value.endTime : undefined,
     assertions,
@@ -287,6 +317,9 @@ function mapReport(suites: readonly JestSuite[], requested: readonly string[], f
     const file = relativeWithin(folder, suite.name);
     if (file === undefined) {
       return { error: 'The report names a test suite outside the project folder.' };
+    }
+    if (isWorkerCrash(suite)) {
+      return { error: `The worker running ${file} crashed or ran out of memory. Jest said: ${suite.message.trim()}` };
     }
     const result = classifySuite(file, suite);
     if (result === undefined) {
@@ -313,19 +346,22 @@ function classifySuite(file: string, suite: JestSuite): FileRunResult | undefine
     suite.startTime !== undefined && suite.endTime !== undefined
       ? Math.max(0, Math.round(suite.endTime - suite.startTime))
       : undefined;
-  const executed = suite.assertions.some(
-    (assertion) => assertion.status === 'passed' || assertion.status === 'failed'
-  );
+  const ran = executed(suite);
   if (suite.status === 'passed') {
-    return executed
+    return ran
       ? { file, outcome: 'pass', messages: [], durationMs }
       : { file, outcome: 'no-tests', messages: [NO_TESTS_MESSAGE], durationMs };
+  }
+  if (suite.status === 'skipped') {
+    return { file, outcome: 'no-tests', messages: [NO_TESTS_MESSAGE], durationMs };
   }
   if (suite.status !== 'failed') {
     return undefined;
   }
-  if (!executed) {
-    return { file, outcome: 'no-build', messages: [suite.message], durationMs };
+  if (!ran) {
+    return suite.message.includes(NO_TESTS_SUITE_MESSAGE)
+      ? { file, outcome: 'no-tests', messages: [NO_TESTS_MESSAGE], durationMs }
+      : { file, outcome: 'no-build', messages: [suite.message], durationMs };
   }
   const failures = suite.assertions.flatMap((assertion) => assertion.failureMessages);
   return { file, outcome: 'fail', messages: failures.length > 0 ? failures : [suite.message], durationMs };
@@ -367,6 +403,21 @@ function overallOutcome(files: readonly FileRunResult[]): RunOutcome {
     return 'no-tests';
   }
   return files.map((file) => file.outcome).reduce(worstOf);
+}
+
+/** Whether a test of the suite reached a verdict: an assertion passed or failed, not pending, skipped or todo. */
+function executed(suite: JestSuite): boolean {
+  return suite.assertions.some((assertion) => assertion.status === 'passed' || assertion.status === 'failed');
+}
+
+/** A failed suite that executed no test and whose message says its worker crashed: a runner failure, never no-build. */
+function isWorkerCrash(suite: JestSuite): boolean {
+  return suite.status === 'failed' && !executed(suite) && WORKER_CRASH.test(suite.message);
+}
+
+/** The text without its ANSI escape sequences. Callers strip before they bound, so a cut never splits a sequence. */
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_SEQUENCE, '');
 }
 
 function isObject(value: unknown): value is JsonObject {

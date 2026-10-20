@@ -1,0 +1,49 @@
+{
+  "numFailedTestSuites": 2,
+  "numFailedTests": 1,
+  "numPassedTestSuites": 0,
+  "numPassedTests": 0,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 1,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 2,
+  "numTotalTests": 1,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["sum"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [
+            "\u001b[2mexpect(received).toBe(expected)\u001b[22m\n\nExpected: \u001b[32m4\u001b[39m\nReceived: \u001b[31m5\u001b[39m\n\u001b]8;;https://example.test/docs\u0007see the docs\u001b]8;;\u0007"
+          ],
+          "fullName": "sum adds two numbers",
+          "location": null,
+          "status": "failed",
+          "title": "adds two numbers"
+        }
+      ],
+      "endTime": 1792425600150,
+      "message": "",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [],
+      "endTime": 1792425600250,
+      "message": "Test suite failed to run\n\n\u001b[96msrc/sum.ts\u001b[0m:\u001b[93m1\u001b[0m:\u001b[93m52\u001b[0m - \u001b[91merror\u001b[0m\u001b[90m TS2322: \u001b[0mType 'string' is not assignable to type 'number'.\n\n\u001b]8;;https://example.test/ts\u001b\\TS2322 docs\u001b]8;;\u001b\\\n",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600200,
+      "status": "failed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}

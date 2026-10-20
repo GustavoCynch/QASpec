@@ -345,6 +345,151 @@ describe('jestAdapter', () => {
     });
   });
 
+  describe('real Jest 30 reports (S5, L44)', () => {
+    /** A runner command that runs a Node script in place of Jest. The adapter's Jest arguments follow the "--". */
+    const scriptedRunner = (script: string): string => [process.execPath, '-e', script, '--'].map(shellWord).join(' ');
+
+    it('classifies a suite that Jest reports as skipped as no-tests, not as an unknown status', async () => {
+      const result = await jestAdapter.run(contextFor('report:skipped-suite'), [
+        'test/sum.spec.ts',
+        'test/other.spec.ts',
+      ]);
+
+      expect(result.outcome).toBe('no-tests');
+      expect(result.reason).toBeUndefined();
+      expect(outcomeByFile(result)).toEqual({ 'test/sum.spec.ts': 'no-tests', 'test/other.spec.ts': 'pass' });
+      expect(result.files[0].messages).toEqual([expect.stringContaining('No test was executed')]);
+    });
+
+    it('classifies a "no test" suite as no-tests, not no-build, and a run exiting 1 is not runner-error', async () => {
+      const result = await jestAdapter.run(contextFor('report-exit:no-tests-message:1'), [
+        'test/sum.spec.ts',
+        'test/other.spec.ts',
+      ]);
+
+      expect(result.outcome).toBe('no-tests');
+      expect(result.reason).toBeUndefined();
+      expect(outcomeByFile(result)).toEqual({ 'test/sum.spec.ts': 'no-tests', 'test/other.spec.ts': 'pass' });
+    });
+
+    it.each([
+      ['worker-call-retries', 'Call retries were exceeded'],
+      ['worker-encountered', 'Jest worker encountered 4 child process exceptions'],
+      ['worker-out-of-memory', 'Jest worker ran out of memory'],
+      ['worker-crashed', 'The worker crashed with signal SIGSEGV'],
+      ['worker-exit', 'A worker process has failed to exit gracefully'],
+    ])(
+      'reports a worker that crashed (%s) as runner-error for the run, never as no-build, and keeps its message',
+      async (fixture, message) => {
+        const result = await jestAdapter.run(contextFor(`report-exit:${fixture}:1`), [
+          'test/sum.spec.ts',
+          'test/other.spec.ts',
+        ]);
+
+        expect(result).toMatchObject({ outcome: 'runner-error', files: [] });
+        expect(result.reason).toContain(message);
+      }
+    );
+
+    it('keeps a no-tests file from hiding a build error in another file of the run', async () => {
+      const result = await jestAdapter.run(contextFor('report-exit:no-tests-and-build:1'), [
+        'test/sum.spec.ts',
+        'test/other.spec.ts',
+      ]);
+
+      expect(result.outcome).toBe('no-build');
+      expect(outcomeByFile(result)).toEqual({ 'test/sum.spec.ts': 'no-tests', 'test/other.spec.ts': 'no-build' });
+    });
+
+    it('keeps a worker crash as the run outcome, even when another file of the run failed an assertion', async () => {
+      const result = await jestAdapter.run(contextFor('report-exit:worker-and-failure:1'), [
+        'test/sum.spec.ts',
+        'test/other.spec.ts',
+      ]);
+
+      expect(result).toMatchObject({ outcome: 'runner-error', files: [] });
+      expect(result.reason).toContain('Call retries were exceeded');
+    });
+
+    it('strips ANSI color and hyperlink sequences from the failure messages before keeping them', async () => {
+      const result = await jestAdapter.run(contextFor('report:ansi-messages'), [
+        'test/sum.spec.ts',
+        'test/other.spec.ts',
+      ]);
+
+      expect(result.outcome).toBe('no-build');
+      expect(result.files).toEqual([
+        expect.objectContaining({
+          file: 'test/sum.spec.ts',
+          outcome: 'fail',
+          messages: ['expect(received).toBe(expected)\n\nExpected: 4\nReceived: 5\nsee the docs'],
+        }),
+        expect.objectContaining({
+          file: 'test/other.spec.ts',
+          outcome: 'no-build',
+          messages: [
+            "Test suite failed to run\n\nsrc/sum.ts:1:52 - error TS2322: " +
+              "Type 'string' is not assignable to type 'number'.\n\nTS2322 docs\n",
+          ],
+        }),
+      ]);
+    });
+
+    it.skipIf(WINDOWS)('strips ANSI color and hyperlink sequences from the output tail', async () => {
+      const script = [
+        "process.stdout.write('\\u001b[31mred\\u001b[39m line\\n');",
+        "process.stdout.write('\\u001b]8;;https://example.test\\u0007link\\u001b]8;;\\u0007 end\\n');",
+        'process.exitCode = 3;',
+      ].join(' ');
+
+      const result = await jestAdapter.run({ ...contextFor('echo-pass'), runnerCommand: scriptedRunner(script) }, [
+        'test/sum.spec.ts',
+      ]);
+
+      expect(result).toMatchObject({ outcome: 'runner-error', outputTail: 'red line\nlink end\n' });
+    });
+
+    it.skipIf(WINDOWS)('strips ANSI codes before bounding the output tail, so the text is kept', async () => {
+      const script = "process.stdout.write('\\u001b[32m'.repeat(1000) + 'tail-ok\\n'); process.exitCode = 3;";
+
+      const result = await jestAdapter.run({ ...contextFor('echo-pass'), runnerCommand: scriptedRunner(script) }, [
+        'test/sum.spec.ts',
+      ]);
+
+      expect(result.outputTail).toBe('tail-ok\n');
+    });
+
+    it.skipIf(WINDOWS)('strips ANSI codes before bounding a failure message, so the text is kept', async () => {
+      const script = [
+        "const fs = require('node:fs');",
+        "const path = require('node:path');",
+        "const output = process.argv.find((arg) => arg.startsWith('--outputFile=')).slice('--outputFile='.length);",
+        "const message = '\\u001b[31mx\\u001b[39m'.repeat(700) + 'Expected: 4';",
+        "const suite = { name: path.join(process.cwd(), 'test', 'sum.spec.ts'), status: 'failed', message: '',",
+        "  startTime: 1, endTime: 2, assertionResults: [{ status: 'failed', failureMessages: [message] }] };",
+        'fs.writeFileSync(output, JSON.stringify({ testResults: [suite] }));',
+        'process.exitCode = 1;',
+      ].join(' ');
+
+      const result = await jestAdapter.run({ ...contextFor('echo-pass'), runnerCommand: scriptedRunner(script) }, [
+        'test/sum.spec.ts',
+      ]);
+
+      expect(result.outcome).toBe('fail');
+      expect(result.files).toEqual([
+        expect.objectContaining({ file: 'test/sum.spec.ts', messages: [`${'x'.repeat(700)}Expected: 4`] }),
+      ]);
+    });
+
+    it.skipIf(WINDOWS)('strips ANSI sequences from the output of a failed listing before it is reported', async () => {
+      const script = "process.stdout.write('\\u001b[31mlisting failed\\u001b[39m\\n'); process.exitCode = 2;";
+
+      await expect(
+        jestAdapter.relatedTests({ ...contextFor('list'), runnerCommand: scriptedRunner(script) }, ['src/sum.ts'])
+      ).rejects.toThrow('Finding related tests failed with exit code 2: listing failed');
+    });
+  });
+
   describe('relatedTests', () => {
     beforeEach(async () => {
       await fs.mkdir(path.join(projectDir, 'test', 'nested'), { recursive: true });

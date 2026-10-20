@@ -1,0 +1,47 @@
+{
+  "numFailedTestSuites": 2,
+  "numFailedTests": 1,
+  "numPassedTestSuites": 0,
+  "numPassedTests": 0,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 1,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 2,
+  "numTotalTests": 1,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [],
+      "endTime": 1792425600150,
+      "message": "Test suite failed to run\n\n    Call retries were exceeded\n",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["other"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": ["expect(received).toBe(expected)\n\nExpected: 4\nReceived: 5"],
+          "fullName": "other adds two numbers",
+          "location": null,
+          "status": "failed",
+          "title": "adds two numbers"
+        }
+      ],
+      "endTime": 1792425600250,
+      "message": "",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600200,
+      "status": "failed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}
