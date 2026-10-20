@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
+import { stringify } from 'yaml';
 import { runCLI } from '../helpers/run-cli.js';
 
 const ADD_EXPORT = 'add-export';
@@ -177,5 +179,259 @@ describe('qaspec catch intent', () => {
 
     expect([valid.exitCode, validJson.exitCode, invalid.exitCode]).toEqual([0, 0, 1]);
     expect(await snapshot(projectRoot)).toEqual(before);
+  });
+});
+
+const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
+const SETUP_MARKER = 'setup-marker.txt';
+const OUTPUT_MARKER = 'SETUP-OUTPUT-MARKER';
+const shellWord = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
+const nodeEval = (code: string): string => `${shellWord(process.execPath)} -e ${shellWord(code)}`;
+const SETUP_OK = nodeEval(`require('fs').writeFileSync(${JSON.stringify(SETUP_MARKER)}, 'ok')`);
+/** Prints OUTPUT_MARKER, which the command text does not contain, then fails. */
+const SETUP_FAILS = nodeEval(`console.log(['SETUP', 'OUTPUT', 'MARKER'].join('-')); process.exit(3)`);
+
+/** A qaspec/config.yaml with a catch block whose only setup command is setupCommand. */
+function catchConfig(setupCommand: string): string {
+  return stringify({
+    schema: 'qaspec-pr-review',
+    catch: {
+      baseRef: 'main',
+      setup: { commands: [setupCommand] },
+      runner: { adapter: 'jest', command: 'npm test --' },
+    },
+  });
+}
+
+describe('qaspec catch start, status and finish', () => {
+  let tmp: string;
+  let repo: string;
+  /** The PR head: the feature branch commit, while the checkout stays on main. */
+  let head: string;
+  const changeDir = () => path.join(repo, 'qaspec', 'changes', ADD_EXPORT);
+  /** Scratch temp folder for every catch command of the test: the real temp folder is never touched. */
+  const env = () => ({ TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+
+  const git = (...args: string[]): string =>
+    execFileSync('git', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+
+  const writeFile = async (relativePath: string, content: string) => {
+    const target = path.join(repo, relativePath);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, content, 'utf-8');
+  };
+
+  /** The run folders of the change: the entries of catch/ whose names are run ids (.gitignore is not one). */
+  const runFolders = async (): Promise<string[]> => {
+    try {
+      return (await fs.readdir(path.join(changeDir(), 'catch'))).filter((name) => RUN_ID.test(name));
+    } catch {
+      return [];
+    }
+  };
+
+  const worktreeCount = (): number => git('worktree', 'list', '--porcelain').split('\n').filter((line) => line.startsWith('worktree ')).length;
+
+  /** Records the analyze approval through the CLI, with the PR head. */
+  const approveHead = async (): Promise<void> => {
+    const result = await runCLI(['approve', 'analyze', '--change', ADD_EXPORT, '--head-sha', head, '--json'], {
+      cwd: repo,
+      env: env(),
+    });
+    expect(result.exitCode).toBe(0);
+  };
+
+  const startJson = async (extra: string[] = []) =>
+    runCLI(['catch', 'start', '--change', ADD_EXPORT, '--json', ...extra], { cwd: repo, env: env() });
+
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'qaspec-catch-cli-run-'));
+    repo = path.join(tmp, 'repo');
+    await fs.mkdir(repo);
+    git('init', '-q');
+    git('symbolic-ref', 'HEAD', 'refs/heads/main');
+    git('config', 'user.name', 'QASpec Test');
+    git('config', 'user.email', 'qaspec-test@example.com');
+    git('config', 'commit.gpgsign', 'false');
+
+    await writeFile(path.join('qaspec', 'config.yaml'), catchConfig(SETUP_OK));
+    await writeFile(path.join('src', 'app.ts'), 'export const value = 1;\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+
+    git('checkout', '-q', '-b', 'feature');
+    await writeFile(path.join('src', 'app.ts'), 'export const value = 2;\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'feature');
+    head = git('rev-parse', 'HEAD');
+    git('checkout', '-q', 'main');
+
+    await writeFile(path.join('qaspec', 'changes', ADD_EXPORT, '.qaspec.yaml'), 'schema: qaspec-pr-review\n');
+    await writeFile(path.join('qaspec', 'changes', ADD_EXPORT, 'analysis.md'), analysis('Intent class: additive'));
+    await writeFile(path.join('qaspec', 'changes', ADD_EXPORT, 'specs', 'billing-export', 'spec.md'), CSV_DELTA);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  it('start exits 1, prints each blocker with its resolution and creates nothing', async () => {
+    const result = await runCLI(['catch', 'start', '--change', ADD_EXPORT], { cwd: repo, env: env() });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain('Cannot start a catch run');
+    expect(result.stdout).toContain(`qaspec approve analyze --change ${ADD_EXPORT} --head-sha <sha>`);
+    expect(await runFolders()).toEqual([]);
+    expect(worktreeCount()).toBe(1);
+  });
+
+  it('start --json prints the refusal as { started: false, blockers } and exits 1', async () => {
+    const result = await startJson();
+
+    expect(result.exitCode).toBe(1);
+    const output = JSON.parse(result.stdout);
+    expect(output).toMatchObject({ started: false });
+    expect(output.blockers).toEqual([
+      expect.objectContaining({ code: 'approval-missing', resolve: expect.stringContaining('--head-sha <sha>') }),
+    ]);
+  });
+
+  it('start exits 0 and prints the run id and the ready state', async () => {
+    await approveHead();
+
+    const result = await runCLI(['catch', 'start', '--change', ADD_EXPORT], { cwd: repo, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/Catch run \d{8}T\d{6}Z-[0-9a-f]{6} is ready/);
+    expect(await runFolders()).toHaveLength(1);
+  });
+
+  it('start --json prints the run record without setup output and exits 0', async () => {
+    await approveHead();
+
+    const result = await startJson();
+
+    expect(result.exitCode).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output).toMatchObject({
+      started: true,
+      run: expect.stringMatching(RUN_ID),
+      change: ADD_EXPORT,
+      state: 'ready',
+      mode: 'analysis',
+      lowConfidence: false,
+      headSha: head,
+      worktree: expect.any(String),
+    });
+    expect(output.setup.commands[0]).not.toHaveProperty('outputTail');
+    expect(result.stdout).not.toContain('outputTail');
+  });
+
+  it('start --without-analysis --head runs in degraded mode and says it is low confidence', async () => {
+    const result = await startJson(['--without-analysis', '--head', head]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ mode: 'without-analysis', lowConfidence: true, state: 'ready' });
+  });
+
+  it('start exits 1 when setup fails, and keeps the setup output out of the terminal and the run record', async () => {
+    await writeFile(path.join('qaspec', 'config.yaml'), catchConfig(SETUP_FAILS));
+    await approveHead();
+
+    const result = await runCLI(['catch', 'start', '--change', ADD_EXPORT], { cwd: repo, env: env() });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout + result.stderr).not.toContain(OUTPUT_MARKER);
+    const [runId] = await runFolders();
+    const runDir = path.join(changeDir(), 'catch', runId);
+    expect(JSON.parse(await fs.readFile(path.join(runDir, 'run.json'), 'utf-8')).state).toBe('setup-failed');
+    expect(await fs.readFile(path.join(runDir, 'setup-output.json'), 'utf-8')).toContain(OUTPUT_MARKER);
+    expect(worktreeCount()).toBe(1);
+  });
+
+  it('status --run prints the state, mode, setup results and ledger counts', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const result = await runCLI(['catch', 'status', '--run', runId], { cwd: repo, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(runId);
+    expect(result.stdout).toContain('ready');
+    expect(result.stdout).toContain('analysis');
+    expect(result.stdout).toContain(SETUP_OK);
+    expect(result.stdout).toContain('started 1');
+    expect(result.stdout).toContain('setup 1');
+  });
+
+  it('status --json returns the run with ledger counts per stage', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const result = await runCLI(['catch', 'status', '--run', runId, '--change', ADD_EXPORT, '--json'], {
+      cwd: repo,
+      env: env(),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      run: runId,
+      change: ADD_EXPORT,
+      state: 'ready',
+      mode: 'analysis',
+      ledger: { started: 1, setup: 1, ready: 1 },
+    });
+  });
+
+  it('status --change lists the runs of the change; status without --run or --change exits 1', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const listed = await runCLI(['catch', 'status', '--change', ADD_EXPORT, '--json'], { cwd: repo, env: env() });
+    expect(listed.exitCode).toBe(0);
+    expect(JSON.parse(listed.stdout)).toEqual({
+      change: ADD_EXPORT,
+      runs: [expect.objectContaining({ run: runId, state: 'ready', mode: 'analysis' })],
+    });
+
+    const missing = await runCLI(['catch', 'status'], { cwd: repo, env: env() });
+    expect(missing.exitCode).toBe(1);
+    expect(missing.stdout + missing.stderr).toContain('--run or --change');
+  });
+
+  it('finish removes the worktree, and a second finish exits 0 and reports it is already finished', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const first = await runCLI(['catch', 'finish', '--run', runId, '--json'], { cwd: repo, env: env() });
+    expect(first.exitCode).toBe(0);
+    expect(JSON.parse(first.stdout)).toMatchObject({ run: runId, state: 'finished', alreadyFinished: false });
+    expect(worktreeCount()).toBe(1);
+
+    const second = await runCLI(['catch', 'finish', '--run', runId, '--json'], { cwd: repo, env: env() });
+    expect(second.exitCode).toBe(0);
+    expect(JSON.parse(second.stdout)).toMatchObject({ run: runId, state: 'finished', alreadyFinished: true });
+  });
+
+  it('catch --help lists start, status and finish next to intent', async () => {
+    const result = await runCLI(['catch', '--help'], { cwd: repo, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    for (const command of ['intent', 'start', 'status', 'finish']) {
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${command}\\b`, 'm'));
+    }
+  });
+
+  it('catch intent prints the same output before and after a catch run exists for the change', async () => {
+    const before = await runCLI(['catch', 'intent', '--change', ADD_EXPORT, '--json'], { cwd: repo, env: env() });
+    await approveHead();
+    const started = await startJson();
+    expect(started.exitCode).toBe(0);
+
+    const after = await runCLI(['catch', 'intent', '--change', ADD_EXPORT, '--json'], { cwd: repo, env: env() });
+
+    expect(before.exitCode).toBe(0);
+    expect(after.exitCode).toBe(0);
+    expect(after.stdout).toBe(before.stdout);
   });
 });
