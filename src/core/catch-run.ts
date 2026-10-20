@@ -8,7 +8,7 @@
  * worktree lives outside the project (catch-git.ts).
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ResolvedCatchConfig } from './catch-config.js';
 import { evaluateAnalyzeApproval } from './approval-ledger.js';
@@ -46,10 +46,25 @@ export const CATCH_RUNS_DIRNAME = 'catch';
 export const CATCH_COMMAND = 'qaspec catch';
 
 const RUN_FILE = 'run.json';
-const INTENT_FILE = 'intent.json';
-const DIFF_FILE = 'diff.patch';
-const CHANGED_FILES_FILE = 'changed-files.json';
+export const INTENT_FILE = 'intent.json';
+export const DIFF_FILE = 'diff.patch';
+export const CHANGED_FILES_FILE = 'changed-files.json';
 const SETUP_OUTPUT_FILE = 'setup-output.json';
+/** Records of the parent phase (T7): one JSON file per risk and per mutant, named by its id. */
+export const RISKS_DIRNAME = 'risks';
+export const MUTANTS_DIRNAME = 'mutants';
+/** The related existing tests of the changed sources, computed once on the parent and cached. */
+export const RELATED_TESTS_FILE = 'related-tests.json';
+/** Runner output files (Jest's JSON report) of a run: outside the worktree, inside the git-ignored run folder. */
+export const RUNNER_OUTPUT_DIRNAME = 'runner-output';
+/** Record ids: R for risks, M for mutants, a number from 1 with no leading zero. */
+const RECORD_ID = /^[RM][1-9]\d*$/;
+
+/** One problem with a record the agent sent. When one is found, nothing is written. */
+export interface CatchRecordIssue {
+  code: string;
+  message: string;
+}
 
 export type CatchRunMode = 'analysis' | 'without-analysis';
 /** setting-up while the worktree and setup run; then ready, or one of the failure states, and finished at the end. */
@@ -194,7 +209,7 @@ function listChangeNames(changesDir: string): string[] {
     .map((entry) => entry.name);
 }
 
-function readCatchRun(runDir: string): CatchRunRecord {
+export function readCatchRun(runDir: string): CatchRunRecord {
   const file = path.join(runDir, RUN_FILE);
   const run = JSON.parse(readFileSync(file, 'utf-8')) as CatchRunRecord;
   if (run?.schema !== CATCH_RUN_SCHEMA) {
@@ -205,6 +220,96 @@ function readCatchRun(runDir: string): CatchRunRecord {
 
 function writeRunRecord(runDir: string, run: CatchRunRecord): void {
   writeFileAtomic(path.join(runDir, RUN_FILE), jsonText(run));
+}
+
+/** Reads a JSON artifact of a run folder (intent.json, changed-files.json, related-tests.json). */
+export function readRunJson<T>(runDir: string, fileName: string): T {
+  return JSON.parse(readFileSync(path.join(runDir, fileName), 'utf-8')) as T;
+}
+
+/** Writes a JSON artifact of a run folder atomically. */
+export function writeRunJson(runDir: string, fileName: string, value: unknown): void {
+  writeFileAtomic(path.join(runDir, fileName), jsonText(value));
+}
+
+/**
+ * Refuses a run that is not ready. The parent phase (context, risks, mutants, equivalence) needs the worktree at the
+ * parent, which exists only in state ready; action names the command in the message.
+ */
+export function requireReadyRun(run: CatchRunRecord, action: string): void {
+  if (run.state !== 'ready') {
+    const hint = STATE_HINTS[run.state];
+    throw new Error(`Catch run ${run.runId} is ${run.state}: ${action} needs a ready run.${hint ? ` ${hint}` : ''}`);
+  }
+}
+
+const STATE_HINTS: Record<CatchRunState, string> = {
+  'setting-up': 'Wait until the run has finished setting up.',
+  ready: '',
+  'worktree-failed': 'Start a new run after the worktree problem is fixed.',
+  'setup-failed': 'Start a new run after catch.setup is fixed.',
+  finished: 'Start a new run to catch again.',
+};
+
+/**
+ * The project folder inside the run's catch worktree: the worktree at a checkout root, else its project subfolder.
+ * Refuses a run without a worktree, a missing worktree, a prefix that leaves the worktree, and a worktree that is the
+ * project or lies inside it: runner commands and mutants never reach the user's checkout.
+ */
+export function projectDirInWorktree(projectRoot: string, run: CatchRunRecord): string {
+  if (run.worktree === null) {
+    throw new Error(`Catch run ${run.runId} has no worktree: start a new run.`);
+  }
+  const segments = run.projectPrefix === '' ? [] : run.projectPrefix.split('/');
+  if (segments.some((segment) => segment === '' || segment === '..' || path.isAbsolute(segment))) {
+    throw new Error(`Refusing the project prefix "${run.projectPrefix}": it leaves the catch worktree.`);
+  }
+  if (!existsSync(run.worktree)) {
+    throw new Error(
+      `The catch worktree of run ${run.runId} is missing: ${run.worktree}. Finish the run and start a new one.`
+    );
+  }
+  const worktree = realpathSync(run.worktree);
+  const project = realpathSync(projectRoot);
+  if (worktree === project || isInside(worktree, project)) {
+    throw new Error(`Refusing the catch worktree ${run.worktree}: it lies inside the project.`);
+  }
+  return path.join(run.worktree, ...segments);
+}
+
+function isInside(child: string, parent: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+/** The next id of a record folder: one above the highest existing id, so a removed record never reuses an id. */
+export function nextRecordId(recordsDir: string, prefix: 'R' | 'M'): string {
+  const pattern = new RegExp(`^${prefix}([1-9]\\d*)\\.json$`);
+  const numbers = existsSync(recordsDir)
+    ? readdirSync(recordsDir).flatMap((name) => {
+        const match = pattern.exec(name);
+        return match ? [Number(match[1])] : [];
+      })
+    : [];
+  return `${prefix}${Math.max(0, ...numbers) + 1}`;
+}
+
+/** A record of a record folder, or undefined when no record has that id. */
+export function readRecord<T>(recordsDir: string, id: string): T | undefined {
+  if (!RECORD_ID.test(id)) {
+    throw new Error(`Invalid record id "${id}"`);
+  }
+  const file = path.join(recordsDir, `${id}.json`);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf-8')) as T) : undefined;
+}
+
+/** Stores a record under its id, atomically. The id must be a record id (R1, M1, ...). */
+export function writeRecord(recordsDir: string, id: string, value: unknown): void {
+  if (!RECORD_ID.test(id)) {
+    throw new Error(`Invalid record id "${id}"`);
+  }
+  mkdirSync(recordsDir, { recursive: true });
+  writeFileAtomic(path.join(recordsDir, `${id}.json`), jsonText(value));
 }
 
 /** Creates <change>/catch and its .gitignore when they are missing, as execute creates runs/.gitignore. */
@@ -223,7 +328,7 @@ function ensureRunsFolder(changeDir: string): string {
  * Runs an async step under the run lock. withRunLock is synchronous, so a step that awaits (worktree and setup)
  * takes the same lock with acquireRunLock and holds it until the step settles.
  */
-async function withRunLockAsync<T>(runDir: string, timeoutMs: number, write: () => Promise<T>): Promise<T> {
+export async function withRunLockAsync<T>(runDir: string, timeoutMs: number, write: () => Promise<T>): Promise<T> {
   const release = acquireRunLock(runDir, timeoutMs, CATCH_COMMAND);
   try {
     return await write();

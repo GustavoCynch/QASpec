@@ -44,6 +44,7 @@ import {
   resolveProjectPaths,
   runRunnerCommand,
 } from './catch-runner.js';
+import { normalizeScriptSource, normalizeWhitespaceOnly } from './catch-normalize.js';
 
 /** Failure messages kept per file; the rest are counted in one trailing note. */
 const MAX_MESSAGES_PER_FILE = 10;
@@ -105,7 +106,17 @@ export const jestAdapter: TestRunnerAdapter = {
   id: 'jest',
   relatedTests,
   run,
+  normalizeSource,
 };
+
+/** Extensions read as TypeScript or JavaScript: their comments are removed and their literals kept. */
+const SCRIPT_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
+
+/** The comparable form of a file of the project: the script scanner for TypeScript and JavaScript, else whitespace only. */
+function normalizeSource(relativePath: string, text: string): string {
+  const extension = path.posix.extname(relativePath).toLowerCase();
+  return SCRIPT_EXTENSIONS.has(extension) ? normalizeScriptSource(text) : normalizeWhitespaceOnly(text);
+}
 
 async function run(ctx: RunnerContext, testFiles: readonly string[]): Promise<RunResult> {
   if (testFiles.length === 0) {

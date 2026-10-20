@@ -8,16 +8,21 @@ import chalk from 'chalk';
 import path from 'node:path';
 import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent, type CatchRequirement } from '../core/catch-intent.js';
 import {
+  CATCH_RUNS_DIRNAME,
   describeCatchRun,
   findCatchRun,
   finishCatchRun,
   listCatchRuns,
   startCatchRun,
   type CatchBlocker,
+  type CatchRecordIssue,
   type CatchRunRecord,
   type CatchRunStatus,
 } from '../core/catch-run.js';
+import { loadCatchContext, recordRisk, type CatchContext, type CatchRisk } from '../core/catch-context.js';
+import { recordEquivalence, recordMutant, type CatchMutant } from '../core/catch-mutant.js';
 import { getChangeDir, resolveCurrentPlanningHomeSync, type PlanningHome } from '../core/planning-home.js';
+import { readJsonInput } from './shared/file-input.js';
 import { validateChangeExists } from './workflow/shared.js';
 
 export interface CatchIntentCommandOptions {
@@ -332,3 +337,180 @@ export async function catchFinishCommand(options: CatchFinishCommandOptions): Pr
   }
 }
 
+
+/* Parent phase (T7): context, risks, mutants and equivalence verdicts. Each input is a JSON file (--input). */
+
+export interface CatchContextCommandOptions {
+  run: string;
+  json?: boolean;
+}
+
+export interface CatchRecordCommandOptions {
+  run: string;
+  input: string;
+  json?: boolean;
+}
+
+export interface CatchEquivalenceCommandOptions {
+  run: string;
+  mutant: string;
+  input: string;
+  json?: boolean;
+}
+
+type InputRead = { ok: true; value: unknown } | { ok: false; issues: CatchRecordIssue[] };
+
+/** Reads a record's JSON file. Text that is not JSON is one refusal, like any other problem with the record. */
+function readRecordInput(file: string, label: string): InputRead {
+  const input = readJsonInput(file, label);
+  if (!input.json.ok) {
+    return { ok: false, issues: [{ code: 'input-not-json', message: `The ${label} is not valid JSON: ${input.json.message}` }] };
+  }
+  return { ok: true, value: input.json.value };
+}
+
+/** A refusal: every issue listed, nothing recorded, exit code 1. */
+function printRefusal(run: string, headline: string, issues: CatchRecordIssue[], json: boolean | undefined): void {
+  if (json) {
+    console.log(JSON.stringify({ recorded: false, run, errors: issues }, null, 2));
+  } else {
+    console.log(chalk.red(`✗ ${headline} for run ${run}`));
+    for (const issue of issues) {
+      console.log(chalk.red(`  • ${issue.message}`));
+    }
+  }
+  process.exitCode = 1;
+}
+
+function printContext(context: CatchContext, runFolder: string): void {
+  const confidence = context.lowConfidence ? ' (degraded: low confidence, no approved intent)' : '';
+  console.log(`Catch run ${context.run} (change "${context.change}")${confidence}`);
+  if (context.intent.intentClass === null) {
+    console.log('  Intent: none (degraded mode)');
+  } else {
+    console.log(`  Intent class: ${context.intent.intentClass}`);
+    for (const capability of context.intent.capabilities) {
+      console.log(`  ${capability.name}`);
+      for (const requirement of capability.requirements) {
+        console.log(`    ${describeRequirement(requirement)}`);
+      }
+    }
+  }
+  console.log('  Changed files (project-relative):');
+  if (context.changedFiles.length === 0) {
+    console.log('    (none inside the project)');
+  }
+  for (const file of context.changedFiles) {
+    console.log(`    ${file.status} ${file.path}`);
+  }
+  const tests = context.relatedTests.tests;
+  console.log(`  Related existing tests: ${tests.length === 0 ? 'none' : tests.join(', ')}`);
+  console.log(`  Diff: ${path.join(runFolder, 'diff.patch')}`);
+}
+
+/** Prints the context of a ready run: the intent, the changed files, the diff and the related existing tests. */
+export async function catchContextCommand(options: CatchContextCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const context = await loadCatchContext({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+  });
+  if (options.json) {
+    console.log(JSON.stringify(context, null, 2));
+    return;
+  }
+  const runFolder = path.relative(
+    planningHome.root,
+    path.join(planningHome.changesDir, context.change, CATCH_RUNS_DIRNAME, context.run)
+  );
+  printContext(context, runFolder);
+}
+
+function describeRisk(risk: CatchRisk): string {
+  if (risk.requirement !== undefined) {
+    return `${risk.requirement}${risk.scenario === undefined ? '' : ` / ${risk.scenario}`}`;
+  }
+  return risk.file ?? '';
+}
+
+/** Records a risk from --input: a requirement of the intent (analysis run) or a changed file (degraded run). */
+export async function catchRiskCommand(options: CatchRecordCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'risk file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Risk was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = recordRisk({ changesDir: planningHome.changesDir, runId: options.run, value: input.value });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Risk was not recorded', outcome.issues, options.json);
+    return;
+  }
+  if (options.json) {
+    console.log(JSON.stringify({ recorded: true, run: options.run, risk: outcome.risk }, null, 2));
+  } else {
+    console.log(chalk.green(`✓ Risk ${outcome.risk.id} recorded for run ${options.run}`));
+    console.log(`  ${describeRisk(outcome.risk)}`);
+  }
+}
+
+/** Records a mutant from --input and runs its gates on the parent. Exit code 1 only for a refused mutant. */
+export async function catchMutantCommand(options: CatchRecordCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'mutant file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Mutant was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = await recordMutant({
+    projectRoot: planningHome.root,
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    value: input.value,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Mutant was not recorded', outcome.issues, options.json);
+    return;
+  }
+  const { mutant } = outcome;
+  if (options.json) {
+    console.log(JSON.stringify({ recorded: true, run: options.run, mutant }, null, 2));
+  } else {
+    console.log(describeMutantLine(mutant));
+    console.log(`  ${mutant.reason}`);
+    if (mutant.relatedTests.length > 0) {
+      console.log(`  Related existing tests: ${mutant.relatedTests.join(', ')}`);
+    }
+  }
+}
+
+function describeMutantLine(mutant: CatchMutant): string {
+  return `Mutant ${mutant.id} (${mutant.risk}, ${mutant.file}): ${mutant.outcome}`;
+}
+
+/** Records the fresh-context verdict on a surviving mutant from --input, once. */
+export async function catchEquivalenceCommand(options: CatchEquivalenceCommandOptions): Promise<void> {
+  const planningHome = repositoryHome();
+  const input = readRecordInput(options.input, 'verdict file');
+  if (!input.ok) {
+    printRefusal(options.run, 'Equivalence verdict was not recorded', input.issues, options.json);
+    return;
+  }
+  const outcome = recordEquivalence({
+    changesDir: planningHome.changesDir,
+    runId: options.run,
+    mutant: options.mutant,
+    value: input.value,
+  });
+  if (!outcome.ok) {
+    printRefusal(options.run, 'Equivalence verdict was not recorded', outcome.issues, options.json);
+    return;
+  }
+  if (options.json) {
+    console.log(JSON.stringify({ recorded: true, run: options.run, mutant: outcome.mutant }, null, 2));
+  } else {
+    console.log(describeMutantLine(outcome.mutant));
+    console.log(`  ${outcome.mutant.equivalence?.rationale ?? ''}`);
+  }
+}

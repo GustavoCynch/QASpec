@@ -11,12 +11,21 @@ import {
   findCatchRun,
   finishCatchRun,
   listCatchRuns,
+  nextRecordId,
+  projectDirInWorktree,
+  readRecord,
+  requireReadyRun,
   startCatchRun,
+  withRunLockAsync,
+  writeRecord,
   type CatchBlocker,
+  type CatchRunRecord,
+  type CatchRunState,
   type FinishCatchRunInput,
   type StartCatchRunInput,
   type StartCatchRunOutcome,
 } from '../../src/core/catch-run.js';
+import { acquireRunLock } from '../../src/core/run-store.js';
 
 vi.mock('../../src/core/catch-git.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/core/catch-git.js')>();
@@ -732,5 +741,86 @@ describe('catch run lock', () => {
       /another qaspec catch command holds its lock/
     );
     expect(readJson(path.join(runDir, 'run.json')).state).toBe('ready');
+  });
+});
+
+describe('catch run helpers of the parent phase (T7)', () => {
+  const runWith = (state: CatchRunState, overrides: Partial<CatchRunRecord> = {}): CatchRunRecord =>
+    ({ runId: '20261020T100000Z-abcdef', state, ...overrides }) as CatchRunRecord;
+
+  it('requireReadyRun passes a ready run, and names the state and the action of any other run', () => {
+    expect(() => requireReadyRun(runWith('ready'), 'qaspec catch risk')).not.toThrow();
+    expect(() => requireReadyRun(runWith('setup-failed'), 'qaspec catch risk')).toThrow(
+      /is setup-failed.*qaspec catch risk needs a ready run/
+    );
+    expect(() => requireReadyRun(runWith('finished'), 'qaspec catch mutant')).toThrow(/is finished/);
+  });
+
+  it('nextRecordId numbers records from 1 and continues after the highest id, ignoring temporary files', () => {
+    const dir = path.join(tmp, 'risks');
+    expect(nextRecordId(dir, 'R')).toBe('R1');
+
+    fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, 'R1.json'), '{}');
+    fs.writeFileSync(path.join(dir, 'R3.json'), '{}');
+    fs.writeFileSync(path.join(dir, 'R4.json.abcdef12.tmp'), '');
+    expect(nextRecordId(dir, 'R')).toBe('R4');
+    expect(nextRecordId(dir, 'M')).toBe('M1');
+  });
+
+  it('writeRecord stores a record as JSON under its id, and readRecord returns it or undefined', () => {
+    const dir = path.join(tmp, 'mutants');
+
+    writeRecord(dir, 'M1', { id: 'M1', outcome: 'surviving' });
+
+    expect(fs.readFileSync(path.join(dir, 'M1.json'), 'utf8')).toBe('{\n  "id": "M1",\n  "outcome": "surviving"\n}\n');
+    expect(readRecord(dir, 'M1')).toEqual({ id: 'M1', outcome: 'surviving' });
+    expect(readRecord(dir, 'M2')).toBeUndefined();
+  });
+
+  it('withRunLockAsync holds the run lock while its async step runs, and releases it afterwards', async () => {
+    const runDir = path.join(tmp, 'run');
+    fs.mkdirSync(runDir);
+
+    const seen = await withRunLockAsync(runDir, 1_000, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(() => acquireRunLock(runDir, 50, 'qaspec catch')).toThrow(/another qaspec catch command holds its lock/);
+      return 'done';
+    });
+
+    expect(seen).toBe('done');
+    expect(fs.existsSync(path.join(runDir, '.lock'))).toBe(false);
+  });
+
+  it('projectDirInWorktree returns the worktree at a checkout root, or its project subfolder', () => {
+    const project = path.join(tmp, 'project');
+    const worktree = path.join(tmp, 'worktree');
+    fs.mkdirSync(project);
+    fs.mkdirSync(path.join(worktree, 'packages', 'app'), { recursive: true });
+
+    expect(projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: '' }))).toBe(worktree);
+    expect(projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: 'packages/app' }))).toBe(
+      path.join(worktree, 'packages', 'app')
+    );
+  });
+
+  it('projectDirInWorktree refuses a prefix that leaves the worktree, a missing worktree and a worktree inside the project', () => {
+    const project = path.join(tmp, 'project');
+    const worktree = path.join(tmp, 'worktree');
+    fs.mkdirSync(path.join(project, 'nested'), { recursive: true });
+    fs.mkdirSync(worktree);
+
+    expect(() => projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: '../escape' }))).toThrow(
+      /leaves the catch worktree/
+    );
+    expect(() => projectDirInWorktree(project, runWith('ready', { worktree: null, projectPrefix: '' }))).toThrow(
+      /has no worktree/
+    );
+    expect(() =>
+      projectDirInWorktree(project, runWith('ready', { worktree: path.join(tmp, 'gone'), projectPrefix: '' }))
+    ).toThrow(/is missing/);
+    expect(() =>
+      projectDirInWorktree(project, runWith('ready', { worktree: path.join(project, 'nested'), projectPrefix: '' }))
+    ).toThrow(/inside the project/);
   });
 });
