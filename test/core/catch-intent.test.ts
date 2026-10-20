@@ -121,6 +121,14 @@ describe('catch intent', () => {
       expect(readIntentClass(changeDir())).toEqual({ status: 'valid', intentClass: 'behavior-change' });
     });
 
+    it('reads the class when the label is written in bold', async () => {
+      await writeChange({ intent: '**Intent class:** refactor' });
+      expect(readIntentClass(changeDir())).toEqual({ status: 'valid', intentClass: 'refactor' });
+
+      await writeChange({ intent: '- **Intent class**: behavior-change' });
+      expect(readIntentClass(changeDir())).toEqual({ status: 'valid', intentClass: 'behavior-change' });
+    });
+
     it('reports a missing section when analysis.md has no Intent class heading', async () => {
       await write(
         path.join('qaspec', 'changes', CHANGE, 'analysis.md'),
@@ -190,6 +198,18 @@ describe('catch intent', () => {
             requirement: 'CSV export',
           },
         ],
+      });
+    });
+
+    it('rejects refactor when a delta spec file exists, even without requirements', async () => {
+      await writeChange({
+        intent: 'Intent class: refactor',
+        deltas: { 'billing-export': '## ADDED Requirements\n' },
+      });
+
+      expect(buildCatchIntent(root, CHANGE)).toMatchObject({
+        ok: false,
+        errors: [{ code: 'intent-class-contradiction', capability: 'billing-export' }],
       });
     });
 
