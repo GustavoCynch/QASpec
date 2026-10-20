@@ -349,6 +349,11 @@ function fail(change: string, errors: CatchIntentIssue[]): CatchIntentOutcome {
  * Builds the intent of a change from its approved analysis.md and delta specs. Read-only.
  * Returns the issues instead of an intent when the class is missing or invalid, or contradicts the deltas.
  */
+/** The command that approves the analysis again with the PR head, as catch needs it. */
+export function reapproveCommand(changeName: string): string {
+  return `qaspec approve analyze --change ${changeName} --head-sha <sha>`;
+}
+
 export function buildCatchIntent(projectRoot: string, changeName: string): CatchIntentOutcome {
   const changeDir = joinPlanningPath(projectRoot, 'changes', changeName);
   if (!fs.statSync(changeDir, { throwIfNoEntry: false })?.isDirectory()) {
@@ -359,13 +364,13 @@ export function buildCatchIntent(projectRoot: string, changeName: string): Catch
 
   const analysisPath = resolveAnalysisFile(changeDir);
   const analysisName = analysisPath ? path.basename(analysisPath) : 'analysis.md';
-  const approveHint = `Then approve the change again: qaspec approve analyze --change ${changeName}`;
+  const approveHint = `Then approve the change again: ${reapproveCommand(changeName)}`;
   const classRead = readIntentClass(changeDir);
 
   if (classRead.status === 'missing') {
     const message = analysisPath
       ? `${analysisName} has no "Intent class: <refactor | additive | behavior-change>" line under "## Intent class". Run /qsx:analyze to add exactly one value. ${approveHint}`
-      : `No analysis.md in the change. Run /qsx:analyze, then approve the change: qaspec approve analyze --change ${changeName}`;
+      : `No analysis.md in the change. Run /qsx:analyze, then approve the change: ${reapproveCommand(changeName)}`;
     return fail(changeName, [{ code: 'intent-class-missing', message }]);
   }
 
