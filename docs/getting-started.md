@@ -9,10 +9,10 @@ QASpec helps testers and engineers agree on **what to test and why** before exec
 **Default path (core profile)** — installed by `qaspec init`:
 
 ```text
-/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:archive
+/qsx:analyze ──► /qsx:cases ──► /qsx:publish ──► /qsx:execute ──► /qsx:archive
 ```
 
-The global **`core`** profile includes exactly four workflows: `analyze`, `cases`, `publish`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
+The global **`core`** profile includes exactly five workflows: `analyze`, `cases`, `publish`, `execute`, `archive`. QASpec installs matching **`qaspec-*` skills** and **`/qsx:*` commands** (see [Supported Tools](supported-tools.md)).
 
 Free-form investigation happens in normal chat or at the start of `/qsx:analyze` — no separate explore command is required.
 
@@ -91,6 +91,24 @@ You: /qsx:archive
 
 AI:  Finalizes the change (merge deltas, move to archive per schema).
 ```
+
+## Run the Cases with an Agent
+
+`/qsx:execute` runs the approved cases of a change in a real browser, through an agent, and reports only the application defects. It needs an approved change with valid cases (`qaspec validate cases` passes) and an agent tool that can launch a subagent for the judge.
+
+1. **Set the app under test.** The `qaspec/config.yaml` that `qaspec init` creates has a commented `execution` example. Uncomment it, set `app.url` and `app.readiness`, and keep the credential and session files out of git.
+2. **Log in, when the app needs a session.** Run `qaspec execute login`. It runs your login script with the credentials from a git-ignored dotenv file and saves the browser session, so the agent never receives the password.
+3. **Browser server.** When `execution` is set, `qaspec init` and `qaspec update` write the `qaspec-playwright` server to `.mcp.json` (Claude Code) and `.cursor/mcp.json` (Cursor). Other tools use the manual setup in [CLI](cli.md#browser-server-for-qsxexecute).
+4. **Run the cases.** In your AI tool, run `/qsx:execute <change>`.
+
+The run asks you for these:
+
+- **Readiness:** with `app.readiness: manual`, confirm once that the app serves the change's code.
+- **Findings:** each app defect is a sense-check question: what the case expects, what was observed, and whether that is intended.
+- **Needs-human steps:** a step that no check can express is listed for you to judge.
+- **TCMS:** one confirmation before any write to your TCMS.
+
+Run folders are stored in `qaspec/changes/<change>/runs/`. QASpec writes a `.gitignore` there that ignores everything, so captured app data and evidence stay out of git.
 
 ## CLI Alongside Slash Commands
 

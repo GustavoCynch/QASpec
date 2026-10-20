@@ -50,6 +50,18 @@ These commands support `--json` output for programmatic use by AI agents and scr
 | `qaspec execute login` | Save the browser session for `/qsx:execute` | `--json` for the session path and redacted script output |
 | `qaspec execute validate-plan` | Check an execution plan against its case in `testcases.md` | `--json` for the errors and the plan hash |
 | `qaspec execute check` | Evaluate captured observations and print the case verdict | `--json` for per-check results and the verdict |
+| `qaspec execute start` | Start a run for a change, when its gates pass | `--json` for the run id, state, data tag and readiness, or the blockers |
+| `qaspec execute confirm` | Confirm that the app serves the change's code (`manual` readiness) | `--json` for the run state and the confirmation time |
+| `qaspec execute plan` | Store the plan for one case before it runs | `--json` for the stored plan path and its SHA-256 |
+| `qaspec execute record` | Record one attempt's observations and verdict | `--json` for the attempt's verdict and outcome |
+| `qaspec execute finish` | Close a run as `completed` or `environment-noise` | `--json` for the final state and its reasons |
+| `qaspec execute status` | Show one run, or the runs of a change | `--json` for one run's attempts, evidence and TCMS mapping, or for the change's runs |
+| `qaspec execute triage-context` | Show the judge input for a case that needs triage | `--json` for the full judge input |
+| `qaspec execute triage` | Record the judge's classification of a case | `--json` for the classification and any finding it created |
+| `qaspec execute answer` | Record the answer to a finding | `--json` for the recorded answer and its time |
+| `qaspec execute results` | Build the TCMS results of a finished run | `--json` for the results payload |
+| `qaspec execute results-gate` | Check a finished run before any TCMS write | `--json` for the gate result and, when it passes, the token |
+| `qaspec execute tcms-map` | Record the TCMS id of a case title | `--json` for the stored mapping |
 | `qaspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
 | `qaspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
 | `qaspec workspace link` | Link a repo or folder | `--json` for structured link output |

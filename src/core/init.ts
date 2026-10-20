@@ -689,6 +689,7 @@ export class InitCommand {
       console.log('  /qsx:analyze                 Analysis (analysis.md)');
       console.log('  /qsx:cases                   Test cases (testcases.md)');
       console.log('  /qsx:publish                 Publish to your TCMS');
+      console.log('  /qsx:execute                 Run approved cases in a browser');
     } else {
       console.log("Done. Run 'qaspec config profile core' to enable QASpec workflows.");
     }

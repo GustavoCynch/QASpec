@@ -66,6 +66,15 @@ describe('showWelcomeScreen', () => {
     expect(output).toMatch(/Publish to your TCMS/i);
   });
 
+  it('lists /qsx:execute in the quick-start after publish', async () => {
+    setTty(false);
+    await showWelcomeScreen();
+
+    const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+    expect(output).toContain('/qsx:execute');
+    expect(output.indexOf('/qsx:execute')).toBeGreaterThan(output.indexOf('/qsx:publish'));
+  });
+
   it('does not write terminal redraw escape sequences to stdout', async () => {
     setTty(false);
     const stdoutWrites: string[] = [];

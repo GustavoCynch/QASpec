@@ -108,6 +108,16 @@ execution:
       expect(output).toMatch(/Publish to your TCMS/i);
     });
 
+    it('should list /qsx:execute in getting-started output after /qsx:publish', async () => {
+      const initCommand = new InitCommand({ tools: 'claude', force: true });
+
+      await initCommand.execute(testDir);
+
+      const output = vi.mocked(console.log).mock.calls.flat().join('\n');
+      expect(output).toContain('/qsx:execute');
+      expect(output.indexOf('/qsx:execute')).toBeGreaterThan(output.indexOf('/qsx:publish'));
+    });
+
     it('should create config.yaml with default schema', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
 
