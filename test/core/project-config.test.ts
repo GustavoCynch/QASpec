@@ -790,7 +790,7 @@ catch:
 
         expect(config?.execution).toEqual({ dataPrefix: 'QA-AGENT' });
         expect(config?.catch).toEqual({
-          runner: { command: 'npx jest', timeoutSeconds: 300 },
+          runner: { command: 'npx jest', timeoutSeconds: 900 },
           setup: { timeoutSeconds: 900 },
           gates: { parentRuns: 5, childRuns: 3 },
           judges: 3,

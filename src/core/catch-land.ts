@@ -109,18 +109,14 @@ export type RecordLandedOutcome =
   | { status: 'refused'; issues: CatchRecordIssue[] }
   | { status: 'recorded'; run: string; change: string; landed: Array<{ test: string; kind: CatchTestKind; path: string }> };
 
-/** The states before the classification: a run in one of them has no classified test to land. */
-const BEFORE_CLASSIFIED: readonly CatchRunState[] = [
-  'setting-up',
-  'ready',
-  'worktree-failed',
-  'setup-failed',
-  'child-setup-failed',
-];
+/**
+ * The states whose tests can land: the child phase classified them, and the run is not finished. An allowlist, so a
+ * state added later (a failure or an unfinished phase) is refused until it is named here.
+ */
+const LANDABLE_STATES: readonly CatchRunState[] = ['classified', 'assessed'];
 
-/** A run lands its tests from classified on, including any state added after it, until it is finished. */
 function landable(run: CatchRunRecord): boolean {
-  return run.state !== 'finished' && !BEFORE_CLASSIFIED.includes(run.state);
+  return LANDABLE_STATES.includes(run.state);
 }
 
 function stateIssue(run: CatchRunRecord): CatchRecordIssue {
