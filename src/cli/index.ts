@@ -56,6 +56,7 @@ import {
   executeTriageContextCommand,
   executeValidatePlanCommand,
 } from '../commands/execute.js';
+import { catchIntentCommand } from '../commands/catch.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -866,6 +867,28 @@ executeCmd
       }
     }
   );
+
+// Catch — support commands for /qsx:catch (catching tests generated from the approved change intent)
+const catchCmd = program
+  .command('catch')
+  .description('Generate catching tests for a PR from the approved change intent');
+
+catchCmd
+  .command('intent')
+  .description(
+    'Print the change intent (intent class and per-requirement map) from the approved analysis and delta specs (nothing is written)'
+  )
+  .requiredOption('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change: string; json?: boolean }) => {
+    try {
+      await catchIntentCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
 
 // Approve command — record phase approval in the change ledger
 const approveCmd = program

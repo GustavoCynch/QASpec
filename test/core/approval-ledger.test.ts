@@ -8,6 +8,7 @@ import {
   evaluateAnalyzeApproval,
   normalizeContentForHash,
   readApprovalRecord,
+  resolveAnalysisFile,
   writeApprovalRecord,
   toHashRelativePath,
 } from '../../src/core/approval-ledger.js';
@@ -174,6 +175,25 @@ describe('approval-ledger', () => {
 
       const { artifacts } = computeAnalyzeContentHash(changeDir);
       expect(artifacts[0].relativePath).toBe('analisis.md');
+    });
+  });
+
+  describe('resolveAnalysisFile', () => {
+    it('returns analysis.md when it exists, even if the legacy name also exists', async () => {
+      await fs.writeFile(path.join(changeDir, 'analysis.md'), '# Analysis\n', 'utf-8');
+      await fs.writeFile(path.join(changeDir, 'analisis.md'), 'legacy\n', 'utf-8');
+
+      expect(resolveAnalysisFile(changeDir)).toBe(path.join(changeDir, 'analysis.md'));
+    });
+
+    it('returns the legacy analisis.md when analysis.md is absent', async () => {
+      await fs.writeFile(path.join(changeDir, 'analisis.md'), 'legacy\n', 'utf-8');
+
+      expect(resolveAnalysisFile(changeDir)).toBe(path.join(changeDir, 'analisis.md'));
+    });
+
+    it('returns null when neither analysis file exists', () => {
+      expect(resolveAnalysisFile(changeDir)).toBeNull();
     });
   });
 });
