@@ -19,6 +19,20 @@ QASpec is designed to work **globally**, not tied to a single product or stack. 
 
 The workflow adapts to what you provide; the goal is always the same: align on *what* to test and *why* before running tests.
 
+## Workflow
+
+The core workflow runs these slash commands, in this order:
+
+| Command | Purpose |
+|---------|---------|
+| `/qsx:analyze` | Create `analysis.md` and change delta specs (risk, capabilities, dual review) |
+| `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
+| `/qsx:publish` | Publish approved cases to your TCMS (any MCP-backed provider) |
+| `/qsx:execute` | Run approved cases in a real browser, judge failures, and report results to your TCMS |
+| `/qsx:archive` | Finalize and archive the change |
+
+For syntax and halts, see [Commands](docs/commands.md) and [Workflows](docs/workflows.md).
+
 ## Test management (TCMS)
 
 **Today:** `/qsx:publish` uploads approved cases via MCP to whatever TCMS provider you configure — `provider` is an open string, so any MCP-backed TCMS works. Leaving `provider` unset is the generic default; set a concrete target per change with `qaspec tcms set`.

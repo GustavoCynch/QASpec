@@ -11,15 +11,15 @@ For each selected tool, QASpec can install:
 
 By default, QASpec uses the **`core`** profile:
 
-- `analyze`, `cases`, `publish`, `archive`
+- `analyze`, `cases`, `publish`, `execute`, `archive`
 
-Use `qaspec config profile` to select a **custom** subset of those four ids, then `qaspec update` to sync the project.
+Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
 
 QASpec installs `qaspec-*` skills and `/qsx:*` commands via `qaspec init` (not third-party upstream skill packs).
 
 ## Tool Directory Reference
 
-Patterns below use `<id>` as one of: `analyze`, `cases`, `publish`, `archive`.
+Patterns below use `<id>` as one of: `analyze`, `cases`, `publish`, `execute`, `archive`.
 
 | Tool (ID) | Skills path pattern | Command path pattern |
 |-----------|---------------------|----------------------|
@@ -72,8 +72,8 @@ qaspec init --profile core
 
 ## Workflow-Dependent Installation
 
-- **Core profile (default):** all four QASpec workflows
-- **Custom profile:** any subset of `analyze`, `cases`, `publish`, `archive`
+- **Core profile (default):** all five QASpec workflows
+- **Custom profile:** any subset of `analyze`, `cases`, `publish`, `execute`, `archive`
 
 Skill and command counts depend on profile and delivery (`skills`, `commands`, or `both`).
 
@@ -84,9 +84,14 @@ When selected by profile, QASpec generates:
 - `qaspec-analyze`
 - `qaspec-cases`
 - `qaspec-publish`
+- `qaspec-execute`
 - `qaspec-archive`
 
 Slash command frontmatter uses `/qsx:<id>` (e.g. `/qsx:analyze`). See [Commands](commands.md).
+
+## Browser server for `/qsx:execute`
+
+When `qaspec/config.yaml` has an `execution` block, the `qaspec-playwright` browser server is written automatically only for Claude Code (`.mcp.json`) and Cursor (`.cursor/mcp.json`); other tools use the manual setup in [CLI](cli.md#browser-server-for-qsxexecute).
 
 ## Related
 
