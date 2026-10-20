@@ -14,9 +14,10 @@ For workflow patterns, see [Workflows](workflows.md). For terminal commands, see
 | `/qsx:cases` | Create `testcases.md` covering the approved delta specs |
 | `/qsx:publish` | Publish approved cases to your **TCMS** (any MCP-backed provider) |
 | `/qsx:execute` | Run approved cases in a real browser, judge failures, and report results to your **TCMS** |
+| `/qsx:catch` | Generate catching tests for a PR from the approved analysis, run them on the PR head, and ask about each likely regression |
 | `/qsx:archive` | Finalize and archive the change |
 
-Workflow ids: `analyze`, `cases`, `publish`, `execute`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these five).
+Workflow ids: `analyze`, `cases`, `publish`, `execute`, `catch`, `archive`. Customize subsets with `qaspec config profile` (custom profile only selects among these six).
 
 Informal investigation happens in normal chat or at the start of `/qsx:analyze`.
 
@@ -131,6 +132,34 @@ Run the **approved** cases from `testcases.md` in a real browser, through the `q
 4. Halts once before any TCMS write, showing the results and the gate token from `qaspec execute results-gate`. After you confirm, it records the results in a TCMS run and matches cases by exact title.
 
 Credentials stay in a git-ignored file that the login script reads, so the agent never receives them, and run folders stay out of git.
+
+---
+
+## `/qsx:catch`
+
+Generate catching tests for a PR's code change from the approved analysis, run them on the parent and on the PR head, and ask about each likely regression.
+
+**Syntax:**
+
+```text
+/qsx:catch [change-name]
+```
+
+**Prerequisites:**
+
+- An approved analysis with an `Intent class` and the PR head (`qaspec approve analyze --head-sha <sha>`), or the degraded mode (`--without-analysis --head <sha>`), whose findings are marked low confidence
+- A `catch` block in `qaspec/config.yaml` with `runner.adapter: jest` and `runner.command`
+- A subagent-capable agent tool: the judges run in fresh subagents, and the command stops when none can be launched
+
+**What it does:**
+
+1. Starts a run with `qaspec catch start`. It refuses with every blocker and creates nothing when a gate fails.
+2. Writes risks, mutants and tests as files and records each one through the CLI, which decides every gate outcome.
+3. Runs the gated tests on the PR head with `qaspec catch child`, then assesses the reports and judges them.
+4. Asks one question per surviving finding: is the behavior intended?
+5. Offers the tests that pass on the head as one patch, after one confirmation. QASpec never commits.
+
+The run executes code that the agent wrote, with your permissions. See [CLI](cli.md#catch-commands) for every subcommand and the [trust statement](cli.md#trust-and-containment).
 
 ---
 

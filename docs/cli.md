@@ -12,6 +12,7 @@ The QASpec CLI (`qaspec`) provides terminal commands for project setup, validati
 | **Validation** | `validate` | Check changes and specs for issues |
 | **Lifecycle** | `archive` | Finalize completed changes |
 | **Workflow** | `status`, `instructions`, `templates`, `schemas` | Artifact-driven workflow support |
+| **Catch** | `catch intent`, `start`, `status`, `finish`, `context`, `risk`, `mutant`, `equivalence`, `test`, `child`, `assess`, `judge`, `report`, `answer`, `land`, `landed` | Catching tests for a PR from the approved analysis (`/qsx:catch`) |
 | **Schemas** | `schema init`, `schema fork`, `schema validate`, `schema which` | Create and manage custom workflows |
 | **Config** | `config` | View and modify settings |
 | **Utility** | `feedback`, `completion` | Feedback and shell integration |
@@ -62,6 +63,7 @@ These commands support `--json` output for programmatic use by AI agents and scr
 | `qaspec execute results` | Build the TCMS results of a finished run | `--json` for the results payload |
 | `qaspec execute results-gate` | Check a finished run before any TCMS write | `--json` for the gate result and, when it passes, the token |
 | `qaspec execute tcms-map` | Record the TCMS id of a case title | `--json` for the stored mapping |
+| `qaspec catch` (every subcommand) | Run one step of `/qsx:catch` | `--json` for the step's result or its blockers; see [Catch Commands](#catch-commands) |
 | `qaspec workspace setup --no-interactive` | Create a workspace with explicit inputs | `--json` for structured setup output |
 | `qaspec workspace list` | Browse known workspaces | `--json` for typed workspace objects |
 | `qaspec workspace link` | Link a repo or folder | `--json` for structured link output |
@@ -1143,6 +1145,516 @@ Available schemas:
     Custom workflow for this project
     Flow: research → proposal → tasks
 ```
+
+---
+
+## Catch Commands
+
+`qaspec catch` runs the steps of `/qsx:catch`. It writes catching tests for a PR from the change's approved analysis, runs them on the parent and on the PR head in a separate worktree, and turns each likely regression into one question. The agent writes risks, mutants, tests and judge verdicts as files. The CLI validates them, runs every gate and owns the run state, so the agent never decides a gate outcome. The workflow is in [Workflows](workflows.md#catch-tests-for-a-pr).
+
+Rules for every subcommand:
+
+- Each one accepts `--json`.
+- Text comes from files: `--input` takes a JSON file and `--note-file` a plain text file. Diffs, tests and application text never go on a command line.
+- A refusal lists every problem with its resolution, writes nothing and exits with code 1.
+- Every command that changes a run takes the run's lock, a `.lock` folder in the run folder, and waits up to 10 seconds for another command to release it. `status` reads without the lock.
+- A run id has the form `<UTC timestamp>-<six hex characters>`, such as `20261020T153000Z-3f9a1c`.
+
+### Order of the commands
+
+| Step | Command | Run state needed | Run state after |
+|------|---------|------------------|-----------------|
+| 1 | `catch intent` | none (no run) | none |
+| 2 | `catch start` | none | `ready` |
+| 3 | `catch context` | `ready` | `ready` |
+| 4 | `catch risk`, `catch mutant`, `catch equivalence`, `catch test` | `ready` | `ready` |
+| 5 | `catch child` | `ready` | `classified` |
+| 6 | `catch assess` | `classified` | `assessed` |
+| 7 | `catch judge`, `catch report`, `catch answer` | `assessed` (`answer`: a reported finding) | `assessed` |
+| 8 | `catch land`, `catch landed` | `classified` or `assessed` | unchanged |
+| any | `catch status` | any | unchanged |
+| any | `catch finish` | any | `finished` |
+
+### Run states
+
+| State | Meaning |
+|-------|---------|
+| `setting-up` | The worktree and `catch.setup` are running. A run that an interrupted command left here is closed with `finish`. |
+| `ready` | Parent phase: risks, mutants and tests can be recorded. |
+| `worktree-failed` | `git worktree add` failed and was rolled back. |
+| `setup-failed` | `catch.setup` failed at the parent. The worktree was removed. |
+| `child-running` | The child phase is moving the worktree to the head. Parent-phase commands refuse it. |
+| `child-failed` | A failure after the move to the head. Terminal; `finish` cleans it up. |
+| `child-setup-failed` | The reinstall on the head failed. Nothing is classified. |
+| `classified` | Every gated test has its action. The worktree stays at the head. |
+| `assessed` | Reports are assessed; judges and findings can follow. |
+| `finished` | The worktree is removed. The run folder stays. |
+
+### The run folder
+
+Each run lives in `qaspec/changes/<name>/catch/<run-id>/`. The `catch/` folder holds a `.gitignore` that contains `*`, so runs stay out of git.
+
+```
+run.json              state, mode, revisions, worktree and setup results (no output)
+intent.json           the intent (not written in degraded mode)
+diff.patch            the PR diff, from the parent to the head
+changed-files.json    changed files, repository-relative
+related-tests.json    existing tests related to the changes, cached on the parent
+setup-output.json     tails of the setup output, never printed
+ledger.jsonl          one line per stage
+risks/ mutants/ tests/ results/ judges/ runner-output/
+assessment.json       the assessed reports
+findings.json         findings in creation order (F1, F2, ...)
+findings.md           the same findings as questions
+land/ land.patch land.json    the landing (see catch land)
+```
+
+`ledger.jsonl` has one line per stage: `started`, `setup`, `worktree-failed`, `risk`, `mutant`, `equivalence`, `test`, `classified`, `child-setup-failed`, `rule-filtered`, `assessed`, `judged`, `judge-filtered`, `reported`, `confirmed`, `dismissed`, `landed` and `finished`. `catch status` counts them per stage.
+
+### `qaspec catch intent`
+
+```
+qaspec catch intent --change <name> [--json]
+```
+
+Prints the intent of a change: its intent class, and each requirement with its status (`preserved`, `added`, `modified`, `removed` or `renamed`) and its scenarios. It is read-only and checks no approval; `catch start` does. The intent comes from the change's `analysis.md` and the delta specs under `specs/`. Requirements that a delta leaves untouched come from `qaspec/specs/<capability>/spec.md`.
+
+An invalid intent exits with code 1 and lists each problem: a missing or invalid `Intent class`, or a delta that contradicts the class. Fix the analysis or its delta specs, then approve again with `qaspec approve analyze --change <name> --head-sha <sha>`. With `--json` a valid intent prints as:
+
+```json
+{
+  "schema": "qaspec.catch-intent/v1",
+  "change": "invoice-discount",
+  "intentClass": "behavior-change",
+  "capabilities": [
+    {
+      "name": "invoices",
+      "requirements": [
+        {
+          "name": "invoice-total",
+          "status": "modified",
+          "scenarios": [
+            {
+              "title": "Discount applied before tax",
+              "when": ["the order has a 10% discount"],
+              "then": ["the tax is computed on the discounted subtotal"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+An invalid intent prints `{ "schema", "change", "valid": false, "errors" }` instead.
+
+### `qaspec catch start`
+
+```
+qaspec catch start --change <name> [--base <ref>] [--without-analysis --head <sha>] [--json]
+```
+
+Starts a run. It checks every gate first and creates nothing unless all of them pass. It then creates a worktree at the parent (the merge-base of the base and the PR head) and runs `catch.setup` there.
+
+In analysis mode, the gates are:
+
+- the project is inside a git work tree, `catch.runner.adapter` and `catch.runner.command` are set, and a base comes from `--base` or `catch.baseRef`;
+- the analyze approval is valid and records a `headSha`;
+- the intent is valid (`catch intent` passes);
+- the parent differs from the head.
+
+Degraded mode (`--without-analysis --head <sha>`) skips the approval and the intent, requires `--head`, and marks the run `lowConfidence`. `--head` is refused in analysis mode.
+
+| Blocker | Resolution |
+|---------|------------|
+| Not inside a git work tree | Run from a project inside its git repository |
+| No `catch` block | Add `catch` with `runner.adapter` and `runner.command` |
+| No `runner.adapter` or no `runner.command` | Set them, for example `adapter: jest` and `command: npx jest` |
+| No base | Pass `--base <ref>` or set `catch.baseRef` |
+| Approval missing or stale | `qaspec approve analyze --change <name> --head-sha <sha>` |
+| Approval without `headSha` | Approve again with `--head-sha` |
+| `--head` in analysis mode | Remove `--head`, or add `--without-analysis` |
+| `--without-analysis` without `--head` | Pass `--head <sha>` |
+| Intent invalid | Fix the analysis or its delta specs, then approve again |
+| Revisions unresolved | Fetch the missing commit, or check `--base` |
+| Parent equals head | Check that `--base` is the branch the PR was opened from |
+
+The text output names the state, the mode, the base, head and parent revisions, and each setup command with its exit code or timeout and its duration. Setup output is never printed. A `setup-failed` run removes its worktree. With `--json` a started run prints `{ started, run, change, state, mode, lowConfidence, baseRef, baseSha, headSha, parentSha, projectPrefix, runDir, worktree, installedFor, setup, failure }`. A refusal prints `{ started: false, blockers: [{ code, message, resolve }] }`.
+
+**Exit:** 0 when the run is `ready`; 1 for a refusal, `setup-failed` or `worktree-failed`.
+
+### `qaspec catch status`
+
+```
+qaspec catch status --run <id> [--change <name>] [--json]
+qaspec catch status --change <name> [--json]
+```
+
+`--run` shows one run: its state, mode, revisions, worktree, setup results, failure, ledger count per stage, funnel and precision. `--change` narrows the lookup to that change. `--change` alone lists the runs of the change, one block per run.
+
+The funnel counts risks, mutants and tests by outcome, classified tests by action, assessed and judged reports, and reported findings with their answers. Precision is the confirmed findings over confirmed plus dismissed findings, and reads `none` until a finding is answered. With `--json`, `--run` adds `ledger`, `funnel` and `precision` to the run fields; `--change` prints `{ change, runs }`.
+
+**Exit:** 0; 1 when the run or the change is unknown.
+
+### `qaspec catch finish`
+
+```
+qaspec catch finish --run <id> [--json]
+```
+
+Removes the run's worktree and marks the run `finished`. The run folder stays. It works in any state, including failed and interrupted runs, and a second call changes nothing. A run with no recorded worktree gets a best-effort cleanup: a warning names what remains, and the ledger records `cleanup: manual`. Steps that record work refuse a finished run, except `catch answer`, which still records an answer to a finding.
+
+**Exit:** 0, also when the run was already finished; 1 when the run is unknown.
+
+### `qaspec catch context`
+
+```
+qaspec catch context --run <id> [--json]
+```
+
+Prints what the agent needs to write risks, mutants and tests for a `ready` run:
+
+- the intent: its class, and each requirement with its status and scenarios (none in degraded mode);
+- the changed files, relative to the project (files outside the project are dropped), and the path of the diff;
+- the existing tests related to the changed sources, listed once on the parent by the Jest adapter and cached in the run.
+
+**Exit:** 0; 1 when the run is not `ready`.
+
+### `qaspec catch risk`
+
+```
+qaspec catch risk --run <id> --input <file> [--json]
+```
+
+Records one risk (`R1`, `R2`, ...). In an analysis run, a risk names a `preserved`, `added` or `modified` requirement by name, and optionally one of its scenarios by title. A requirement name that two capabilities share is refused.
+
+```json
+{
+  "requirement": "invoice-total",
+  "scenario": "Discount applied before tax",
+  "summary": "A discount applied after tax would change the invoice total."
+}
+```
+
+In a degraded run, a risk names a changed file instead:
+
+```json
+{
+  "file": "src/billing/invoice.ts",
+  "summary": "The total is computed before the discount is applied."
+}
+```
+
+Unknown keys are refused. **Exit:** 0 when recorded; 1 when refused.
+
+### `qaspec catch mutant`
+
+```
+qaspec catch mutant --run <id> --input <file> [--json]
+```
+
+Records one mutant (`M1`, `M2`, ...) of a risk and runs its gates. The mutant replaces `original` with `replacement` once, in `file` of the parent. `original` must occur exactly once in the file, and `replacement` may be `""` to delete it. The file is restored, and its bytes are verified, after every run.
+
+```json
+{
+  "risk": "R1",
+  "file": "src/billing/invoice.ts",
+  "original": "return subtotal - discount;",
+  "replacement": "return subtotal;"
+}
+```
+
+The gates run in this order:
+
+1. **Equivalence by text.** The mutant differs from the parent only in comments or in spaces between tokens; line breaks still count. For other file types, only line endings and trailing whitespace are ignored. The result is `syntactic-equivalent`, and no test runs.
+2. **Baseline.** The related tests run once on the unmutated parent, and the result is cached for that source. When the baseline is not `pass`, every mutant of that source ends `baseline-not-passing`.
+3. **Related tests on the mutated parent.** A failure is `caught-by-existing`, a build error is `no-build`, and a timeout or runner error is `inconclusive`. A pass, a run that executes no test, or no related test at all is `surviving`.
+
+| Outcome | Meaning | Next step |
+|---------|---------|-----------|
+| `syntactic-equivalent` | Same code apart from comments or spacing | Discarded |
+| `baseline-not-passing` | The related tests do not pass without the mutant | Discarded |
+| `no-build` | The mutant does not build | Discarded |
+| `caught-by-existing` | An existing related test fails; `caughtBy` lists the failing files | Discarded |
+| `inconclusive` | Timeout or runner error | Never reported |
+| `surviving` | No existing test catches it | `catch equivalence` |
+| `judged-equivalent` | The judge found the mutant equivalent | Discarded |
+| `non-equivalent` | The judge found that the mutant changes behavior | Eligible for a catching test |
+
+**Exit:** 0 when recorded, whatever its outcome; 1 when refused, in which case nothing is recorded.
+
+### `qaspec catch equivalence`
+
+```
+qaspec catch equivalence --run <id> --mutant <id> --input <file> [--json]
+```
+
+Records the verdict of a fresh-context judge on one `surviving` mutant, once.
+
+```json
+{
+  "equivalent": false,
+  "rationale": "The total ignores the discount, which the scenario requires."
+}
+```
+
+`equivalent: true` makes the mutant `judged-equivalent` and discards it. `false` makes it `non-equivalent`, which allows a catching test. **Exit:** 0 when recorded; 1 when refused (not surviving, already judged, or unknown mutant).
+
+### `qaspec catch test`
+
+```
+qaspec catch test --run <id> --input <file> [--json]
+```
+
+Records one test and runs its parent gates. The test path must be a new file inside the project: it must not exist on the parent. The content is stored in the run folder, written into the worktree before each run, and removed after it.
+
+| `kind` | Fields | Allowed in | Purpose |
+|--------|--------|------------|---------|
+| `catching` | `mutant`, `path`, `content` | Both modes | Catches a non-equivalent mutant |
+| `functionality` | `requirement`, `scenario` (optional), `path`, `content` | Analysis runs | Checks an added or modified requirement |
+| `dodgy-diff` | `path`, `content` | Degraded runs | Hardening test for a changed file |
+
+```json
+{
+  "kind": "catching",
+  "mutant": "M1",
+  "path": "src/billing/invoice.spec.ts",
+  "content": "it('applies the discount before tax', () => { /* ... */ });"
+}
+```
+
+The gates:
+
+- **`catching`** needs a `non-equivalent` mutant. The test must pass in each of the `catch.gates.parentRuns` runs on the parent, then fail on the parent with the mutant applied. A run that executes no test does not count as a pass. Outcomes: `gated`, `parent-not-passing` (every parent run fails the same way), `flaky-parent` (the parent runs disagree), `not-caught-by-test` (the mutated parent passes, executes no test or does not build), and `inconclusive` (timeout or runner error).
+- **`functionality`** and **`dodgy-diff`** record their parent outcome once, without a gate: `gated`, or `inconclusive` on a timeout or runner error.
+
+Only `gated` tests go to `catch child`. A test path that Jest does not match runs no test there, and `catch child` discards it as vacuous. **Exit:** 0 when recorded, whatever its outcome; 1 when refused.
+
+### `qaspec catch child`
+
+```
+qaspec catch child --run <id> [--json]
+```
+
+Runs every gated test on the PR head and classifies it. The worktree moves to the head once. Setup runs again only when `catch.setup.reinstallWhenChanged` lists a path that differs between the parent and the head; with an empty list, setup runs on every switch. Each gated test runs `catch.gates.childRuns` times on the head.
+
+Four rules discard a test before the table applies:
+
+- a timeout or runner error in any run is `inconclusive`;
+- runs that disagree are `flaky`;
+- no test executed on either side is `vacuous`;
+- a test path that already exists on the head is not run there, so it is `inconclusive`.
+
+Then the table of S5 classifies the test:
+
+| Parent | Child | Action |
+|--------|-------|--------|
+| pass | pass | land |
+| pass | fail | report |
+| fail | pass | land |
+| no build | pass | land |
+| no build | fail | report |
+| any | no build | signal |
+| fail | fail | discard |
+
+The worktree stays at the head for landing, and the run becomes `classified`. When the reinstall on the head fails, the run becomes `child-setup-failed`, nothing is classified, and the setup output stays in the run folder. With `--json` a classified run prints `{ status: "classified", run, change, state, installedFor, results }`, where each result has `test`, `kind`, `parent`, `child` (one outcome per child run), `action` and, when present, `reason` and `detail`.
+
+**Exit:** 0 when classified; 1 when refused or when `child-setup-failed`.
+
+### `qaspec catch assess`
+
+```
+qaspec catch assess --run <id> [--json]
+```
+
+Assesses the reports of a `classified` run, once. A report is a test with action `report`. Each report is checked in this order:
+
+1. **Generic rules**, in a fixed order, discard it as `rule-filtered`: `generic-environment` (connection refused, server down), `generic-module` (a module or import error that names the test file), `generic-mock` (a mock or spy used wrongly), `generic-stub` (a not-implemented stub), `generic-call-count` (a call-count expectation) and `generic-order` (an order-only difference between two collections).
+2. **Project rules** from `catch.rulesFile`, in file order. A matching `false-positive` rule discards it as `rule-filtered`, with the rule id.
+3. Otherwise the report is `kept`, with intent signals: `unexpected-for-intent` (it names a preserved requirement, or the class is `refactor`), `possibly-intended` (a modified requirement), `low-confidence` (degraded run) and `true-positive:<id>` for each matching `true-positive` rule.
+
+A kept report then goes to the judges. The output lists each report with its outcome, rule and signals. **Exit:** 0 when assessed; 1 when refused, which covers a run that is not `classified` and a `catch.rulesFile` that is missing or invalid. A refusal changes nothing.
+
+### `qaspec catch judge`
+
+```
+qaspec catch judge --run <id> --test <id> --input <file> [--json]
+```
+
+Records the verdicts of the judges on one kept report, once. The file lists exactly `catch.judges` verdicts with distinct judge names:
+
+```json
+{
+  "verdicts": [
+    { "judge": "judge-1", "keep": false, "confidence": "high", "rationale": "The failure comes from a fixture that this change does not touch." },
+    { "judge": "judge-2", "keep": false, "confidence": "medium", "rationale": "The assertion depends on the order of an unordered list." },
+    { "judge": "judge-3", "keep": true, "confidence": "high", "rationale": "The total changes for a valid order." }
+  ]
+}
+```
+
+Each verdict scores: keep is +1; a discard with low confidence is +0.5; a discard with medium confidence is -0.5; a discard with high confidence is -1. The median of the scores decides. A median below zero discards the report (`judge-filtered`). The example scores -1, -0.5 and +1, so its median is -0.5 and the report is discarded. Judges can only discard: they never add a report or change its signals. **Exit:** 0 when recorded, whether kept or discarded; 1 when refused.
+
+### `qaspec catch report`
+
+```
+qaspec catch report --run <id> --test <id> --input <file> [--json]
+```
+
+Records the finding of one kept report, once. The input holds what the parent did and what the head does, written from the failure evidence. Each text is at most 1000 characters:
+
+```json
+{
+  "before": "The total subtracted the discount after tax.",
+  "after": "The total subtracts the discount before tax."
+}
+```
+
+The CLI composes the question and writes `findings.json` and `findings.md`:
+
+```text
+Before: <before>. Now: <after>. The scenario says: <THEN lines of the risk's scenario, or "no scenario covers it">. Is this intended?
+```
+
+**Exit:** 0 when recorded; 1 when refused. A refusal covers a run that is not `assessed`, a report that the judges did not keep, and a report that already has a finding.
+
+### `qaspec catch answer`
+
+```
+qaspec catch answer --run <id> --finding <id> --intended yes|no [--note-file <file>] [--json]
+```
+
+Records the answer to one finding, once. `--intended yes` (the behavior is intended) dismisses the finding. `--intended no` (it is not) confirms it. The optional note comes from a UTF-8 text file of at most 64 KB, and `--note-file` is the only way to pass one. Each answer records `secondsToAnswer`, the time from the report to the answer. **Exit:** 0 when recorded; 1 when refused (unknown finding, already answered, or invalid note).
+
+### `qaspec catch land`
+
+```
+qaspec catch land --run <id> [--json]
+```
+
+Prepares the landing of a `classified` or `assessed` run. It copies every test classified `land` into `land/<path>` and writes `land.patch`, a patch that adds those files against the PR head with repository-relative paths, plus `land.json`. A test whose path already exists on the head is refused and listed; the others still land. The checkout is not touched.
+
+To apply the patch, check that your checkout is at the PR head. Then run these from the repository root:
+
+```
+git apply --check qaspec/changes/<name>/catch/<run-id>/land.patch
+git apply qaspec/changes/<name>/catch/<run-id>/land.patch
+```
+
+Then record the landing with `qaspec catch landed --run <id>`. Run `git apply` from the repository root only: from a subfolder it exits 0 and silently skips paths. QASpec never commits.
+
+**Exit:** 0 when prepared, including when no test lands or some tests were refused; 1 when the run cannot land (not classified or assessed, or finished).
+
+### `qaspec catch landed`
+
+```
+qaspec catch landed --run <id> [--json]
+```
+
+Records the landing once, after the patch was applied: one `landed` ledger line per prepared test. It is refused when `land` was not run, when it prepared no test, when the run is finished, or when a landing is already recorded. It never writes to the checkout. **Exit:** 0 when recorded; 1 when refused.
+
+### The `catch` block
+
+`qaspec/config.yaml` holds every project value. The seed that `qaspec init` writes has the block commented out: uncomment it and edit it. Paths are relative to the project root. An invalid value is reported with a warning that names its field, and the field then takes its default, or stays unset when it has none.
+
+```yaml
+catch:
+  baseRef: origin/main
+  setup:
+    commands:
+      - npm ci
+    reinstallWhenChanged:
+      - package-lock.json
+    timeoutSeconds: 900
+  runner:
+    adapter: jest
+    command: npx jest
+    timeoutSeconds: 900
+  env:
+    inherit:
+      - CI
+    set:
+      TZ: UTC
+  gates:
+    parentRuns: 5
+    childRuns: 3
+  judges: 3
+  rulesFile: qaspec/references/catch-rules.yaml
+```
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `baseRef` | none | The branch the PR was opened from. Required unless `--base` is given. No whitespace, and it must not start with `-`. |
+| `setup.commands` | none | Install commands, run in order in the worktree. Each one must be idempotent (see below). |
+| `setup.reinstallWhenChanged` | none | Project-relative paths. Setup runs again on the head only when one of them differs from the parent. With none listed, setup runs on every switch to the head. |
+| `setup.timeoutSeconds` | 900 | Timeout for each setup command. |
+| `runner.adapter` | none | The test runner. Only `jest`. Required. |
+| `runner.command` | none | The base test command. The adapter appends Jest's arguments to it, for example `npx jest` or `npm test --`. Required. |
+| `runner.timeoutSeconds` | 900 | Timeout for each test run. |
+| `env.inherit` | none | Variable names to pass to child processes, on top of the built-in allowlist. |
+| `env.set` | none | Explicit values for child processes. They win over inherited values. |
+| `gates.parentRuns` | 5 | Passing runs a catching test needs on the parent, from 1 to 20. |
+| `gates.childRuns` | 3 | Runs of each gated test on the head, from 1 to 20. Every run must give the same outcome. |
+| `judges` | 3 | Fresh-context judges per kept report. An odd number from 1 to 9. |
+| `rulesFile` | none | Project-relative path of the assessor rules file (see below). |
+
+The built-in allowlist is `PATH`, `HOME`, `USERPROFILE`, `TMPDIR`, `TEMP`, `TMP`, `LANG`, `LC_ALL`, `SystemRoot`, `ComSpec` and `PATHEXT`. Each child process receives only these, the `env.inherit` names that are set in your environment, and the `env.set` values.
+
+Keep secrets out of `env.set`, because its values are written in the config file. Name the variable in `env.inherit` instead.
+
+**Setup commands must be idempotent.** A command can run again on a worktree that already has its output: with `reinstallWhenChanged` empty, every switch to the head runs setup again. `npm ci` is idempotent, because it replaces `node_modules`. A step such as `ln -s` is not: a second run fails or nests the link.
+
+### The rules file
+
+`catch.rulesFile` points to a YAML file with project rules for the assessor. The seed path is `qaspec/references/catch-rules.yaml`, and the example below is the content of that file. QASpec does not create the file. Without `rulesFile`, only the generic rules run. A configured file that is missing or invalid refuses `qaspec catch assess`.
+
+```yaml
+# qaspec/references/catch-rules.yaml
+rules:
+  - id: snapshot-whitespace
+    kind: false-positive
+    match:
+      failure: "Snapshot .* does not match"
+      file: "src/**/*.spec.ts"
+    reason: "Snapshot whitespace differences are formatting, not behavior."
+  - id: modified-export-scenario
+    kind: true-positive
+    match:
+      requirementStatus: [modified]
+      intentClass: [behavior-change]
+    reason: "A report on a modified requirement of a behavior change needs a closer look."
+```
+
+| Field | Rule |
+|-------|------|
+| `id` | Lowercase letters, digits and dashes. Unique. The prefix `generic-` is reserved. |
+| `kind` | `false-positive` discards a matching report. `true-positive` never discards; it adds the signal `true-positive:<id>`. |
+| `match` | At least one of: `failure` (a regular expression matched against each failure message), `file` (a glob matched against the project-relative path of the failing test: `*` is one folder, `**` any folders, `?` one character), `requirementStatus` (`preserved`, `added`, `modified`, `removed` or `renamed`), `intentClass` (`refactor`, `additive` or `behavior-change`). |
+| `reason` | Why the rule applies. Shown with the discard. |
+
+Unknown keys are refused, and the file may be at most 64 KB. A `false-positive` rule with `failure` discards a report only when every failure message matches. A regular expression that cannot be evaluated (a message over 10,000 characters, or a match that runs past one second) does not match, and the assessment lists the rule as not evaluated.
+
+### Trust and containment
+
+Mutants and generated tests are code that the agent writes. The adopter's test runner runs them with your permissions. That is the same trust as running the PR's tests locally.
+
+| Control | What it does |
+|---------|--------------|
+| Worktree outside the project | Setup, mutant and test commands run in a git worktree under the system temporary folder (`qaspec-catch/`), never in your checkout, which is not changed. |
+| Environment allowlist | Child processes get only the built-in allowlist, the `env.inherit` names set in your environment, and the `env.set` values. Tokens such as `GH_TOKEN` or `NPM_TOKEN` are passed only when you list them. |
+| Timeouts | Setup and test commands have `timeoutSeconds` each, and git calls have 120 seconds. Setup and test processes run in their own process group: on timeout the group gets SIGTERM, then SIGKILL two seconds later. |
+| Git hooks disabled | Every git call runs with an empty hooks folder. Hooks committed in the PR, or written by setup, do not run. |
+
+There is **no network sandbox and no filesystem sandbox**. The code can read and write what your account can, and it can reach the network. Run `/qsx:catch` only on PRs whose tests you would run locally.
+
+### Known limits
+
+- **Sessions that escape the group.** A child process that starts its own session or process group, for example a daemon started by a test, survives the timeout kill. `qaspec` forwards only SIGINT, SIGTERM and SIGHUP to the processes it runs. A SIGKILL of `qaspec` itself stops none of them.
+- **Comment scanner.** The equivalence check strips comments with a scanner for TypeScript and JavaScript. It reads `//` inside JSX text as a comment, and it cannot tell a regular expression that follows `)` from a division. A mutant that changes such text can be discarded as `syntactic-equivalent`. The effect is a missed catch, never a false finding.
+- **Jest only.** `runner.adapter` accepts `jest`. The configured command must accept Jest's arguments. A test path that Jest's `testMatch` does not match runs no test, and it is discarded as vacuous.
+- **Large related-test sets take minutes.** Every mutant runs its related test files. In a smoke run on a real project, 234 related tests took 503 to 576 seconds. When runs end `inconclusive` on timeouts, raise `runner.timeoutSeconds`.
+- **Degraded mode has no intent.** Without an approved analysis there is no intended behavior to compare with, so every finding is marked low confidence.
 
 ---
 

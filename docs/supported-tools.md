@@ -11,15 +11,15 @@ For each selected tool, QASpec can install:
 
 By default, QASpec uses the **`core`** profile:
 
-- `analyze`, `cases`, `publish`, `execute`, `archive`
+- `analyze`, `cases`, `publish`, `execute`, `catch`, `archive`
 
-Use `qaspec config profile` to select a **custom** subset of those five ids, then `qaspec update` to sync the project.
+Use `qaspec config profile` to select a **custom** subset of those six ids, then `qaspec update` to sync the project.
 
 QASpec installs `qaspec-*` skills and `/qsx:*` commands via `qaspec init` (not third-party upstream skill packs).
 
 ## Tool Directory Reference
 
-Patterns below use `<id>` as one of: `analyze`, `cases`, `publish`, `execute`, `archive`.
+Patterns below use `<id>` as one of: `analyze`, `cases`, `publish`, `execute`, `catch`, `archive`.
 
 | Tool (ID) | Skills path pattern | Command path pattern |
 |-----------|---------------------|----------------------|
@@ -72,8 +72,8 @@ qaspec init --profile core
 
 ## Workflow-Dependent Installation
 
-- **Core profile (default):** all five QASpec workflows
-- **Custom profile:** any subset of `analyze`, `cases`, `publish`, `execute`, `archive`
+- **Core profile (default):** all six QASpec workflows
+- **Custom profile:** any subset of `analyze`, `cases`, `publish`, `execute`, `catch`, `archive`
 
 Skill and command counts depend on profile and delivery (`skills`, `commands`, or `both`).
 
@@ -85,9 +85,12 @@ When selected by profile, QASpec generates:
 - `qaspec-cases`
 - `qaspec-publish`
 - `qaspec-execute`
+- `qaspec-catch`
 - `qaspec-archive`
 
 Slash command frontmatter uses `/qsx:<id>` (e.g. `/qsx:analyze`). See [Commands](commands.md).
+
+`/qsx:execute` and `/qsx:catch` run their judges in fresh-context subagents. A tool that cannot launch a subagent stops before judging, so use one of the tools that can launch subagents for these two workflows.
 
 ## Browser server for `/qsx:execute`
 
