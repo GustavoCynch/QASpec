@@ -170,6 +170,8 @@ export interface FinishCatchRunInput {
 export interface FinishCatchRunOutcome {
   run: CatchRunRecord;
   alreadyFinished: boolean;
+  /** Set when a run without a recorded worktree finished but a leftover folder could not be cleaned up. */
+  warning?: string;
 }
 
 /** The checked inputs of a start: every value start needs, all present and consistent. */
@@ -715,11 +717,22 @@ export async function finishCatchRun(input: FinishCatchRunInput): Promise<Finish
     if (current.state === 'finished') {
       return { run: current, alreadyFinished: true };
     }
-    // The recorded worktree, or the folder this run would have used when run.json never recorded one (a run.json write
-    // that failed after worktree add, or an interrupted add). removeCatchWorktree removes it only when it is this
-    // project's catch worktree, and removes the catch folders that are left empty in any case.
-    const worktree = current.worktree ?? catchWorktreePath(input.projectRoot, input.runId);
-    await removeCatchWorktree(input.projectRoot, worktree);
+    // A recorded worktree must be removed before the run is finished. Without one, the folder this run would have used
+    // (a run.json write that failed after worktree add, or an interrupted add) is cleaned up on a best-effort basis:
+    // removeCatchWorktree removes it only when it is this project's catch worktree, and a folder it refuses must not
+    // keep the run from finishing, so it is reported for manual removal instead.
+    let warning: string | undefined;
+    if (current.worktree) {
+      await removeCatchWorktree(input.projectRoot, current.worktree);
+    } else {
+      const expected = catchWorktreePath(input.projectRoot, input.runId);
+      try {
+        await removeCatchWorktree(input.projectRoot, expected);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        warning = `Could not clean up ${expected}: ${reason} Remove it by hand if it is still there.`;
+      }
+    }
     const finishedAt = nowIso();
     const finished: CatchRunRecord = {
       ...current,
@@ -730,8 +743,8 @@ export async function finishCatchRun(input: FinishCatchRunInput): Promise<Finish
       updatedAt: finishedAt,
     };
     writeRunRecord(location.runDir, finished);
-    appendLedgerEntry(location.runDir, { stage: 'finished', at: finishedAt });
-    return { run: finished, alreadyFinished: false };
+    appendLedgerEntry(location.runDir, { stage: 'finished', at: finishedAt, ...(warning ? { cleanup: 'manual' } : {}) });
+    return { run: finished, alreadyFinished: false, ...(warning ? { warning } : {}) };
   });
 }
 

@@ -811,6 +811,44 @@ describe('catch finish', () => {
     expect(fs.existsSync(path.join(tmp, 'qaspec-catch'))).toBe(false);
   });
 
+  it('finishes a run with no recorded worktree when a stray folder blocks cleanup, and warns with its path', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    let stray = '';
+    vi.mocked(createCatchWorktree).mockImplementationOnce(async (_root, runId) => {
+      // An interrupted worktree add whose rollback did not finish: a plain folder at the run's worktree path.
+      stray = path.join(catchRootOf(fx.project), runId);
+      fs.mkdirSync(stray, { recursive: true, mode: 0o700 });
+      fs.chmodSync(catchRootOf(fx.project), 0o700);
+      fs.chmodSync(path.dirname(catchRootOf(fx.project)), 0o700);
+      fs.writeFileSync(path.join(stray, 'partial.txt'), 'partial');
+      throw new Error('worktree add interrupted');
+    });
+    const { run } = startedOf(await startCatchRun(startInput(fx)));
+    expect(run).toMatchObject({ state: 'worktree-failed', worktree: null });
+
+    const outcome = await finishCatchRun(finishInput(fx, run.runId));
+
+    expect(outcome.run.state).toBe('finished');
+    expect(outcome.warning).toContain(stray);
+    expect(fs.existsSync(stray)).toBe(true);
+  });
+
+  it('finishes a run that failed before any catch folder existed, without a warning', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    vi.mocked(createCatchWorktree).mockRejectedValueOnce(new Error('worktree add refused'));
+    const { run } = startedOf(await startCatchRun(startInput(fx)));
+    expect(fs.existsSync(path.join(tmp, 'qaspec-catch'))).toBe(false);
+
+    const outcome = await finishCatchRun(finishInput(fx, run.runId));
+
+    expect(outcome).toMatchObject({ alreadyFinished: false, run: { state: 'finished' } });
+    expect(outcome.warning).toBeUndefined();
+    expect(fs.existsSync(path.join(tmp, 'qaspec-catch'))).toBe(false);
+    expect(worktreesOf(fx.repo)).toHaveLength(1);
+  });
+
   it('finish of a run whose folder was deleted keeps the record of an unrelated worktree whose folder is missing', async () => {
     const fx = makeRepo();
     approve(fx, writeChange(fx));

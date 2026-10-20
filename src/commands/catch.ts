@@ -329,19 +329,26 @@ export async function catchStatusCommand(options: CatchStatusCommandOptions): Pr
 /** Removes the run's worktree and marks the run finished. A second call reports it is already finished. */
 export async function catchFinishCommand(options: CatchFinishCommandOptions): Promise<void> {
   const planningHome = repositoryHome();
-  const { run, alreadyFinished } = await finishCatchRun({
+  const { run, alreadyFinished, warning } = await finishCatchRun({
     projectRoot: planningHome.root,
     changesDir: planningHome.changesDir,
     runId: options.run,
   });
   if (options.json) {
     console.log(
-      JSON.stringify({ run: run.runId, change: run.change, state: run.state, alreadyFinished }, null, 2)
+      JSON.stringify(
+        { run: run.runId, change: run.change, state: run.state, alreadyFinished, ...(warning ? { warning } : {}) },
+        null,
+        2
+      )
     );
   } else if (alreadyFinished) {
     console.log(`Catch run ${run.runId} is already finished`);
   } else {
     console.log(chalk.green(`✓ Catch run ${run.runId} finished`));
+    if (warning) {
+      console.error(chalk.yellow(`Warning: ${warning}`));
+    }
   }
 }
 
