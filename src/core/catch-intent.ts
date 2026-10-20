@@ -72,7 +72,8 @@ export type CatchIntentOutcome =
   | { ok: false; change: string; errors: CatchIntentIssue[] };
 
 const INTENT_CLASS_HEADING = /^##\s+Intent class\s*$/i;
-const INTENT_CLASS_LINE = /^\s*(?:[-*]\s+)?Intent class:(.*)$/i;
+// The label may be plain or bold: "Intent class:", "**Intent class:**" or "**Intent class**:".
+const INTENT_CLASS_LINE = /^\s*(?:[-*]\s+)?(?:\*\*Intent class:\*\*|\*\*Intent class\*\*:|Intent class:)(.*)$/i;
 const AFFECTED_CAPABILITIES_HEADING = /^##\s+Affected capabilities\s*$/i;
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NO_CAPABILITY_TOKEN = 'none';
@@ -377,7 +378,21 @@ export function buildCatchIntent(projectRoot: string, changeName: string): Catch
   }
 
   const deltas = readDeltas(changeDir);
-  const contradictions = checkConsistency(classRead.intentClass, deltaEntries(deltas));
+  const entries = deltaEntries(deltas);
+  const contradictions = checkConsistency(classRead.intentClass, entries);
+  if (classRead.intentClass === 'refactor') {
+    // A refactor has no delta specs at all, so a delta spec file without requirements contradicts it too.
+    const withEntries = new Set(entries.map((entry) => entry.capability));
+    for (const capability of deltas.keys()) {
+      if (!withEntries.has(capability)) {
+        contradictions.push({
+          code: 'intent-class-contradiction',
+          message: `Intent class "refactor" allows no delta specs, but specs/${capability}/spec.md exists. Remove it, or set the class to additive or behavior-change.`,
+          capability,
+        });
+      }
+    }
+  }
   if (contradictions.length > 0) {
     return fail(changeName, contradictions.map((issue) => ({ ...issue, message: `${issue.message} ${approveHint}` })));
   }
