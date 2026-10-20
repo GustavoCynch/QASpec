@@ -320,6 +320,26 @@ describe('catch intent', () => {
       expect(outcome.errors[0].message).toContain('refactoring');
     });
 
+    it('names the one re-approval command, with the PR head, in every intent error', async () => {
+      await writeChange({ intent: 'Intent class: refactoring' });
+      const invalid = buildCatchIntent(root, CHANGE);
+
+      await writeChange({
+        intent: 'Intent class: refactor',
+        deltas: { 'billing-export': deltaSpec({ added: [requirement('CSV export')] }) },
+      });
+      const contradicted = buildCatchIntent(root, CHANGE);
+
+      for (const outcome of [invalid, contradicted]) {
+        expect(outcome.ok).toBe(false);
+        if (!outcome.ok) {
+          for (const error of outcome.errors) {
+            expect(error.message).toContain(`qaspec approve analyze --change ${CHANGE} --head-sha <sha>`);
+          }
+        }
+      }
+    });
+
     it('reports a change that does not exist', () => {
       expect(buildCatchIntent(root, 'missing-change')).toMatchObject({
         ok: false,

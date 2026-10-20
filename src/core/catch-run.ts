@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFi
 import path from 'node:path';
 import type { ResolvedCatchConfig } from './catch-config.js';
 import { evaluateAnalyzeApproval } from './approval-ledger.js';
-import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent } from './catch-intent.js';
+import { buildCatchIntent, CATCH_INTENT_SCHEMA, reapproveCommand, type CatchIntent } from './catch-intent.js';
 import {
   assertCatchWorktree,
   catchWorktreePath,
@@ -195,10 +195,6 @@ function errorText(error: unknown): string {
 const jsonText = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
 const short = (sha: string): string => sha.slice(0, 12);
-
-/** The command the person runs to approve the analysis again with the PR head. */
-const approveCommand = (changeName: string): string =>
-  `qaspec approve analyze --change ${changeName} --head-sha <sha>`;
 
 /** Change names of a changes folder. A private copy of execution-run's listing: that one is not exported. */
 function listChangeNames(changesDir: string): string[] {
@@ -483,19 +479,19 @@ async function checkStart(input: StartCatchRunInput): Promise<GateOutcome> {
       blockers.push({
         code: 'approval-missing',
         message: 'Analyze phase has not been approved',
-        resolve: `Approve the analysis with its PR head: ${approveCommand(changeName)}`,
+        resolve: `Approve the analysis with its PR head: ${reapproveCommand(changeName)}`,
       });
     } else if (approval.state === 'stale') {
       blockers.push({
         code: 'approval-stale',
         message: 'Approval is stale: Analyze artifacts changed since approval',
-        resolve: `Re-run /qsx:analyze halt and approve again: ${approveCommand(changeName)}`,
+        resolve: `Re-run /qsx:analyze halt and approve again: ${reapproveCommand(changeName)}`,
       });
     } else if (approval.record?.headSha === undefined) {
       blockers.push({
         code: 'head-sha-missing',
         message: 'The analyze approval has no headSha, so the PR head to catch is unknown',
-        resolve: `Approve again with the PR head: ${approveCommand(changeName)}`,
+        resolve: `Approve again with the PR head: ${reapproveCommand(changeName)}`,
       });
     } else {
       headSha = approval.record.headSha;
@@ -509,7 +505,7 @@ async function checkStart(input: StartCatchRunInput): Promise<GateOutcome> {
         blockers.push({
           code: issue.code,
           message: issue.message,
-          resolve: `Fix the analysis or its delta specs, then approve again: ${approveCommand(changeName)}`,
+          resolve: `Fix the analysis or its delta specs, then approve again: ${reapproveCommand(changeName)}`,
         });
       }
     }
