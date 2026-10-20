@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
-import { CatchConfigSchema, parseCatchConfig } from './catch-config.js';
+import { CatchConfigSchema, parseCatchConfig, type ResolvedCatchConfig } from './catch-config.js';
 import { ExecutionConfigSchema, parseExecutionConfig } from './execution-config.js';
 import { formatPlanningRelativePath, joinPlanningPath } from './planning-dir.js';
 
@@ -74,7 +74,8 @@ export const ProjectConfigSchema = z.object({
   catch: CatchConfigSchema.optional(),
 });
 
-export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
+// The catch block is read with its defaults applied (parseCatchConfig), so its resolved type is exposed.
+export type ProjectConfig = Omit<z.infer<typeof ProjectConfigSchema>, 'catch'> & { catch?: ResolvedCatchConfig };
 
 const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit
 
