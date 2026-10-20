@@ -13,11 +13,10 @@ import path from 'node:path';
 import { parseTestcaseDetails, type TestcaseDetail } from './cases-validation.js';
 import type { ExecutionIssue } from './execution-plan.js';
 import {
+  EXECUTE_COMMAND,
   listAttemptEvidence,
   readRun,
   testcaseTitle,
-  withRunLock,
-  writeFileAtomic,
   writeRun,
   type CaseRecord,
   type CaseStatus,
@@ -26,6 +25,7 @@ import {
   type RunRecord,
   type RunState,
 } from './execution-run.js';
+import { withRunLock, writeFileAtomic } from './run-store.js';
 import { findingsByCase, readJudgements, type Classification, type Finding, type Judgement } from './execution-triage.js';
 import { resolveTcmsTarget, type TcmsTarget } from './tcms-target.js';
 
@@ -344,7 +344,7 @@ export function runResultsGate(location: RunLocation, projectRoot: string): Resu
     const gate: ResultsGateRecord = { token, resultsSha256, storedAt: new Date().toISOString() };
     writeRun(location.runDir, { ...run, resultsGate: gate });
     return { passed: true, token, failures: [], tcms: target.target };
-  });
+  }, { command: EXECUTE_COMMAND });
 }
 
 /** The title to TCMS id mapping of a run; an empty mapping when none was recorded yet. */
@@ -433,6 +433,6 @@ export function recordTcmsMapping(location: RunLocation, input: TcmsMapInput): T
       }
       return { ok: true, title, tcmsId, mapping: next };
     },
-    input.lockTimeoutMs
+    { command: EXECUTE_COMMAND, timeoutMs: input.lockTimeoutMs }
   );
 }
