@@ -159,7 +159,7 @@ describe('qa-config-seed', () => {
       expect(config?.catch?.runner?.adapter).toBe('jest');
       expect(config?.catch?.runner?.command).toBeDefined();
       expect(config?.catch?.env?.set).toBeDefined();
-      expect(config?.catch?.rulesFile).toBeDefined();
+      expect(config?.catch?.rulesFile).toBe('qaspec/references/catch-rules.yaml');
       expect(warnSpy).not.toHaveBeenCalled();
     } finally {
       warnSpy.mockRestore();

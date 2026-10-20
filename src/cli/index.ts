@@ -57,17 +57,22 @@ import {
   executeValidatePlanCommand,
 } from '../commands/execute.js';
 import {
+  catchAnswerCommand,
+  catchAssessCommand,
   catchChildCommand,
   catchContextCommand,
   catchEquivalenceCommand,
   catchFinishCommand,
   catchIntentCommand,
+  catchJudgeCommand,
   catchMutantCommand,
+  catchReportCommand,
   catchRiskCommand,
   catchStartCommand,
   catchStatusCommand,
   catchTestCommand,
 } from '../commands/catch.js';
+import { catchLandCommand, catchLandedCommand } from '../commands/catch-land.js';
 const program = new Command();
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -1054,6 +1059,117 @@ catchCmd
   .action(async (options: { run: string; json?: boolean }) => {
     try {
       await catchChildCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('assess')
+  .description(
+    'Assess the reports of a classified run, once: the generic and per-project rules (catch.rulesFile) discard false positives, and the reports that survive get their intent signals (the run moves to assessed)'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchAssessCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('judge')
+  .description(
+    'Record the verdicts of the judges on one kept report from a JSON file (--input): { "verdicts": [{ "judge", "keep", "confidence": "high" | "medium" | "low", "rationale" }] } with exactly catch.judges verdicts; a judge can only discard, and a median below 0 discards the report (once per report)'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--test <id>', 'Report to judge, such as T1 (printed by catch assess)')
+  .requiredOption('--input <file>', 'JSON file with the verdicts (the text is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; test: string; input: string; json?: boolean }) => {
+    try {
+      await catchJudgeCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('report')
+  .description(
+    'Record the finding of one kept report from a JSON file (--input): { "before", "after" } written from the failure evidence; the CLI composes the question and writes findings.json and findings.md (once per report)'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--test <id>', 'Report to record, such as T1 (a report the judges kept)')
+  .requiredOption('--input <file>', 'JSON file with before and after (the text is read from the file, never from the command line)')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; test: string; input: string; json?: boolean }) => {
+    try {
+      await catchReportCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('answer')
+  .description(
+    'Record the answer to a finding: --intended yes dismisses it, --intended no confirms it (once); the optional note comes from --note-file'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .requiredOption('--finding <id>', 'Finding id such as F1')
+  .requiredOption('--intended <yes|no>', 'Whether the behavior is intended')
+  .option('--note-file <file>', 'Optional note from the person, read from a plain text file')
+  .option('--json', 'Output as JSON')
+  .action(
+    async (options: { run: string; finding: string; intended: string; noteFile?: string; json?: boolean }) => {
+      try {
+        await catchAnswerCommand(options);
+      } catch (error) {
+        console.log();
+        ora().fail(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    }
+  );
+
+catchCmd
+  .command('land')
+  .description(
+    'Prepare the landing of a classified run: copies each test classified land under the run folder (land/) and writes one patch that adds them to the PR head, with repository-relative paths; a test whose path exists on the head is refused and listed. Apply the patch from the repository root with git apply --check, then run catch landed'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchLandCommand(options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+catchCmd
+  .command('landed')
+  .description(
+    'Record the landing of a run once, after the patch was applied in the checkout: one landed ledger line per prepared test (refused when land was not run, when it prepared no test, when the run is finished, or when it is already recorded)'
+  )
+  .requiredOption('--run <id>', 'Run id printed by catch start')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { run: string; json?: boolean }) => {
+    try {
+      await catchLandedCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

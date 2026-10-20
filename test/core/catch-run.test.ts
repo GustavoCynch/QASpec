@@ -8,6 +8,7 @@ import { stringify } from 'yaml';
 import { computeAnalyzeContentHash, writeApprovalRecord } from '../../src/core/approval-ledger.js';
 import { createCatchWorktree } from '../../src/core/catch-git.js';
 import {
+  catchPrecision,
   describeCatchFunnel,
   describeCatchRun,
   describeChangeRuns,
@@ -1073,6 +1074,9 @@ describe('catch run helpers of the child phase (T8)', () => {
       mutants: { 'caught-by-existing': 1, surviving: 2 },
       tests: { gated: 1 },
       classified: { land: 1 },
+      assessed: {},
+      judged: {},
+      reported: { reported: 0, confirmed: 0, dismissed: 0 },
     });
   });
 
@@ -1080,6 +1084,57 @@ describe('catch run helpers of the child phase (T8)', () => {
     const runDir = path.join(tmp, 'empty-run');
     fs.mkdirSync(runDir);
 
-    expect(describeCatchFunnel(runDir)).toEqual({ risks: 0, mutants: {}, tests: {}, classified: {} });
+    expect(describeCatchFunnel(runDir)).toEqual({
+      risks: 0,
+      mutants: {},
+      tests: {},
+      classified: {},
+      assessed: {},
+      judged: {},
+      reported: { reported: 0, confirmed: 0, dismissed: 0 },
+    });
+  });
+});
+
+describe('the funnel of the assess, judge and report stages and the precision (T9, T10)', () => {
+  it('counts the assessed reports and the judged reports by outcome, and the findings with their answers', () => {
+    const runDir = path.join(tmp, 'staged-run');
+    fs.mkdirSync(path.join(runDir, 'judges'), { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'assessment.json'),
+      JSON.stringify({ reports: [{ test: 'T1', outcome: 'kept' }, { test: 'T2', outcome: 'rule-filtered' }, { test: 'T3', outcome: 'kept' }] })
+    );
+    fs.writeFileSync(path.join(runDir, 'judges', 'T1.json'), JSON.stringify({ test: 'T1', outcome: 'kept' }));
+    fs.writeFileSync(path.join(runDir, 'judges', 'T3.json'), JSON.stringify({ test: 'T3', outcome: 'judge-filtered' }));
+    fs.writeFileSync(path.join(runDir, 'findings.json'), JSON.stringify([{ id: 'F1', test: 'T1' }, { id: 'F2', test: 'T1' }]));
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'dismissed', finding: 'F2', intended: 'yes' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    expect(describeCatchFunnel(runDir)).toMatchObject({
+      assessed: { kept: 2, 'rule-filtered': 1 },
+      judged: { kept: 1, 'judge-filtered': 1 },
+      reported: { reported: 2, confirmed: 1, dismissed: 1 },
+    });
+  });
+
+  it('gives the precision as confirmed over the answered findings, and null while no finding is answered', () => {
+    expect(catchPrecision({ confirmed: 0, dismissed: 0 })).toBeNull();
+    expect(catchPrecision({ confirmed: 1, dismissed: 3 })).toBe(0.25);
+    expect(catchPrecision({ confirmed: 2, dismissed: 0 })).toBe(1);
+  });
+
+  it('refuses a step of an assessed run and names the state in the message', () => {
+    const run = { runId: '20261020T120000Z-abcdef', state: 'assessed' } as CatchRunRecord;
+
+    expect(() => requireReadyRun(run, 'qaspec catch test')).toThrow(
+      /Catch run 20261020T120000Z-abcdef is assessed: qaspec catch test needs a ready run\./
+    );
   });
 });

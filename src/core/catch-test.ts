@@ -14,8 +14,8 @@
 
 import { existsSync, mkdirSync, promises as fs, readFileSync, rmSync, rmdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { CatchIntentArtifact } from './catch-context.js';
-import type { CatchCapability, CatchRequirement } from './catch-intent.js';
+import { findIntentRequirement, type CatchIntentArtifact } from './catch-context.js';
+import type { CatchRequirement } from './catch-intent.js';
 import { type CatchMutant, decodeText, replaceOnce, restoreFile, sha256 } from './catch-mutant.js';
 import {
   type CatchRecordIssue,
@@ -147,35 +147,20 @@ function findFunctionalityRequirement(
   intent: CatchIntentArtifact,
   name: string
 ): { ok: true; requirement: CatchRequirement } | { ok: false; issue: CatchRecordIssue } {
-  const matches = intent.capabilities.flatMap((capability: CatchCapability) =>
-    capability.requirements
-      .filter((requirement) => requirement.name === name)
-      .map((requirement) => ({ capability: capability.name, requirement }))
-  );
-  if (matches.length === 0) {
-    return { ok: false, issue: { code: 'requirement-unknown', message: `"${name}" is not a requirement of this intent.` } };
+  const found = findIntentRequirement(intent, name, 'test');
+  if (!found.ok) {
+    return found;
   }
-  if (matches.length > 1) {
-    const capabilities = matches.map((match) => match.capability).join(', ');
-    return {
-      ok: false,
-      issue: {
-        code: 'requirement-ambiguous',
-        message: `"${name}" is a requirement of more than one capability (${capabilities}), so the test cannot name one.`,
-      },
-    };
-  }
-  const [match] = matches;
-  if (!FUNCTIONALITY_STATUSES.includes(match.requirement.status)) {
+  if (!FUNCTIONALITY_STATUSES.includes(found.requirement.status)) {
     return {
       ok: false,
       issue: {
         code: 'requirement-status',
-        message: `"${name}" is ${match.requirement.status}: a functionality test covers an added or modified requirement.`,
+        message: `"${name}" is ${found.requirement.status}: a functionality test covers an added or modified requirement.`,
       },
     };
   }
-  return { ok: true, requirement: match.requirement };
+  return { ok: true, requirement: found.requirement };
 }
 
 /** The kind-specific fields of a catching test: a judged non-equivalent mutant of this run. */

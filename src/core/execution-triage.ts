@@ -8,7 +8,7 @@
  * records the person's answer. Every write takes the run lock and appends to ledger.jsonl.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseTestcaseDetails, type TestcaseStepRow } from './cases-validation.js';
 import { parseJsonText, type ExecutionIssue, type ExecutionPlan } from './execution-plan.js';
@@ -29,26 +29,27 @@ import {
   type RunRecord,
   type RunState,
 } from './execution-run.js';
-import { appendLedgerEntry, readLedger, withRunLock, writeFileAtomic } from './run-store.js';
+import {
+  type FindingBase,
+  isIntendedAnswer,
+  nextFindingId,
+  readFindings,
+  recordFindingAnswer,
+  writeFindings,
+  type IntendedAnswer,
+} from './findings-store.js';
+import { appendLedgerEntry, readLedger, withRunLock } from './run-store.js';
 
 export const TRIAGE_CONTEXT_SCHEMA = 'qaspec.execution-triage-context/v1';
 export const CLASSIFICATIONS = ['agent', 'environment', 'app'] as const;
 export type Classification = (typeof CLASSIFICATIONS)[number];
-const INTENDED_ANSWERS = ['yes', 'no'] as const;
-const FINDINGS_FILE = 'findings.json';
-const FINDINGS_MARKDOWN = 'findings.md';
 const CHECKBOX_START = /^-\s+\[[ xX]\]\s/;
 
-export interface Finding {
-  /** Stable id in creation order: F1, F2, ... */
-  id: string;
+export interface Finding extends FindingBase {
   /** The case key, such as 1.1. */
   case: string;
   expected: string;
   observed: string;
-  /** One sense-check question: what the case expects, what was observed, and "Is this intended?". */
-  question: string;
-  reportedAt: string;
 }
 
 export interface TriageContextAttempt {
@@ -118,7 +119,7 @@ export interface AnswerOutcome {
   ok: true;
   run: string;
   finding: string;
-  intended: (typeof INTENDED_ANSWERS)[number];
+  intended: IntendedAnswer;
   stage: 'confirmed' | 'dismissed';
   note?: string;
   answeredAt: string;
@@ -145,10 +146,6 @@ function isControlKey(key: string): boolean {
 
 function isClassification(value: string): value is Classification {
   return (CLASSIFICATIONS as readonly string[]).includes(value);
-}
-
-function isIntended(value: string): value is (typeof INTENDED_ANSWERS)[number] {
-  return (INTENDED_ANSWERS as readonly string[]).includes(value);
 }
 
 function present(value: string | undefined): value is string {
@@ -195,32 +192,12 @@ function judgedCases(runDir: string): Set<string> {
   return new Set(readJudgements(runDir).keys());
 }
 
-function answeredFindings(runDir: string): Set<string> {
-  return new Set(
-    readLedger(runDir)
-      .filter((entry) => entry.stage === 'confirmed' || entry.stage === 'dismissed')
-      .map((entry) => String(entry.finding))
-  );
-}
-
-export function readFindings(runDir: string): Finding[] {
-  const file = path.join(runDir, FINDINGS_FILE);
-  if (!existsSync(file)) {
-    return [];
-  }
-  const findings = JSON.parse(readFileSync(file, 'utf-8')) as unknown;
-  if (!Array.isArray(findings)) {
-    throw new Error(`${file} is not a list of findings; the run cannot be trusted`);
-  }
-  return findings as Finding[];
-}
-
 /**
  * The finding of each case, named by the last reported line of that case in the ledger. A finding left behind
  * by an interrupted judgement is therefore never shown for a case that was judged again.
  */
 export function findingsByCase(runDir: string): Map<string, Finding> {
-  const findings = readFindings(runDir);
+  const findings = readFindings<Finding>(runDir);
   const byCase = new Map<string, Finding>();
   for (const entry of readLedger(runDir)) {
     if (entry.stage !== 'reported') {
@@ -480,9 +457,9 @@ function judgeLocked(location: RunLocation, caseId: string, input: TriageInput):
   if (classification === 'app') {
     const expected = (input.expected ?? '').trim();
     const observed = (input.observed ?? '').trim();
-    const findings = readFindings(location.runDir);
+    const findings = readFindings<Finding>(location.runDir);
     finding = {
-      id: `F${findings.length + 1}`,
+      id: nextFindingId(findings),
       case: key,
       expected,
       observed,
@@ -490,8 +467,7 @@ function judgeLocked(location: RunLocation, caseId: string, input: TriageInput):
       reportedAt: at,
     };
     const updated = [...findings, finding];
-    writeFileAtomic(path.join(location.runDir, FINDINGS_FILE), `${JSON.stringify(updated, null, 2)}\n`);
-    writeFileAtomic(path.join(location.runDir, FINDINGS_MARKDOWN), renderFindings(run.id, updated));
+    writeFindings(location.runDir, updated, renderFindings(run.id, updated));
   }
   appendLedgerEntry(location.runDir, { stage: 'judged', case: key, classification, rationale, at });
   if (finding) {
@@ -520,51 +496,27 @@ function judgeLocked(location: RunLocation, caseId: string, input: TriageInput):
  * (intended) is stage dismissed. secondsToAnswer runs from the report to the answer.
  */
 export function answerFinding(location: RunLocation, input: AnswerInput): AnswerResult {
-  if (!isIntended(input.intended)) {
+  if (!isIntendedAnswer(input.intended)) {
     return { ok: false, issues: [{ message: '--intended must be yes or no' }] };
   }
   return withRunLock<AnswerResult>(
     location.runDir,
-    () => answerLocked(location, input, input.intended as 'yes' | 'no'),
+    () => answerLocked(location, input, input.intended as IntendedAnswer),
     { command: EXECUTE_COMMAND }
   );
 }
 
-/** The caller holds the run lock. */
-function answerLocked(location: RunLocation, input: AnswerInput, intended: 'yes' | 'no'): AnswerResult {
+/** The caller holds the run lock. Only the execute run state is checked here; the answer itself is shared (findings-store). */
+function answerLocked(location: RunLocation, input: AnswerInput, intended: IntendedAnswer): AnswerResult {
   const run = readRun(location.runDir);
   if (run.state === 'environment-noise') {
     return noiseRefusal(run, 'findings are void, so they are not answered');
   }
-  const finding = readFindings(location.runDir).find((entry) => entry.id === input.finding);
-  if (!finding) {
-    return refusal(`Finding ${input.finding} does not exist in run ${run.id}`);
-  }
-  if (answeredFindings(location.runDir).has(finding.id)) {
-    return refusal(`Finding ${finding.id} was already answered in run ${run.id}: an answer is recorded once`);
-  }
-
-  const at = nowIso(input.now);
-  const elapsedMs = Date.parse(at) - Date.parse(finding.reportedAt);
-  const secondsToAnswer = Math.round(Math.max(0, elapsedMs)) / 1000;
-  const stage = intended === 'no' ? 'confirmed' : 'dismissed';
-  const note = input.note?.trim() ? input.note.trim() : undefined;
-  appendLedgerEntry(location.runDir, {
-    stage,
-    finding: finding.id,
+  const outcome = recordFindingAnswer(location.runDir, run.id, {
+    finding: input.finding,
     intended,
-    ...(note !== undefined ? { note } : {}),
-    at,
-    secondsToAnswer,
+    note: input.note,
+    now: input.now,
   });
-  return {
-    ok: true,
-    run: run.id,
-    finding: finding.id,
-    intended,
-    stage,
-    ...(note !== undefined ? { note } : {}),
-    answeredAt: at,
-    secondsToAnswer,
-  };
+  return outcome.ok ? outcome : refusal(outcome.message);
 }

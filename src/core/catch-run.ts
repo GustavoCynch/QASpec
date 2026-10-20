@@ -27,6 +27,7 @@ import {
   type SetupCommandResult,
   type SetupResult,
 } from './catch-git.js';
+import { readFindings } from './findings-store.js';
 import { readProjectConfig } from './project-config.js';
 import {
   acquireRunLock,
@@ -60,6 +61,10 @@ export const MUTANTS_DIRNAME = 'mutants';
 export const TESTS_DIRNAME = 'tests';
 /** Child results (T8): one JSON file per gated test, named by the test's id. */
 export const RESULTS_DIRNAME = 'results';
+/** Assessment (T9): the decision on every report of the run, written once by catch assess. */
+export const ASSESSMENT_FILE = 'assessment.json';
+/** Judgements (T9): one JSON record per judged report, named by the test's id. */
+export const JUDGES_DIRNAME = 'judges';
 /** The related existing tests of the changed sources, computed once on the parent and cached. */
 export const RELATED_TESTS_FILE = 'related-tests.json';
 /** Runner output files (Jest's JSON report) of a run: outside the worktree, inside the git-ignored run folder. */
@@ -75,8 +80,9 @@ export interface CatchRecordIssue {
 
 export type CatchRunMode = 'analysis' | 'without-analysis';
 /**
- * setting-up while the worktree and setup run; then ready (parent phase), classified (child phase) or a failure state,
- * and finished at the end. child-setup-failed: the child phase could not install the head.
+ * setting-up while the worktree and setup run; then ready (parent phase), classified (child phase), assessed (assess
+ * ran on the classified reports: judge, report and answer follow), or a failure state, and finished at the end.
+ * child-setup-failed: the child phase could not install the head.
  */
 export type CatchRunState =
   | 'setting-up'
@@ -85,6 +91,7 @@ export type CatchRunState =
   | 'setup-failed'
   | 'child-setup-failed'
   | 'classified'
+  | 'assessed'
   | 'finished';
 
 /** One refusal reason of start: a stable code, what is wrong, and how to resolve it. */
@@ -266,6 +273,7 @@ const STATE_HINTS: Record<CatchRunState, string> = {
   'setup-failed': 'Start a new run after catch.setup is fixed.',
   'child-setup-failed': 'Start a new run after catch.setup is fixed.',
   classified: 'Start a new run to catch again.',
+  assessed: 'Start a new run to catch again.',
   finished: 'Start a new run to catch again.',
 };
 
@@ -814,14 +822,35 @@ export function findCatchRun(changesDir: string, runId: string, changeName?: str
 }
 
 /**
- * What the parent and child phases produced in one run, as counts: risks; mutants and tests by their outcome; the
- * classified results by their action. Counts only the outcomes that occur. Reads only: it takes no lock.
+ * What the parent, child, assess, judge and report steps produced in one run, as counts: risks; mutants and tests by
+ * their outcome; the classified results by their action; the assessed reports by their outcome; the judged reports by
+ * their outcome; the findings, and how many were confirmed or dismissed. Counts only the outcomes that occur. Reads
+ * only: it takes no lock.
  */
 export interface CatchFunnel {
   risks: number;
   mutants: Record<string, number>;
   tests: Record<string, number>;
   classified: Record<string, number>;
+  assessed: Record<string, number>;
+  judged: Record<string, number>;
+  reported: { reported: number; confirmed: number; dismissed: number };
+}
+
+/** The precision of the findings: confirmed over the answered findings (confirmed plus dismissed); null while none is. */
+export function catchPrecision(counts: { confirmed: number; dismissed: number }): number | null {
+  const answered = counts.confirmed + counts.dismissed;
+  return answered === 0 ? null : counts.confirmed / answered;
+}
+
+/** The reports of the run's assessment file; none before catch assess. */
+function assessedReports(runDir: string): Array<Record<string, unknown>> {
+  const file = path.join(runDir, ASSESSMENT_FILE);
+  if (!existsSync(file)) {
+    return [];
+  }
+  const assessment = JSON.parse(readFileSync(file, 'utf-8')) as { reports?: Array<Record<string, unknown>> };
+  return assessment.reports ?? [];
 }
 
 /** The records of a folder, read in id order; a missing folder has none. */
@@ -845,11 +874,19 @@ function countField(records: Array<Record<string, unknown>>, field: string): Rec
 }
 
 export function describeCatchFunnel(runDir: string): CatchFunnel {
+  const stages = countStages(readLedger(runDir));
   return {
     risks: listRecordIds(path.join(runDir, RISKS_DIRNAME), 'R').length,
     mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M'), 'outcome'),
     tests: countField(recordsIn(path.join(runDir, TESTS_DIRNAME), 'T'), 'outcome'),
     classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T'), 'action'),
+    assessed: countField(assessedReports(runDir), 'outcome'),
+    judged: countField(recordsIn(path.join(runDir, JUDGES_DIRNAME), 'T'), 'outcome'),
+    reported: {
+      reported: readFindings(runDir).length,
+      confirmed: stages.confirmed ?? 0,
+      dismissed: stages.dismissed ?? 0,
+    },
   };
 }
 

@@ -653,8 +653,10 @@ describe('qaspec catch context, risk, mutant and equivalence (T7)', () => {
       [
         'run', 'change', 'state', 'mode', 'lowConfidence', 'baseRef', 'baseSha', 'headSha', 'parentSha', 'projectPrefix',
         'worktree', 'installedFor', 'setup', 'failure', 'createdAt', 'updatedAt', 'finishedAt', 'runDir', 'ledger', 'funnel',
+        'precision',
       ].sort()
     );
+    expect(output.precision).toBeNull();
     expect(output.ledger).toEqual({ started: 1, setup: 1, ready: 1 });
   });
 
@@ -850,6 +852,9 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
       mutants: { 'caught-by-existing': 1 },
       tests: { gated: 1 },
       classified: { land: 1 },
+      assessed: {},
+      judged: {},
+      reported: { reported: 0, confirmed: 0, dismissed: 0 },
     });
   });
 
@@ -861,7 +866,18 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
 
     expect(text.stdout).toMatch(/^\s+Funnel: .*risks 0/m);
     expect(JSON.parse(listed.stdout).runs).toEqual([
-      expect.objectContaining({ run: runId, funnel: { risks: 0, mutants: {}, tests: {}, classified: {} } }),
+      expect.objectContaining({
+        run: runId,
+        funnel: {
+          risks: 0,
+          mutants: {},
+          tests: {},
+          classified: {},
+          assessed: {},
+          judged: {},
+          reported: { reported: 0, confirmed: 0, dismissed: 0 },
+        },
+      }),
     ]);
   });
 
@@ -911,5 +927,235 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
         'projectPrefix', 'relatedTests', 'run', 'schema',
       ].sort()
     );
+  });
+});
+
+describe('qaspec catch assess, judge, report and answer (T9, T10)', () => {
+  let tmp: string;
+  let fx: ProjectFixture;
+  const env = () => ({ TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+  const cli = (args: string[]) => runCLI(['catch', ...args], { cwd: fx.project, env: env() });
+
+  /** Writes a JSON input outside the repository and returns its path. */
+  const inputFile = (name: string, value: unknown): string => {
+    const file = path.join(tmp, 'inputs', name);
+    fsSync.mkdirSync(path.dirname(file), { recursive: true });
+    fsSync.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+
+  /** Writes a plain text input outside the repository and returns its path. */
+  const textFile = (name: string, text: string): string => {
+    const file = path.join(tmp, 'inputs', name);
+    fsSync.mkdirSync(path.dirname(file), { recursive: true });
+    fsSync.writeFileSync(file, text);
+    return file;
+  };
+
+  const startRun = async (): Promise<string> => {
+    const started = await cli(['start', '--change', CHANGE, '--json']);
+    expect(started.exitCode).toBe(0);
+    return JSON.parse(started.stdout).run as string;
+  };
+
+  const VALUE_ONE = '// covers: src/app.ts\n// expect: export const value = 1;\n';
+  const judgesVerdicts = (count: number, keep: boolean) => ({
+    verdicts: Array.from({ length: count }, (_unused, index) => ({
+      judge: `judge-${index + 1}`,
+      keep,
+      confidence: 'high',
+      rationale: keep ? 'The expectation is the behavior of the change.' : 'The expectation is a test detail.',
+    })),
+  });
+
+  beforeEach(() => {
+    tmp = fsSync.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-assess-cli-'));
+    fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 1, childRuns: 1 }, judges: 3 });
+  });
+
+  afterEach(() => {
+    fsSync.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('catch --help lists assess, judge, report and answer next to the existing commands', async () => {
+    const result = await runCLI(['catch', '--help'], { cwd: fx.project, env: env() });
+
+    expect(result.exitCode).toBe(0);
+    for (const command of ['assess', 'judge', 'report', 'answer']) {
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${command}\\b`, 'm'));
+    }
+  });
+
+  it('catch assess, judge, report and answer --help name their inputs and options', async () => {
+    const assess = await runCLI(['catch', 'assess', '--help'], { cwd: fx.project, env: env() });
+    const judge = await runCLI(['catch', 'judge', '--help'], { cwd: fx.project, env: env() });
+    const report = await runCLI(['catch', 'report', '--help'], { cwd: fx.project, env: env() });
+    const answer = await runCLI(['catch', 'answer', '--help'], { cwd: fx.project, env: env() });
+
+    expect(assess.exitCode).toBe(0);
+    expect(assess.stdout).toMatch(/--run <id>/);
+    expect(judge.stdout).toMatch(/--test <id>/);
+    expect(judge.stdout).toMatch(/--input <file>/);
+    expect(report.stdout).toMatch(/--test <id>/);
+    expect(report.stdout).toMatch(/--input <file>/);
+    expect(answer.exitCode).toBe(0);
+    expect(answer.stdout).toMatch(/--finding <id>/);
+    expect(answer.stdout).toMatch(/--intended <yes\|no>/);
+    expect(answer.stdout).toMatch(/--note-file <file>/);
+    expect(answer.stdout).not.toMatch(/--note </);
+  });
+
+  it('assess refuses a run that is not classified, lists the blocker in --json and exits 1', async () => {
+    const runId = await startRun();
+
+    const result = await cli(['assess', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      recorded: false,
+      run: runId,
+      errors: [expect.objectContaining({ code: 'run-state' })],
+    });
+    expect(fsSync.existsSync(path.join(fx.changeDir, 'catch', runId, 'assessment.json'))).toBe(false);
+  });
+
+  it('judge and report refuse a wrong verdict count and an unjudged report, exit 1, and write nothing', async () => {
+    const runId = await startRun();
+    expect(
+      (await cli(['test', '--run', runId, '--input', inputFile('test.json', { kind: 'functionality', requirement: 'Currency', path: 'test/catch-currency.spec.ts', content: VALUE_ONE })])).exitCode
+    ).toBe(0);
+    expect((await cli(['child', '--run', runId])).exitCode).toBe(0);
+    expect((await cli(['assess', '--run', runId])).exitCode).toBe(0);
+
+    const short = await cli(['judge', '--run', runId, '--test', 'T1', '--input', inputFile('short.json', judgesVerdicts(2, true)), '--json']);
+    const unjudged = await cli(['report', '--run', runId, '--test', 'T1', '--input', inputFile('report.json', { before: 'a', after: 'b' }), '--json']);
+
+    expect(short.exitCode).toBe(1);
+    expect(JSON.parse(short.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'verdicts-count' })] });
+    expect(unjudged.exitCode).toBe(1);
+    expect(JSON.parse(unjudged.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'not-judged' })] });
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    expect(fsSync.existsSync(path.join(folder, 'judges', 'T1.json'))).toBe(false);
+    expect(fsSync.existsSync(path.join(folder, 'findings.json'))).toBe(false);
+  });
+
+  it('runs the chain: assess, judge, report and answer from files, and status shows the precision and the funnel stages', async () => {
+    const runId = await startRun();
+    expect(
+      (
+        await cli([
+          'test',
+          '--run',
+          runId,
+          '--input',
+          inputFile('test.json', {
+            kind: 'functionality',
+            requirement: 'Currency',
+            scenario: 'Currency kept',
+            path: 'test/catch-currency.spec.ts',
+            content: VALUE_ONE,
+          }),
+        ])
+      ).exitCode
+    ).toBe(0);
+    expect((await cli(['child', '--run', runId])).exitCode).toBe(0);
+    const beforeAnswer = await cli(['status', '--run', runId, '--json']);
+    expect(JSON.parse(beforeAnswer.stdout).precision).toBeNull();
+
+    const assessed = await cli(['assess', '--run', runId, '--json']);
+    expect(assessed.exitCode).toBe(0);
+    expect(JSON.parse(assessed.stdout)).toMatchObject({
+      recorded: true,
+      run: runId,
+      state: 'assessed',
+      reports: [{ test: 'T1', outcome: 'kept', signals: ['possibly-intended'] }],
+    });
+
+    const judged = await cli(['judge', '--run', runId, '--test', 'T1', '--input', inputFile('verdicts.json', judgesVerdicts(3, true)), '--json']);
+    expect(JSON.parse(judged.stdout)).toMatchObject({ recorded: true, run: runId, test: 'T1', outcome: 'kept', median: 1 });
+
+    const reported = await cli([
+      'report',
+      '--run',
+      runId,
+      '--test',
+      'T1',
+      '--input',
+      inputFile('report.json', { before: 'the amount keeps its currency', after: 'the amount drops its currency' }),
+      '--json',
+    ]);
+    expect(JSON.parse(reported.stdout)).toMatchObject({
+      recorded: true,
+      run: runId,
+      finding: {
+        id: 'F1',
+        question:
+          'Before: the amount keeps its currency. Now: the amount drops its currency. The scenario says: its currency code is kept. Is this intended?',
+      },
+    });
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    expect(fsSync.readFileSync(path.join(folder, 'findings.md'), 'utf8')).toContain(
+      `qaspec catch answer --run ${runId} --finding <id> --intended yes|no`
+    );
+
+    const answered = await cli([
+      'answer',
+      '--run',
+      runId,
+      '--finding',
+      'F1',
+      '--intended',
+      'no',
+      '--note-file',
+      textFile('note.txt', 'The currency must stay.\n'),
+      '--json',
+    ]);
+    expect(answered.exitCode).toBe(0);
+    expect(JSON.parse(answered.stdout)).toMatchObject({
+      run: runId,
+      finding: 'F1',
+      intended: 'no',
+      stage: 'confirmed',
+      note: 'The currency must stay.',
+      secondsToAnswer: expect.any(Number),
+    });
+
+    const status = await cli(['status', '--run', runId, '--json']);
+    expect(JSON.parse(status.stdout)).toMatchObject({
+      precision: 1,
+      funnel: {
+        assessed: { kept: 1 },
+        judged: { kept: 1 },
+        reported: { reported: 1, confirmed: 1, dismissed: 0 },
+      },
+    });
+    const text = await cli(['status', '--run', runId]);
+    expect(text.stdout).toMatch(/Precision: 1\.00 \(confirmed 1, dismissed 0\)/);
+  });
+
+  it('answer refuses an intended value that is not yes or no, a second answer, and a --note text on the command line', async () => {
+    const runId = await startRun();
+    expect(
+      (await cli(['test', '--run', runId, '--input', inputFile('test.json', { kind: 'functionality', requirement: 'Currency', path: 'test/catch-currency.spec.ts', content: VALUE_ONE })])).exitCode
+    ).toBe(0);
+    expect((await cli(['child', '--run', runId])).exitCode).toBe(0);
+    expect((await cli(['assess', '--run', runId])).exitCode).toBe(0);
+    expect((await cli(['judge', '--run', runId, '--test', 'T1', '--input', inputFile('verdicts.json', judgesVerdicts(3, true))])).exitCode).toBe(0);
+    expect(
+      (await cli(['report', '--run', runId, '--test', 'T1', '--input', inputFile('report.json', { before: 'a', after: 'b' })])).exitCode
+    ).toBe(0);
+
+    const invalid = await cli(['answer', '--run', runId, '--finding', 'F1', '--intended', 'maybe', '--json']);
+    const inline = await cli(['answer', '--run', runId, '--finding', 'F1', '--intended', 'no', '--note', 'typed inline']);
+    const first = await cli(['answer', '--run', runId, '--finding', 'F1', '--intended', 'yes', '--json']);
+    const second = await cli(['answer', '--run', runId, '--finding', 'F1', '--intended', 'no', '--json']);
+
+    expect(invalid.exitCode).toBe(1);
+    expect(JSON.parse(invalid.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'intended-invalid' })] });
+    expect(inline.exitCode).toBe(1);
+    expect(first.exitCode).toBe(0);
+    expect(JSON.parse(first.stdout)).toMatchObject({ stage: 'dismissed', intended: 'yes' });
+    expect(second.exitCode).toBe(1);
+    expect(JSON.parse(second.stdout)).toMatchObject({ recorded: false, errors: [expect.objectContaining({ code: 'finding-answered' })] });
   });
 });
