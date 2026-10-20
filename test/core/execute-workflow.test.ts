@@ -133,6 +133,11 @@ describe('/qsx:execute workflow template', () => {
     expect(body).toMatch(/evidence paths in the judge input are relative to `<runDir>`/i);
   });
 
+  it('confines every write to the run folder and checks TCMS ids before they reach a command line', () => {
+    expect(body).toMatch(/Write files only inside that run folder/);
+    expect(body).toMatch(/Before you put a TCMS id on that command line, check that it contains only letters, digits/);
+  });
+
   it('gives the manual MCP setup inline instead of pointing at a repository docs path', () => {
     expect(body).not.toContain('docs/cli.md');
     expect(body).toContain(PLAYWRIGHT_MCP_PACKAGE);

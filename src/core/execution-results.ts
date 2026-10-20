@@ -366,8 +366,9 @@ export function readTcmsMapping(runDir: string): TcmsMapping {
  * repeating the same mapping changes nothing.
  */
 /**
- * TCMS ids are passed on a command line, so they are limited to characters no shell interprets.
- * Ids from any TCMS fit this set (numbers, project-prefixed keys, UUIDs).
+ * Characters a stored TCMS id may contain (numbers, project-prefixed keys, UUIDs). This check guards the stored
+ * mapping only: the shell expands a command line before qaspec reads it, so the /qsx:execute workflow checks each
+ * id against the same set before putting it on the command line.
  */
 const TCMS_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const TCMS_ID_CHARACTERS = 'letters, digits, dot, underscore, colon and hyphen';
