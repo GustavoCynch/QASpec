@@ -401,6 +401,40 @@ describe('qaspec catch start, status and finish', () => {
     expect(missing.stdout + missing.stderr).toContain('--run or --change');
   });
 
+  it('status --change shows each run with the same content as status --run --json', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const listed = await runCLI(['catch', 'status', '--change', ADD_EXPORT, '--json'], { cwd: repo, env: env() });
+    const single = await runCLI(['catch', 'status', '--run', runId, '--json'], { cwd: repo, env: env() });
+
+    expect(listed.exitCode).toBe(0);
+    expect(JSON.parse(listed.stdout).runs).toEqual([JSON.parse(single.stdout)]);
+  });
+
+  it('status --change prints each run with the same lines status --run prints for it', async () => {
+    await approveHead();
+    const runId = JSON.parse((await startJson()).stdout).run;
+
+    const listed = await runCLI(['catch', 'status', '--change', ADD_EXPORT], { cwd: repo, env: env() });
+    const single = await runCLI(['catch', 'status', '--run', runId], { cwd: repo, env: env() });
+
+    expect(listed.exitCode).toBe(0);
+    expect(single.stdout).toContain('Ledger:');
+    expect(listed.stdout).toContain(single.stdout.trimEnd());
+  });
+
+  it('start --without-analysis with an unknown --head hints at fetching the commit, never at approving the analysis', async () => {
+    const result = await runCLI(
+      ['catch', 'start', '--change', ADD_EXPORT, '--without-analysis', '--head', 'f'.repeat(40)],
+      { cwd: repo, env: env() }
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain('--head');
+    expect(result.stdout).not.toContain('approve');
+  });
+
   it('finish removes the worktree, and a second finish exits 0 and reports it is already finished', async () => {
     await approveHead();
     const runId = JSON.parse((await startJson()).stdout).run;

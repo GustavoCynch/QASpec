@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -8,6 +9,7 @@ import { computeAnalyzeContentHash, writeApprovalRecord } from '../../src/core/a
 import { createCatchWorktree } from '../../src/core/catch-git.js';
 import {
   describeCatchRun,
+  describeChangeRuns,
   findCatchRun,
   finishCatchRun,
   listCatchRuns,
@@ -31,6 +33,27 @@ vi.mock('../../src/core/catch-git.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/core/catch-git.js')>();
   return { ...actual, createCatchWorktree: vi.fn(actual.createCatchWorktree) };
 });
+
+/** Run folders whose lock was taken through run-store, in order. The wrappers below pass every call through. */
+const lockCalls = vi.hoisted(() => ({ runDirs: [] as string[] }));
+
+vi.mock('../../src/core/run-store.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/run-store.js')>();
+  return {
+    ...actual,
+    acquireRunLock: (runDir: string, timeoutMs?: number, command?: string) => {
+      lockCalls.runDirs.push(runDir);
+      return actual.acquireRunLock(runDir, timeoutMs, command);
+    },
+    withRunLock: <T>(runDir: string, write: () => T, options: Parameters<typeof actual.withRunLock>[2]) => {
+      lockCalls.runDirs.push(runDir);
+      return actual.withRunLock(runDir, write, options);
+    },
+  };
+});
+
+const PARENT_RUN = '20261020T100000Z-abcdef';
+const OTHER_PARENT_RUN = '20261020T110000Z-123456';
 
 const CHANGE = 'csv-export';
 const RUN_ID_PATTERN = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
@@ -193,6 +216,13 @@ function blockersOf(outcome: StartCatchRunOutcome): CatchBlocker[] {
 }
 
 const codesOf = (outcome: StartCatchRunOutcome): string[] => blockersOf(outcome).map((blocker) => blocker.code);
+
+/** The catch root of a project, as createCatchWorktree names it: the real path of the project, hashed. */
+const catchRootOf = (project: string): string =>
+  path.join(os.tmpdir(), 'qaspec-catch', createHash('sha256').update(fs.realpathSync(project)).digest('hex').slice(0, 12));
+
+/** Settles a call that may throw or return a promise, so a test reads the same whether or not the call is async. */
+const settled = (call: () => unknown): Promise<unknown> => Promise.resolve().then(call);
 
 const stagesOf = (runDir: string): string[] =>
   fs
@@ -441,13 +471,15 @@ describe('catch start degraded mode (--without-analysis)', () => {
     });
   });
 
-  it('refuses an unknown --head in degraded mode with the same revision check', async () => {
+  it('refuses an unknown --head in degraded mode with the same revision check, and hints at the commit, not the approval', async () => {
     const fx = makeRepo();
     writeChange(fx);
 
     const outcome = await startCatchRun(startInput(fx, { withoutAnalysis: true, head: 'f'.repeat(40) }));
 
     expect(codesOf(outcome)).toEqual(['revisions-unresolved']);
+    expect(blockersOf(outcome)[0].message).toContain('--head');
+    expect(blockersOf(outcome)[0].message).not.toContain('approve');
   });
 });
 
@@ -669,6 +701,23 @@ describe('catch status', () => {
     });
   });
 
+  it('describes every run of a change with the status describeCatchRun gives it, ledger counts included', async () => {
+    const fx = makeRepo();
+    const changeDir = writeChange(fx);
+    approve(fx, changeDir);
+    const analysisRun = startedOf(await startCatchRun(startInput(fx))).run;
+    const degradedRun = startedOf(await startCatchRun(startInput(fx, { withoutAnalysis: true, head: fx.head }))).run;
+
+    const statuses = new Map(describeChangeRuns(changeDir).map((status) => [status.run.runId, status]));
+
+    expect([...statuses.keys()].sort()).toEqual([analysisRun.runId, degradedRun.runId].sort());
+    expect(statuses.get(analysisRun.runId)).toEqual(describeCatchRun(findCatchRun(fx.changesDir, analysisRun.runId)));
+    expect(statuses.get(degradedRun.runId)).toMatchObject({
+      run: { state: 'ready', mode: 'without-analysis', lowConfidence: true },
+      ledger: { started: 1, setup: 1, ready: 1 },
+    });
+  });
+
   it('refuses an invalid run id before it builds any path', () => {
     const fx = makeRepo();
 
@@ -723,6 +772,60 @@ describe('catch finish', () => {
     expect(outcome).toMatchObject({ alreadyFinished: false, run: { state: 'finished', worktree: null } });
     expect(stagesOf(runDir).slice(-1)).toEqual(['finished']);
   });
+
+  it('removes a worktree of this run that run.json never recorded, and finishes the run', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    const { run, runDir } = startedOf(await startCatchRun(startInput(fx)));
+    const worktree = run.worktree as string;
+    // A run.json write that failed right after worktree add leaves the record without the worktree path.
+    const runFile = path.join(runDir, 'run.json');
+    fs.writeFileSync(
+      runFile,
+      `${JSON.stringify({ ...readJson(runFile), state: 'setting-up', worktree: null, setup: null, installedFor: null }, null, 2)}\n`
+    );
+    expect(worktreesOf(fx.repo)).toHaveLength(2);
+
+    const outcome = await finishCatchRun(finishInput(fx, run.runId));
+
+    expect(outcome).toMatchObject({ alreadyFinished: false, run: { state: 'finished', worktree: null } });
+    expect(fs.existsSync(worktree)).toBe(false);
+    expect(worktreesOf(fx.repo)).toHaveLength(1);
+  });
+
+  it('removes the empty catch folders that an interrupted worktree add left, when the run has no worktree', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    vi.mocked(createCatchWorktree).mockImplementationOnce(async () => {
+      // An interrupted worktree add: the catch root was created, the worktree was not.
+      fs.mkdirSync(catchRootOf(fx.project), { recursive: true });
+      throw new Error('worktree add interrupted');
+    });
+    const { run } = startedOf(await startCatchRun(startInput(fx)));
+    expect(run).toMatchObject({ state: 'worktree-failed', worktree: null });
+    expect(fs.existsSync(catchRootOf(fx.project))).toBe(true);
+
+    const outcome = await finishCatchRun(finishInput(fx, run.runId));
+
+    expect(outcome.run.state).toBe('finished');
+    expect(fs.existsSync(path.join(tmp, 'qaspec-catch'))).toBe(false);
+  });
+
+  it('finish of a run whose folder was deleted keeps the record of an unrelated worktree whose folder is missing', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    const { run } = startedOf(await startCatchRun(startInput(fx)));
+    const unrelated = path.join(tmp, 'unrelated-worktree');
+    git(fx.repo, 'worktree', 'add', '--detach', unrelated, fx.base);
+    const unrelatedListed = fs.realpathSync(unrelated);
+    fs.rmSync(unrelated, { recursive: true, force: true });
+    fs.rmSync(run.worktree as string, { recursive: true, force: true });
+
+    await finishCatchRun(finishInput(fx, run.runId));
+
+    expect(git(fx.repo, 'worktree', 'list', '--porcelain')).toContain(`worktree ${unrelatedListed}`);
+    expect(worktreesOf(fx.repo)).toHaveLength(2);
+  });
 });
 
 describe('catch run lock', () => {
@@ -742,6 +845,35 @@ describe('catch run lock', () => {
     );
     expect(readJson(path.join(runDir, 'run.json')).state).toBe('ready');
   });
+
+  it('start takes the run lock once and keeps it from its first write until the worktree step ends', async () => {
+    const fx = makeRepo();
+    approve(fx, writeChange(fx));
+    lockCalls.runDirs.length = 0;
+
+    const { runDir } = startedOf(await startCatchRun(startInput(fx)));
+
+    expect(lockCalls.runDirs).toEqual([runDir]);
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'reports the failure of the step when the lock cannot be released after it',
+    async () => {
+      const runDir = path.join(tmp, 'locked-run');
+      fs.mkdirSync(runDir);
+      try {
+        await expect(
+          withRunLockAsync(runDir, 1_000, async () => {
+            // Without write access to the run folder, the lock folder cannot be removed on release.
+            fs.chmodSync(runDir, 0o500);
+            throw new Error('the step failed');
+          })
+        ).rejects.toThrow('the step failed');
+      } finally {
+        fs.chmodSync(runDir, 0o755);
+      }
+    }
+  );
 });
 
 describe('catch run helpers of the parent phase (T7)', () => {
@@ -792,35 +924,66 @@ describe('catch run helpers of the parent phase (T7)', () => {
     expect(fs.existsSync(path.join(runDir, '.lock'))).toBe(false);
   });
 
-  it('projectDirInWorktree returns the worktree at a checkout root, or its project subfolder', () => {
-    const project = path.join(tmp, 'project');
-    const worktree = path.join(tmp, 'worktree');
-    fs.mkdirSync(project);
-    fs.mkdirSync(path.join(worktree, 'packages', 'app'), { recursive: true });
+  it('projectDirInWorktree returns the catch worktree of a project at a checkout root', async () => {
+    const fx = makeRepo();
+    const worktree = await createCatchWorktree(fx.repo, PARENT_RUN, fx.base);
 
-    expect(projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: '' }))).toBe(worktree);
-    expect(projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: 'packages/app' }))).toBe(
-      path.join(worktree, 'packages', 'app')
-    );
+    expect(
+      await projectDirInWorktree(fx.project, runWith('ready', { runId: PARENT_RUN, worktree, projectPrefix: '' }))
+    ).toBe(worktree);
   });
 
-  it('projectDirInWorktree refuses a prefix that leaves the worktree, a missing worktree and a worktree inside the project', () => {
+  it('projectDirInWorktree returns the project subfolder of a catch worktree', async () => {
+    const fx = makeRepo({ subfolder: 'packages/app' });
+    // start creates the worktree from the project folder, so its catch root is the one of the project, not the repository.
+    const worktree = await createCatchWorktree(fx.project, PARENT_RUN, fx.base);
+
+    expect(
+      await projectDirInWorktree(
+        fx.project,
+        runWith('ready', { runId: PARENT_RUN, worktree, projectPrefix: 'packages/app' })
+      )
+    ).toBe(path.join(worktree, 'packages', 'app'));
+  });
+
+  it('projectDirInWorktree refuses a prefix that leaves the worktree, a missing worktree and a worktree inside the project', async () => {
     const project = path.join(tmp, 'project');
     const worktree = path.join(tmp, 'worktree');
     fs.mkdirSync(path.join(project, 'nested'), { recursive: true });
     fs.mkdirSync(worktree);
 
-    expect(() => projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: '../escape' }))).toThrow(
-      /leaves the catch worktree/
-    );
-    expect(() => projectDirInWorktree(project, runWith('ready', { worktree: null, projectPrefix: '' }))).toThrow(
-      /has no worktree/
-    );
-    expect(() =>
-      projectDirInWorktree(project, runWith('ready', { worktree: path.join(tmp, 'gone'), projectPrefix: '' }))
-    ).toThrow(/is missing/);
-    expect(() =>
-      projectDirInWorktree(project, runWith('ready', { worktree: path.join(project, 'nested'), projectPrefix: '' }))
-    ).toThrow(/inside the project/);
+    await expect(
+      settled(() => projectDirInWorktree(project, runWith('ready', { worktree, projectPrefix: '../escape' })))
+    ).rejects.toThrow(/leaves the catch worktree/);
+    await expect(
+      settled(() => projectDirInWorktree(project, runWith('ready', { worktree: null, projectPrefix: '' })))
+    ).rejects.toThrow(/has no worktree/);
+    await expect(
+      settled(() => projectDirInWorktree(project, runWith('ready', { worktree: path.join(tmp, 'gone'), projectPrefix: '' })))
+    ).rejects.toThrow(/is missing/);
+    await expect(
+      settled(() =>
+        projectDirInWorktree(project, runWith('ready', { worktree: path.join(project, 'nested'), projectPrefix: '' }))
+      )
+    ).rejects.toThrow(/inside the project/);
+  });
+
+  it('projectDirInWorktree refuses a recorded worktree that is a plain folder under the catch root, not a worktree of this project', async () => {
+    const fx = makeRepo();
+    const plain = path.join(catchRootOf(fx.project), PARENT_RUN);
+    fs.mkdirSync(plain, { recursive: true });
+
+    await expect(
+      settled(() => projectDirInWorktree(fx.project, runWith('ready', { runId: PARENT_RUN, worktree: plain, projectPrefix: '' })))
+    ).rejects.toThrow(/not a catch worktree of this project/);
+  });
+
+  it('projectDirInWorktree refuses a catch worktree of this project that belongs to another run', async () => {
+    const fx = makeRepo();
+    const other = await createCatchWorktree(fx.repo, OTHER_PARENT_RUN, fx.base);
+
+    await expect(
+      settled(() => projectDirInWorktree(fx.project, runWith('ready', { runId: PARENT_RUN, worktree: other, projectPrefix: '' })))
+    ).rejects.toThrow(/is not the worktree of run/);
   });
 });

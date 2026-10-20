@@ -13,7 +13,6 @@ import { createRunnerContext, runnerFor } from './catch-runner.js';
 import { readProjectConfig } from './project-config.js';
 import type { CatchRecordIssue, CatchRunMode, CatchRunRecord } from './catch-run.js';
 import {
-  CATCH_COMMAND,
   CHANGED_FILES_FILE,
   DIFF_FILE,
   INTENT_FILE,
@@ -26,11 +25,12 @@ import {
   readCatchRun,
   readRunJson,
   requireReadyRun,
+  withCatchRunLock,
   withRunLockAsync,
   writeRecord,
   writeRunJson,
 } from './catch-run.js';
-import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso, withRunLock } from './run-store.js';
+import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso } from './run-store.js';
 
 export const CATCH_CONTEXT_SCHEMA = 'qaspec.catch-context/v1' as const;
 export const CATCH_RISK_SCHEMA = 'qaspec.catch-risk/v1' as const;
@@ -190,7 +190,7 @@ async function relatedTestsOf(
     return cached;
   }
   const { adapter, config } = runnerFor(readProjectConfig(projectRoot)?.catch);
-  const projectDir = projectDirInWorktree(projectRoot, run);
+  const projectDir = await projectDirInWorktree(projectRoot, run);
   const sources = await existingFiles(
     projectDir,
     changed.map((file) => file.path)
@@ -214,8 +214,9 @@ async function relatedTestsOf(
  */
 export function recordRisk(input: RecordRiskInput): RecordRiskOutcome {
   const location = findCatchRun(input.changesDir, input.runId);
-  return withRunLock(
+  return withCatchRunLock(
     location.runDir,
+    input.lockTimeoutMs ?? RUN_LOCK_TIMEOUT_MS,
     (): RecordRiskOutcome => {
       const run = readCatchRun(location.runDir);
       requireReadyRun(run, RISK_COMMAND);
@@ -241,8 +242,7 @@ export function recordRisk(input: RecordRiskInput): RecordRiskOutcome {
         file: risk.file ?? null,
       });
       return { ok: true, risk };
-    },
-    { command: CATCH_COMMAND, timeoutMs: input.lockTimeoutMs ?? RUN_LOCK_TIMEOUT_MS }
+    }
   );
 }
 

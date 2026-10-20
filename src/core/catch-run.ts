@@ -14,6 +14,8 @@ import type { ResolvedCatchConfig } from './catch-config.js';
 import { evaluateAnalyzeApproval } from './approval-ledger.js';
 import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent } from './catch-intent.js';
 import {
+  assertCatchWorktree,
+  catchWorktreePath,
   changedFiles,
   createCatchWorktree,
   diffPatch,
@@ -34,7 +36,6 @@ import {
   nowIso,
   readLedger,
   RUN_LOCK_TIMEOUT_MS,
-  withRunLock,
   writeFileAtomic,
 } from './run-store.js';
 import { validateChangeName } from '../utils/change-utils.js';
@@ -253,10 +254,11 @@ const STATE_HINTS: Record<CatchRunState, string> = {
 
 /**
  * The project folder inside the run's catch worktree: the worktree at a checkout root, else its project subfolder.
- * Refuses a run without a worktree, a missing worktree, a prefix that leaves the worktree, and a worktree that is the
- * project or lies inside it: runner commands and mutants never reach the user's checkout.
+ * Refuses a run without a worktree, a missing worktree, a prefix that leaves the worktree, a worktree that is the
+ * project or lies inside it, and a folder that is not this run's catch worktree of this project (its identity, not
+ * only its place under the catch root). Runner commands and mutants never reach the user's checkout or another folder.
  */
-export function projectDirInWorktree(projectRoot: string, run: CatchRunRecord): string {
+export async function projectDirInWorktree(projectRoot: string, run: CatchRunRecord): Promise<string> {
   if (run.worktree === null) {
     throw new Error(`Catch run ${run.runId} has no worktree: start a new run.`);
   }
@@ -274,6 +276,10 @@ export function projectDirInWorktree(projectRoot: string, run: CatchRunRecord): 
   if (worktree === project || isInside(worktree, project)) {
     throw new Error(`Refusing the catch worktree ${run.worktree}: it lies inside the project.`);
   }
+  if (path.basename(run.worktree) !== run.runId) {
+    throw new Error(`Refusing the catch worktree ${run.worktree}: it is not the worktree of run ${run.runId}.`);
+  }
+  await assertCatchWorktree(projectRoot, run.worktree, 'use');
   return path.join(run.worktree, ...segments);
 }
 
@@ -324,17 +330,52 @@ function ensureRunsFolder(changeDir: string): string {
   return runsDir;
 }
 
+/** How a step ended: its value, or the error it threw. */
+type StepOutcome<T> = { ok: true; value: T } | { ok: false; error: unknown };
+
+/**
+ * Releases the run lock after a step and returns or throws the step's outcome. A failed release never hides the
+ * step's own error: that error is thrown, and the release error only when the step succeeded.
+ */
+function releaseThenSettle<T>(release: () => void, outcome: StepOutcome<T>): T {
+  try {
+    release();
+  } catch (releaseError) {
+    if (outcome.ok) {
+      throw releaseError;
+    }
+  }
+  if (!outcome.ok) {
+    throw outcome.error;
+  }
+  return outcome.value;
+}
+
 /**
  * Runs an async step under the run lock. withRunLock is synchronous, so a step that awaits (worktree and setup)
  * takes the same lock with acquireRunLock and holds it until the step settles.
  */
 export async function withRunLockAsync<T>(runDir: string, timeoutMs: number, write: () => Promise<T>): Promise<T> {
   const release = acquireRunLock(runDir, timeoutMs, CATCH_COMMAND);
+  let outcome: StepOutcome<T>;
   try {
-    return await write();
-  } finally {
-    release();
+    outcome = { ok: true, value: await write() };
+  } catch (error) {
+    outcome = { ok: false, error };
   }
+  return releaseThenSettle(release, outcome);
+}
+
+/** The synchronous form of withRunLockAsync, for the record writes of the parent phase. Same release rule. */
+export function withCatchRunLock<T>(runDir: string, timeoutMs: number, write: () => T): T {
+  const release = acquireRunLock(runDir, timeoutMs, CATCH_COMMAND);
+  let outcome: StepOutcome<T>;
+  try {
+    outcome = { ok: true, value: write() };
+  } catch (error) {
+    outcome = { ok: false, error };
+  }
+  return releaseThenSettle(release, outcome);
 }
 
 function countStages(entries: Array<Record<string, unknown>>): Record<string, number> {
@@ -477,7 +518,12 @@ async function checkStart(input: StartCatchRunInput): Promise<GateOutcome> {
   let revisions: GitRevisions | undefined;
   if (prefix !== undefined && baseRef !== undefined && headSha !== undefined) {
     try {
-      revisions = await resolveRevisions({ projectRoot, headSha, baseRef });
+      revisions = await resolveRevisions({
+        projectRoot,
+        headSha,
+        baseRef,
+        headSource: input.withoutAnalysis ? 'flag' : 'approval',
+      });
     } catch (error) {
       blockers.push({
         code: 'revisions-unresolved',
@@ -647,21 +693,16 @@ export async function startCatchRun(input: StartCatchRunInput): Promise<StartCat
     capabilities: [],
   };
 
-  withRunLock(
-    runDir,
-    () => {
-      writeRunRecord(runDir, started);
-      writeFileAtomic(path.join(runDir, INTENT_FILE), jsonText(plan.intent ?? degradedIntent));
-      writeFileAtomic(path.join(runDir, DIFF_FILE), patch);
-      writeFileAtomic(path.join(runDir, CHANGED_FILES_FILE), jsonText(files));
-      appendLedgerEntry(runDir, { stage: 'started', at: createdAt, mode: plan.mode, lowConfidence: plan.lowConfidence });
-    },
-    { command: CATCH_COMMAND, timeoutMs }
-  );
-
-  const run = await withRunLockAsync(runDir, timeoutMs, () =>
-    prepareWorktree(input.projectRoot, runDir, plan, started)
-  );
+  // One lock holds the whole start: the first records, the worktree and setup. A finish that arrives meanwhile waits
+  // until the run has settled, so it cannot write its own state in between and be overwritten by this start.
+  const run = await withRunLockAsync(runDir, timeoutMs, async () => {
+    writeRunRecord(runDir, started);
+    writeFileAtomic(path.join(runDir, INTENT_FILE), jsonText(plan.intent ?? degradedIntent));
+    writeFileAtomic(path.join(runDir, DIFF_FILE), patch);
+    writeFileAtomic(path.join(runDir, CHANGED_FILES_FILE), jsonText(files));
+    appendLedgerEntry(runDir, { stage: 'started', at: createdAt, mode: plan.mode, lowConfidence: plan.lowConfidence });
+    return prepareWorktree(input.projectRoot, runDir, plan, started);
+  });
   return { started: true, run, runDir };
 }
 
@@ -678,9 +719,11 @@ export async function finishCatchRun(input: FinishCatchRunInput): Promise<Finish
     if (current.state === 'finished') {
       return { run: current, alreadyFinished: true };
     }
-    if (current.worktree !== null) {
-      await removeCatchWorktree(input.projectRoot, current.worktree);
-    }
+    // The recorded worktree, or the folder this run would have used when run.json never recorded one (a run.json write
+    // that failed after worktree add, or an interrupted add). removeCatchWorktree removes it only when it is this
+    // project's catch worktree, and removes the catch folders that are left empty in any case.
+    const worktree = current.worktree ?? catchWorktreePath(input.projectRoot, input.runId);
+    await removeCatchWorktree(input.projectRoot, worktree);
     const finishedAt = nowIso();
     const finished: CatchRunRecord = {
       ...current,
@@ -727,26 +770,42 @@ export function findCatchRun(changesDir: string, runId: string, changeName?: str
   return { changeName: name, changeDir, runDir, run: readCatchRun(runDir) };
 }
 
-/** The run and its ledger line counts per stage. Reads only: it takes no lock. */
-export function describeCatchRun(location: CatchRunLocation): CatchRunStatus {
+/** The record and the ledger line counts per stage of one run folder. Reads only: it takes no lock. */
+function describeRunFolder(runDir: string): CatchRunStatus {
   return {
-    run: readCatchRun(location.runDir),
-    ledger: countStages(readLedger(location.runDir)),
+    run: readCatchRun(runDir),
+    ledger: countStages(readLedger(runDir)),
   };
 }
 
-/** The runs of a change, sorted by id (ids start with a UTC timestamp). */
-export function listCatchRuns(changeDir: string): CatchRunSummary[] {
+/** The ids of a change's runs: valid run ids whose folder holds a run.json, sorted (ids start with a UTC timestamp). */
+function runFolderIds(changeDir: string): string[] {
   const runsDir = path.join(changeDir, CATCH_RUNS_DIRNAME);
   if (!existsSync(runsDir)) {
     return [];
   }
   return readdirSync(runsDir)
     .filter((id) => isValidRunId(id) && existsSync(path.join(runsDir, id, RUN_FILE)))
-    .sort()
-    .map((id) => {
-      const run = readCatchRun(path.join(runsDir, id));
-      return { run: id, state: run.state, mode: run.mode, createdAt: run.createdAt };
-    });
+    .sort();
+}
+
+/** The run and its ledger line counts per stage. Reads only: it takes no lock. */
+export function describeCatchRun(location: CatchRunLocation): CatchRunStatus {
+  return describeRunFolder(location.runDir);
+}
+
+/** Every run of a change with the status describeCatchRun gives it, sorted by id. Reads only. */
+export function describeChangeRuns(changeDir: string): CatchRunStatus[] {
+  const runsDir = path.join(changeDir, CATCH_RUNS_DIRNAME);
+  return runFolderIds(changeDir).map((id) => describeRunFolder(path.join(runsDir, id)));
+}
+
+/** The runs of a change, sorted by id (ids start with a UTC timestamp). */
+export function listCatchRuns(changeDir: string): CatchRunSummary[] {
+  const runsDir = path.join(changeDir, CATCH_RUNS_DIRNAME);
+  return runFolderIds(changeDir).map((id) => {
+    const run = readCatchRun(path.join(runsDir, id));
+    return { run: id, state: run.state, mode: run.mode, createdAt: run.createdAt };
+  });
 }
 
