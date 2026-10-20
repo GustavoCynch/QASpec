@@ -257,15 +257,16 @@ function describeFunnel(funnel: CatchFunnel): string {
     `Funnel: risks ${funnel.risks}; mutants ${formatCounts(funnel.mutants)}; ` +
     `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}; ` +
     `assessed ${formatCounts(funnel.assessed)}; judged ${formatCounts(funnel.judged)}; ` +
-    `reported ${funnel.reported.reported} (confirmed ${funnel.reported.confirmed}, dismissed ${funnel.reported.dismissed})` +
+    `findings ${funnel.findings.count} (confirmed ${funnel.findings.confirmed}, ` +
+    `dismissed ${funnel.findings.dismissed}, unanswered ${funnel.findings.unanswered})` +
     unreadable
   );
 }
 
 /** The precision of the answered findings on one line: confirmed over confirmed plus dismissed, or none yet. */
 function describePrecision(funnel: CatchFunnel): string {
-  const { confirmed, dismissed } = funnel.reported;
-  const precision = catchPrecision(funnel.reported);
+  const { confirmed, dismissed } = funnel.findings;
+  const precision = catchPrecision(funnel.findings);
   return precision === null
     ? 'Precision: none (no finding answered yet)'
     : `Precision: ${precision.toFixed(2)} (confirmed ${confirmed}, dismissed ${dismissed})`;
@@ -294,7 +295,7 @@ function statusPayload(status: CatchRunStatus, runFolder: string, funnel: CatchF
     runDir: runFolder,
     ledger: status.ledger,
     funnel,
-    precision: catchPrecision(funnel.reported),
+    precision: catchPrecision(funnel.findings),
   };
 }
 

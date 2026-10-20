@@ -26,7 +26,6 @@ import type { CatchTest } from './catch-test.js';
 import {
   type FindingAnswerOutcome,
   type FindingBase,
-  isIntendedAnswer,
   nextFindingId,
   readFindings,
   recordFindingAnswer,
@@ -223,9 +222,6 @@ export type AnswerCatchFindingOutcome = Extract<FindingAnswerOutcome, { ok: true
 export function answerCatchFinding(input: AnswerCatchFindingInput): AnswerCatchFindingOutcome {
   const location = findCatchRun(input.changesDir, input.runId);
   return withCatchRunLock(location.runDir, input.lockTimeoutMs ?? RUN_LOCK_TIMEOUT_MS, (): AnswerCatchFindingOutcome => {
-    if (!isIntendedAnswer(input.intended)) {
-      return { ok: false, issues: [{ code: 'intended-invalid', message: '--intended must be yes or no' }] };
-    }
     const outcome = recordFindingAnswer(location.runDir, location.run.runId, {
       finding: input.finding,
       intended: input.intended,

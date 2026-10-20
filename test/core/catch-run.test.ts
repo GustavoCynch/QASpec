@@ -1086,7 +1086,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       classified: { land: 1 },
       assessed: {},
       judged: {},
-      reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
       unreadable: 0,
     });
   });
@@ -1102,7 +1102,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       classified: {},
       assessed: {},
       judged: {},
-      reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
       unreadable: 0,
     });
   });
@@ -1130,8 +1130,52 @@ describe('catch run helpers of the child phase (T8)', () => {
       classified: { land: 1 },
       assessed: {},
       judged: {},
-      reported: { reported: 0, confirmed: 1, dismissed: 0 },
+      findings: { count: 0, confirmed: 1, dismissed: 0, unanswered: 0 },
       unreadable: 6,
+    });
+  });
+
+  it('describeCatchFunnel leaves a findings entry that is not an object out of the count, and counts it under unreadable', () => {
+    const runDir = path.join(tmp, 'non-object-findings-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(path.join(runDir, 'findings.json'), JSON.stringify([null, { id: 'F1', test: 'T1' }, 3]));
+
+    expect(describeCatchFunnel(runDir)).toEqual({
+      risks: 0,
+      mutants: {},
+      tests: {},
+      classified: {},
+      assessed: {},
+      judged: {},
+      findings: { count: 1, confirmed: 0, dismissed: 0, unanswered: 1 },
+      unreadable: 2,
+    });
+  });
+
+  it('describeCatchFunnel counts a finding with no answer in the ledger as unanswered', () => {
+    const runDir = path.join(tmp, 'answered-findings-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'findings.json'),
+      JSON.stringify([
+        { id: 'F1', test: 'T1' },
+        { id: 'F2', test: 'T2' },
+        { id: 'F3', test: 'T3' },
+      ])
+    );
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'confirmed', finding: 'F1', intended: 'no' },
+        { stage: 'dismissed', finding: 'F2', intended: 'yes' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    expect(describeCatchFunnel(runDir)).toMatchObject({
+      findings: { count: 3, confirmed: 1, dismissed: 1, unanswered: 1 },
+      unreadable: 0,
     });
   });
 
@@ -1176,7 +1220,7 @@ describe('the funnel of the assess, judge and report stages and the precision (T
     expect(describeCatchFunnel(runDir)).toMatchObject({
       assessed: { kept: 2, 'rule-filtered': 1 },
       judged: { kept: 1, 'judge-filtered': 1 },
-      reported: { reported: 2, confirmed: 1, dismissed: 1 },
+      findings: { count: 2, confirmed: 1, dismissed: 1, unanswered: 0 },
     });
   });
 

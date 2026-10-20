@@ -11,6 +11,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ResolvedCatchConfig } from './catch-config.js';
+import { readAssessment } from './catch-assess.js';
 import { evaluateAnalyzeApproval } from './approval-ledger.js';
 import { buildCatchIntent, CATCH_INTENT_SCHEMA, reapproveCommand, type CatchIntent } from './catch-intent.js';
 import {
@@ -843,8 +844,8 @@ export function findCatchRun(changesDir: string, runId: string, changeName?: str
 /**
  * What the parent, child, assess, judge and report steps produced in one run, as counts: risks; mutants and tests by
  * their outcome; the classified results by their action; the assessed reports by their outcome; the judged reports by
- * their outcome; the findings, and how many were confirmed or dismissed. Counts only the outcomes that occur. Reads
- * only: it takes no lock.
+ * their outcome; the findings, with how many were confirmed, dismissed or left unanswered. Counts only the outcomes
+ * that occur. Reads only: it takes no lock.
  */
 export interface CatchFunnel {
   risks: number;
@@ -853,7 +854,8 @@ export interface CatchFunnel {
   classified: Record<string, number>;
   assessed: Record<string, number>;
   judged: Record<string, number>;
-  reported: { reported: number; confirmed: number; dismissed: number };
+  /** The findings of findings.json: how many, how many were confirmed or dismissed, and how many are unanswered. */
+  findings: { count: number; confirmed: number; dismissed: number; unanswered: number };
   /**
    * Records, ledger lines and report files that could not be read or are corrupt. Each is left out of the counts above
    * and counted here, so one corrupt file never fails status.
@@ -876,19 +878,19 @@ export function catchPrecision(counts: { confirmed: number; dismissed: number })
 }
 
 /**
- * The reports of the run's assessment file, none before catch assess. A file that is not a catch assessment, or a
- * report that is not an object, is counted as unreadable and left out.
+ * The reports of the run's assessment file, none before catch assess. The file is read by readAssessment, the one
+ * reader of assessment.json. A file that cannot be read or parsed, or is not a catch assessment, and a report that is
+ * not an object, are counted as unreadable and left out.
  */
 function assessedReports(runDir: string, tally: ReadTally): Array<Record<string, unknown>> {
-  const file = path.join(runDir, ASSESSMENT_FILE);
-  if (!existsSync(file)) {
-    return [];
-  }
   let assessment: unknown;
   try {
-    assessment = JSON.parse(readFileSync(file, 'utf-8'));
+    assessment = readAssessment(runDir);
   } catch {
     tally.unreadable += 1;
+    return [];
+  }
+  if (assessment === undefined) {
     return [];
   }
   if (!isJsonObject(assessment) || !Array.isArray(assessment.reports)) {
@@ -949,14 +951,34 @@ function ledgerEntries(runDir: string, tally: ReadTally): Array<Record<string, u
     });
 }
 
-/** The findings of the run; a findings file that cannot be read counts as one unreadable file and no finding. */
-function findingCount(runDir: string, tally: ReadTally): number {
+/**
+ * The findings of the run, each one a JSON object. A findings file that cannot be read counts as one unreadable file
+ * and no finding; an entry that is not an object counts as one unreadable record and no finding.
+ */
+function findingsOf(runDir: string, tally: ReadTally): Array<Record<string, unknown>> {
+  let findings: unknown[];
   try {
-    return readFindings(runDir).length;
+    findings = readFindings(runDir);
   } catch {
     tally.unreadable += 1;
-    return 0;
+    return [];
   }
+  return findings.flatMap((finding) => {
+    if (isJsonObject(finding)) {
+      return [finding];
+    }
+    tally.unreadable += 1;
+    return [];
+  });
+}
+
+/** The ids of the findings the ledger answers: each confirmed or dismissed line names the finding it answers. */
+function answeredFindingIds(ledger: Array<Record<string, unknown>>): Set<string> {
+  return new Set(
+    ledger
+      .filter((entry) => entry.stage === 'confirmed' || entry.stage === 'dismissed')
+      .flatMap((entry) => (typeof entry.finding === 'string' ? [entry.finding] : []))
+  );
 }
 
 /** Counts the values of one field across records, with the keys in sorted order. */
@@ -978,7 +1000,10 @@ function countField(records: Array<Record<string, unknown>>, field: string): Rec
  */
 export function describeCatchFunnel(runDir: string): CatchFunnel {
   const tally: ReadTally = { unreadable: 0 };
-  const stages = countStages(ledgerEntries(runDir, tally));
+  const ledger = ledgerEntries(runDir, tally);
+  const stages = countStages(ledger);
+  const findings = findingsOf(runDir, tally);
+  const answered = answeredFindingIds(ledger);
   const funnel: Omit<CatchFunnel, 'unreadable'> = {
     risks: recordsIn(path.join(runDir, RISKS_DIRNAME), 'R', tally).length,
     mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M', tally), 'outcome'),
@@ -986,10 +1011,11 @@ export function describeCatchFunnel(runDir: string): CatchFunnel {
     classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T', tally), 'action'),
     assessed: countField(assessedReports(runDir, tally), 'outcome'),
     judged: countField(recordsIn(path.join(runDir, JUDGES_DIRNAME), 'T', tally), 'outcome'),
-    reported: {
-      reported: findingCount(runDir, tally),
+    findings: {
+      count: findings.length,
       confirmed: stages.confirmed ?? 0,
       dismissed: stages.dismissed ?? 0,
+      unanswered: findings.filter((finding) => typeof finding.id !== 'string' || !answered.has(finding.id)).length,
     },
   };
   return { ...funnel, unreadable: tally.unreadable };

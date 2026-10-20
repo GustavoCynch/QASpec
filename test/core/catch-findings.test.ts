@@ -273,4 +273,26 @@ describe('qaspec catch report and answer on a real run (S8, S10)', () => {
     expect(await answer('F1', 'maybe')).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'intended-invalid' })] });
     expect(ledgerOf(runDir).length).toBe(linesBefore);
   });
+
+  it('refuses an intended value other than yes or no with the reason and message of the shared answer core, and records nothing', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 1, childRuns: 1 } });
+    const { runId, runDir } = await reportRun(fx, [{ path: 'test/catch-currency.spec.ts', content: VALUE_ONE }]);
+    await judgedRun(fx, runId, { T1: true });
+    const reported = await reportCatchFinding({ changesDir: fx.changesDir, runId, test: 'T1', value: { before: 'a', after: 'b' } });
+    if (!reported.ok) {
+      throw new Error('the report should be recorded');
+    }
+    const linesBefore = ledgerOf(runDir).length;
+
+    expect(
+      answerCatchFinding({
+        changesDir: fx.changesDir,
+        runId,
+        finding: 'F1',
+        intended: 'maybe',
+        now: new Date(Date.parse(reported.finding.reportedAt) + 1000),
+      })
+    ).toEqual({ ok: false, issues: [{ code: 'intended-invalid', message: '--intended must be yes or no' }] });
+    expect(ledgerOf(runDir).length).toBe(linesBefore);
+  });
 });
