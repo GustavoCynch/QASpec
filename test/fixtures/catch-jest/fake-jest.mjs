@@ -42,11 +42,20 @@ function generatedReport(status, failureMessage) {
   return { numTotalTestSuites: testResults.length, success: status !== 'failed', testResults };
 }
 
-if (mode.startsWith('report:')) {
-  const name = mode.slice('report:'.length);
+// Writes a fixture as the report. The fixtures name suites under __PROJECT__; the JSON-escaped working directory
+// keeps the text valid JSON.
+function writeFixtureReport(name) {
   const text = fs.readFileSync(path.join(reportsDir, `${name}.json`), 'utf8');
-  // The fixtures name suites under __PROJECT__; the JSON-escaped working directory keeps the text valid JSON.
   fs.writeFileSync(outputFile, text.replaceAll('__PROJECT__', JSON.stringify(cwd).slice(1, -1)));
+}
+
+if (mode.startsWith('report:')) {
+  writeFixtureReport(mode.slice('report:'.length));
+} else if (mode.startsWith('report-exit:')) {
+  // A fixture as the report, then the given exit code: a report that passed while the command itself failed.
+  const [name, code] = mode.slice('report-exit:'.length).split(':');
+  writeFixtureReport(name);
+  process.exitCode = Number(code);
 } else if (mode === 'echo-pass') {
   fs.writeFileSync(outputFile, JSON.stringify(generatedReport('passed')));
 } else if (mode === 'echo-pending') {

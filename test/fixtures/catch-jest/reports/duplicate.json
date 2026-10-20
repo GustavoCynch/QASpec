@@ -1,0 +1,131 @@
+{
+  "numFailedTestSuites": 3,
+  "numFailedTests": 2,
+  "numPassedTestSuites": 3,
+  "numPassedTests": 2,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 1,
+  "numRuntimeErrorTestSuites": 1,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 6,
+  "numTotalTests": 5,
+  "openHandles": [],
+  "startTime": 1792425600000,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["sum"],
+          "duration": 4,
+          "failureDetails": [{}],
+          "failureMessages": [
+            "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 4\nReceived: 3\n\n    at Object.<anonymous> (test/sum.spec.ts:4:20)"
+          ],
+          "fullName": "sum adds two numbers",
+          "location": null,
+          "status": "failed",
+          "title": "adds two numbers"
+        }
+      ],
+      "endTime": 1792425600150,
+      "message": "    ● sum › adds two numbers\n\n      Expected: 4\n      Received: 3",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600100,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [],
+      "endTime": 1792425600230,
+      "message": "Test suite failed to run\n\n    src/sum.ts:1:52 - error TS2322: Type 'string' is not assignable to type 'number'.\n\n      1 export const sum = (a: number, b: number): number => 'four';\n                                                        ~~~~~~\n\n    Found 1 error.\n",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600200,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["skip"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "skip is pending",
+          "location": null,
+          "status": "pending",
+          "title": "is pending"
+        }
+      ],
+      "endTime": 1792425600310,
+      "message": "",
+      "name": "__PROJECT__/test/nested/skip.spec.ts",
+      "startTime": 1792425600300,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["sum"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "sum adds zero",
+          "location": null,
+          "status": "passed",
+          "title": "adds zero"
+        }
+      ],
+      "endTime": 1792425600420,
+      "message": "",
+      "name": "__PROJECT__/test/sum.spec.ts",
+      "startTime": 1792425600400,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["other"],
+          "duration": 2,
+          "failureDetails": [{}],
+          "failureMessages": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\nExpected: \"ok\"\nReceived: \"error\"\n\n    at Object.<anonymous> (test/other.spec.ts:7:23)"
+          ],
+          "fullName": "other reports the status",
+          "location": null,
+          "status": "failed",
+          "title": "reports the status"
+        }
+      ],
+      "endTime": 1792425600520,
+      "message": "    ● other › reports the status\n\n      Expected: \"ok\"\n      Received: \"error\"",
+      "name": "__PROJECT__/test/other.spec.ts",
+      "startTime": 1792425600500,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["skip"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "skip runs",
+          "location": null,
+          "status": "passed",
+          "title": "runs"
+        }
+      ],
+      "endTime": 1792425600605,
+      "message": "",
+      "name": "__PROJECT__/test/nested/skip.spec.ts",
+      "startTime": 1792425600600,
+      "status": "passed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}
