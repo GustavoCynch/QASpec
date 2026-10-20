@@ -930,18 +930,21 @@ Prints the judge's input for a case that needs triage (`needs-triage`). With `--
 ### `qaspec execute triage`
 
 ```
+qaspec execute triage --run <id> --case <case-id|control> --input <file.json> [--json]
 qaspec execute triage --run <id> --case <case-id|control> --classification agent|environment|app --rationale "<text>" [--expected "<text>" --observed "<text>"] [--json]
 ```
 
-Records the judge's classification of a case that needs triage, once per case, as a `judged` ledger line with the classification and rationale. `--rationale` is required. `app` requires `--expected` (what the case expects) and `--observed` (what the run observed); `agent` and `environment` refuse both. An `app` classification creates the next finding (`F1`, `F2`, ...) in `findings.json`, regenerates `findings.md`, and adds a `reported` ledger line. Each finding is one sense-check question: `Case 1.1 expects: <expected>. The run observed: <observed>. Is this intended?` `agent` and `environment` create no finding. A control case cannot take `app`, because a failed control case makes its run `environment-noise`, which produces no findings. A case that was already judged is refused, and so is an environment-noise run. Any refusal exits 1 and writes nothing. Triage does not change the case status: the case stays `needs-triage`, and `finish` is not affected.
+Records the judge's classification of a case that needs triage, once per case, as a `judged` ledger line with the classification and rationale. The judgement comes from `--input <file.json>` or from the flags, never from both. `--input` reads a regular UTF-8 JSON object of at most 64 KB with the keys `classification`, `rationale`, `expected` and `observed` (the flag names without the dashes); any other key is refused. Without `--input`, `--classification` and `--rationale` are required. `app` requires `--expected` (what the case expects) and `--observed` (what the run observed); `agent` and `environment` refuse both. An `app` classification creates the next finding (`F1`, `F2`, ...) in `findings.json`, regenerates `findings.md`, and adds a `reported` ledger line. Each finding is one sense-check question: `Case 1.1 expects: <expected>. The run observed: <observed>. Is this intended?` `agent` and `environment` create no finding. A control case cannot take `app`, because a failed control case makes its run `environment-noise`, which produces no findings. A case that was already judged is refused, and so is an environment-noise run. Any refusal exits 1 and writes nothing. Triage does not change the case status: the case stays `needs-triage`, and `finish` is not affected.
+
+Free text from the application under test, its evidence or the user never goes on a shell command line. The workflow writes the judgement as a JSON file under the run folder (`<run>/drafts/`) and passes it with `--input`, so `$(...)` or backticks in that text cannot run.
 
 ### `qaspec execute answer`
 
 ```
-qaspec execute answer --run <id> --finding <finding-id> --intended yes|no [--note "<text>"] [--json]
+qaspec execute answer --run <id> --finding <finding-id> --intended yes|no [--note "<text>" | --note-file <file>] [--json]
 ```
 
-Records the person's answer to one finding, once. `--intended no` (the behavior is not intended) adds a `confirmed` ledger line, and `--intended yes` (the behavior is intended) adds a `dismissed` line. Each line holds the finding id, the answer, the optional note, the time of the answer, and `secondsToAnswer`: the seconds from the finding's report to the answer. An unknown finding, a second answer to the same finding, and an answer in an environment-noise run are refused, and the command exits 1. Findings of a run that finishes as `environment-noise` are void.
+Records the person's answer to one finding, once. `--intended no` (the behavior is not intended) adds a `confirmed` ledger line, and `--intended yes` (the behavior is intended) adds a `dismissed` line. Each line holds the finding id, the answer, the optional note, the time of the answer, and `secondsToAnswer`: the seconds from the finding's report to the answer. An unknown finding, a second answer to the same finding, and an answer in an environment-noise run are refused, and the command exits 1. Findings of a run that finishes as `environment-noise` are void. `--note-file <file>` reads the note from a regular UTF-8 file of at most 64 KB, as written, instead of `--note`; the two together are refused.
 
 ### `qaspec execute results`
 
@@ -969,10 +972,10 @@ Checks that the run can be reported, like `qaspec publish-gate` does for publish
 ### `qaspec execute tcms-map`
 
 ```
-qaspec execute tcms-map --run <id> --title "<case title>" --tcms-id <id> [--tcms-run <id>] [--json]
+qaspec execute tcms-map --run <id> (--title "<case title>" | --title-file <file>) --tcms-id <id> [--tcms-run <id>] [--json]
 ```
 
-Records the TCMS id of one case title in `runs/<run-id>/tcms.json`, and the TCMS run id when `--tcms-run` is given. The title must be the title of exactly one testcase of the change: an unknown title, or one that matches several testcases, is refused. A title keeps the TCMS id it was first given, and a run keeps the TCMS run it was first given; a different value is refused, and repeating the same mapping changes nothing. The write takes the run lock, so mappings recorded at the same time are all kept. `qaspec execute status --run <id> --json` shows the mapping as `tcms`. Publish records no TCMS ids, so this mapping lives only in the run folder. Creating the TCMS run and its results is the workflow's job through the TCMS MCP server; these commands prepare and record it.
+Records the TCMS id of one case title in `runs/<run-id>/tcms.json`, and the TCMS run id when `--tcms-run` is given. Both ids may contain only letters, digits, dot, underscore, colon and hyphen, since they are passed on the command line. `--title-file <file>` reads the title instead of `--title`: a regular UTF-8 file of at most 64 KB holding one line, the exact title with its trailing line break dropped. The two together, a file with several lines, and an empty title are refused. The workflow writes the title to a file and never puts it on a shell command line. The title must be the title of exactly one testcase of the change: an unknown title, or one that matches several testcases, is refused. A title keeps the TCMS id it was first given, and a run keeps the TCMS run it was first given; a different value is refused, and repeating the same mapping changes nothing. The write takes the run lock, so mappings recorded at the same time are all kept. `qaspec execute status --run <id> --json` shows the mapping as `tcms`. Publish records no TCMS ids, so this mapping lives only in the run folder. Creating the TCMS run and its results is the workflow's job through the TCMS MCP server; these commands prepare and record it.
 
 ### Browser server for `/qsx:execute`
 

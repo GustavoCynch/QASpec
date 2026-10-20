@@ -1006,6 +1006,221 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
     expect(ledgerText(run)).not.toContain('"judged"');
   }, 60_000);
 
+  describe('judgement and note files (triage --input, answer --note-file)', () => {
+    const APP_JUDGEMENT = {
+      classification: 'app',
+      rationale: 'The banner reports an error after a valid save',
+      expected: 'Saved banner shown',
+      observed: 'Error banner shown',
+    };
+    /** A file under the run folder's drafts folder, where the workflow writes its free text. */
+    const draftPath = (run: string, name: string) => path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'drafts', name);
+    const triageArgs = (run: string) => ['triage', '--run', run, '--case', '1.1'];
+
+    it('triage --input records an app judgement from a JSON file and creates the finding the flags create', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), APP_JUDGEMENT);
+
+      const judged = await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json'), '--json']);
+
+      expect(judged.exitCode).toBe(0);
+      expect(JSON.parse(judged.stdout)).toMatchObject({
+        run,
+        case: '1.1',
+        classification: 'app',
+        rationale: APP_JUDGEMENT.rationale,
+        finding: {
+          id: 'F1',
+          case: '1.1',
+          question: 'Case 1.1 expects: Saved banner shown. The run observed: Error banner shown. Is this intended?',
+        },
+      });
+      expect(readFileSync(path.join(runFolder(run), 'findings.md'), 'utf-8')).toContain('Is this intended?');
+    }, 60_000);
+
+    it.each([
+      ['agent', 'The agent clicked the wrong button'],
+      ['environment', 'The backend answered with a maintenance page'],
+    ])('triage --input records the %s judgement from a JSON file and creates no finding', async (classification, rationale) => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), { classification, rationale });
+
+      const judged = await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json'), '--json']);
+
+      expect(judged.exitCode).toBe(0);
+      expect(JSON.parse(judged.stdout)).toMatchObject({ classification, rationale, finding: null });
+      expect(existsSync(path.join(runFolder(run), 'findings.json'))).toBe(false);
+    }, 60_000);
+
+    it('triage --input accepts a file of exactly 64 KB', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      const base = `${JSON.stringify({ classification: 'agent', rationale: '' }, null, 2)}\n`;
+      const exact = `${JSON.stringify({ classification: 'agent', rationale: 'x'.repeat(64 * 1024 - Buffer.byteLength(base)) }, null, 2)}\n`;
+      expect(Buffer.byteLength(exact)).toBe(64 * 1024);
+      await write(draftPath(run, '1.1-judgement.json'), exact);
+
+      const judged = await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json'), '--json']);
+
+      expect(judged.exitCode).toBe(0);
+      expect(JSON.parse(judged.stdout)).toMatchObject({ classification: 'agent' });
+    }, 60_000);
+
+    it('triage --input refuses a file combined with a judgement flag and records nothing', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), { classification: 'agent', rationale: 'Mis-click' });
+
+      const result = await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json'), '--rationale', 'Other', '--json']);
+
+      expect(result.exitCode).toBe(1);
+      expect(JSON.parse(result.stdout)).toEqual({
+        valid: false,
+        errors: [{ message: '--input cannot be combined with --classification, --rationale, --expected or --observed' }],
+      });
+      expect(ledgerText(run)).not.toContain('"judged"');
+    }, 60_000);
+
+    it('triage --input refuses a missing file, a directory and a file over 64 KB, and records nothing', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await fs.mkdir(path.join(workDir, draftPath(run, 'folder')), { recursive: true });
+      await write(draftPath(run, 'too-large.json'), 'x'.repeat(64 * 1024 + 1));
+
+      const missing = await cli([...triageArgs(run), '--input', draftPath(run, 'absent.json')]);
+      const directory = await cli([...triageArgs(run), '--input', draftPath(run, 'folder')]);
+      const large = await cli([...triageArgs(run), '--input', draftPath(run, 'too-large.json')]);
+
+      expect(missing.exitCode).toBe(1);
+      expect(missing.stdout).toContain('file not found');
+      expect(directory.exitCode).toBe(1);
+      expect(directory.stdout).toContain('must be a regular file');
+      expect(large.exitCode).toBe(1);
+      expect(large.stdout).toContain('is larger than 64 KB');
+      expect(ledgerText(run)).not.toContain('"judged"');
+    }, 60_000);
+
+    it('triage --input refuses invalid JSON and an unknown key, and names the problem', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await write(draftPath(run, 'broken.json'), '{"classification": ');
+      await writeJson(draftPath(run, 'typo.json'), { classification: 'agent', rationale: 'Mis-click', observd: 'typo' });
+
+      const broken = await cli([...triageArgs(run), '--input', draftPath(run, 'broken.json'), '--json']);
+      const typo = await cli([...triageArgs(run), '--input', draftPath(run, 'typo.json'), '--json']);
+
+      expect(broken.exitCode).toBe(1);
+      expect(JSON.parse(broken.stdout).errors[0].message).toMatch(/^The judgement file is not valid JSON: /);
+      expect(typo.exitCode).toBe(1);
+      expect(JSON.parse(typo.stdout).errors).toEqual([
+        { message: 'Unknown key "observd" in the judgement file: use classification, rationale, expected and observed' },
+      ]);
+      expect(ledgerText(run)).not.toContain('"judged"');
+    }, 60_000);
+
+    it('triage without --input still requires --classification and --rationale', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+
+      const noRationale = await cli([...triageArgs(run), '--classification', 'agent']);
+      const noClassification = await cli([...triageArgs(run), '--rationale', 'Mis-click']);
+
+      expect(noRationale.exitCode).toBe(1);
+      expect(`${noRationale.stdout}${noRationale.stderr}`).toContain('Missing required option --rationale (or --input)');
+      expect(noClassification.exitCode).toBe(1);
+      expect(`${noClassification.stdout}${noClassification.stderr}`).toContain(
+        'Missing required option --classification (or --input)'
+      );
+      expect(ledgerText(run)).not.toContain('"judged"');
+    }, 60_000);
+
+    it('answer --note-file stores the note from the file verbatim and runs nothing from it', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), APP_JUDGEMENT);
+      expect((await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json')])).exitCode).toBe(0);
+      await write(draftPath(run, 'F1-note.txt'), 'The banner must say Saved $(touch pwned)\n');
+
+      const answered = await cli([
+        'answer',
+        '--run',
+        run,
+        '--finding',
+        'F1',
+        '--intended',
+        'no',
+        '--note-file',
+        draftPath(run, 'F1-note.txt'),
+        '--json',
+      ]);
+
+      expect(answered.exitCode).toBe(0);
+      expect(JSON.parse(answered.stdout)).toMatchObject({
+        finding: 'F1',
+        stage: 'confirmed',
+        note: 'The banner must say Saved $(touch pwned)',
+      });
+      expect(existsSync(path.join(workDir, 'pwned'))).toBe(false);
+    }, 60_000);
+
+    it('answer refuses --note together with --note-file and records nothing', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), APP_JUDGEMENT);
+      expect((await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json')])).exitCode).toBe(0);
+      await write(draftPath(run, 'F1-note.txt'), 'Note from the file\n');
+
+      const result = await cli([
+        'answer',
+        '--run',
+        run,
+        '--finding',
+        'F1',
+        '--intended',
+        'no',
+        '--note',
+        'Note from the flag',
+        '--note-file',
+        draftPath(run, 'F1-note.txt'),
+        '--json',
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(JSON.parse(result.stdout)).toEqual({
+        valid: false,
+        errors: [{ message: '--note cannot be combined with --note-file' }],
+      });
+      expect(ledgerText(run)).not.toContain('"confirmed"');
+    }, 60_000);
+
+    it('answer --note-file refuses a file that is not valid UTF-8 and records nothing', async () => {
+      await setUp();
+      const run = await runNeedingTriage();
+      await writeJson(draftPath(run, '1.1-judgement.json'), APP_JUDGEMENT);
+      expect((await cli([...triageArgs(run), '--input', draftPath(run, '1.1-judgement.json')])).exitCode).toBe(0);
+      await fs.writeFile(path.join(workDir, draftPath(run, 'F1-note.txt')), Buffer.from([0x4e, 0x6f, 0xff, 0xfe]));
+
+      const result = await cli([
+        'answer',
+        '--run',
+        run,
+        '--finding',
+        'F1',
+        '--intended',
+        'no',
+        '--note-file',
+        draftPath(run, 'F1-note.txt'),
+        '--json',
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(JSON.parse(result.stdout).errors[0].message).toMatch(/is not valid UTF-8/);
+      expect(ledgerText(run)).not.toContain('"confirmed"');
+    }, 60_000);
+  });
+
   it('answer exits 1 for a second answer and for an unknown finding, and keeps the first answer', async () => {
     await setUp();
     const run = await runNeedingTriage();
@@ -1271,6 +1486,60 @@ describe('qaspec execute start, confirm, plan, record, finish and status', () =>
       expect(mapped.exitCode).toBe(0);
       const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
       expect(status.tcms).toMatchObject({ tcmsRun: '7', cases: { 'Export totals': { tcmsId: '42' } } });
+    });
+
+    it('tcms-map --title-file stores a title with shell syntax verbatim and runs nothing from it', async () => {
+      await setUp(MANUAL_EXECUTION, { cases: CASES.replace('Export totals', () => '$(touch pwned)') });
+      const run = await startConfirmedRun();
+      const titleFile = path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'drafts', 'tcms-title.txt');
+      await write(titleFile, '$(touch pwned)\n');
+
+      const mapped = await cli(['tcms-map', '--run', run, '--title-file', titleFile, '--tcms-id', '42', '--json']);
+
+      expect(mapped.exitCode).toBe(0);
+      expect(JSON.parse(mapped.stdout)).toMatchObject({ title: '$(touch pwned)', tcmsId: '42' });
+      const status = JSON.parse((await cli(['status', '--run', run, '--json'])).stdout);
+      expect(status.tcms.cases).toEqual({ '$(touch pwned)': { tcmsId: '42', recordedAt: expect.any(String) } });
+      expect(existsSync(path.join(workDir, 'pwned'))).toBe(false);
+    });
+
+    it('tcms-map --title-file drops only the trailing line break, CRLF included', async () => {
+      await setUp();
+      const run = await startConfirmedRun();
+      const titleFile = path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'drafts', 'tcms-title.txt');
+      await write(titleFile, 'Export totals\r\n');
+
+      const mapped = await cli(['tcms-map', '--run', run, '--title-file', titleFile, '--tcms-id', '42', '--json']);
+
+      expect(mapped.exitCode).toBe(0);
+      expect(JSON.parse(mapped.stdout)).toMatchObject({ title: 'Export totals', tcmsId: '42' });
+    });
+
+    it('tcms-map refuses --title with --title-file, a file of several lines, an empty file, and no title', async () => {
+      await setUp();
+      const run = await startConfirmedRun();
+      const titleFile = path.join('qaspec', 'changes', 'pr-1', 'runs', run, 'drafts', 'tcms-title.txt');
+      const mapping = ['tcms-map', '--run', run, '--tcms-id', '42', '--json'];
+
+      await write(titleFile, 'Export totals\nExport by date\n');
+      const several = await cli([...mapping, '--title-file', titleFile]);
+      await write(titleFile, '\n');
+      const empty = await cli([...mapping, '--title-file', titleFile]);
+      const both = await cli([...mapping, '--title', 'Export totals', '--title-file', titleFile]);
+      const neither = await cli(mapping);
+
+      expect(several.exitCode).toBe(1);
+      expect(JSON.parse(several.stdout).errors[0].message).toMatch(/must hold one line/);
+      expect(empty.exitCode).toBe(1);
+      expect(JSON.parse(empty.stdout).errors[0].message).toMatch(/is empty/);
+      expect(both.exitCode).toBe(1);
+      expect(JSON.parse(both.stdout)).toEqual({ valid: false, errors: [{ message: '--title cannot be combined with --title-file' }] });
+      expect(neither.exitCode).toBe(1);
+      expect(JSON.parse(neither.stdout)).toEqual({
+        valid: false,
+        errors: [{ message: 'Missing required option --title (or --title-file)' }],
+      });
+      expect(JSON.parse((await cli(['status', '--run', run, '--json'])).stdout).tcms.cases).toEqual({});
     });
 
     it('tcms-map exits 1 for a title that is not a testcase and records nothing', async () => {

@@ -278,7 +278,7 @@ function runFailures(location: RunLocation, run: RunRecord): ResultsGateFailure[
     {
       code: 'triage-pending',
       message: `No judgement yet for case(s) that need triage: ${unjudged.join(', ')}`,
-      resolve: `qaspec execute triage-context --run ${run.id} --case <case-id>, then qaspec execute triage --run ${run.id} --case <case-id> --classification agent|environment|app`,
+      resolve: `qaspec execute triage-context --run ${run.id} --case <case-id>, then qaspec execute triage --run ${run.id} --case <case-id> --input <judgement.json>`,
     },
   ];
 }
@@ -365,6 +365,13 @@ export function readTcmsMapping(runDir: string): TcmsMapping {
  * of the change. A title keeps the TCMS id it was first given, and a run keeps the TCMS run it was first given;
  * repeating the same mapping changes nothing.
  */
+/**
+ * TCMS ids are passed on a command line, so they are limited to characters no shell interprets.
+ * Ids from any TCMS fit this set (numbers, project-prefixed keys, UUIDs).
+ */
+const TCMS_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const TCMS_ID_CHARACTERS = 'letters, digits, dot, underscore, colon and hyphen';
+
 export function recordTcmsMapping(location: RunLocation, input: TcmsMapInput): TcmsMapOutcome {
   const title = input.title.trim();
   const tcmsId = input.tcmsId.trim();
@@ -375,9 +382,13 @@ export function recordTcmsMapping(location: RunLocation, input: TcmsMapInput): T
   }
   if (tcmsId === '') {
     issues.push({ message: '--tcms-id must not be empty' });
+  } else if (!TCMS_ID_PATTERN.test(tcmsId)) {
+    issues.push({ message: `--tcms-id may contain only ${TCMS_ID_CHARACTERS}` });
   }
   if (tcmsRun === '') {
     issues.push({ message: '--tcms-run must not be empty' });
+  } else if (tcmsRun !== undefined && !TCMS_ID_PATTERN.test(tcmsRun)) {
+    issues.push({ message: `--tcms-run may contain only ${TCMS_ID_CHARACTERS}` });
   }
   if (issues.length > 0) {
     return { ok: false, issues };
