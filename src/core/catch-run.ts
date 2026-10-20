@@ -34,8 +34,8 @@ import {
   appendLedgerEntry,
   generateRunId,
   isValidRunId,
+  LEDGER_FILE,
   nowIso,
-  readLedger,
   RUN_LOCK_TIMEOUT_MS,
   writeFileAtomic,
 } from './run-store.js';
@@ -51,9 +51,8 @@ const RUN_FILE = 'run.json';
 export const INTENT_FILE = 'intent.json';
 export const DIFF_FILE = 'diff.patch';
 export const CHANGED_FILES_FILE = 'changed-files.json';
+/** The setup tails of a run, keyed by phase: parent (start) and child (the reinstall on the head). Never printed. */
 const SETUP_OUTPUT_FILE = 'setup-output.json';
-/** The setup tails of a child reinstall (T8): kept apart from the setup of the parent, never printed. */
-export const CHILD_SETUP_OUTPUT_FILE = 'child-setup-output.json';
 /** Records of the parent phase (T7): one JSON file per risk and per mutant, named by its id. */
 export const RISKS_DIRNAME = 'risks';
 export const MUTANTS_DIRNAME = 'mutants';
@@ -82,14 +81,17 @@ export type CatchRunMode = 'analysis' | 'without-analysis';
 /**
  * setting-up while the worktree and setup run; then ready (parent phase), classified (child phase), assessed (assess
  * ran on the classified reports: judge, report and answer follow), or a failure state, and finished at the end.
- * child-setup-failed: the child phase could not install the head.
+ * child-running is written before the worktree moves to the head; a step that fails after that move ends the run in
+ * child-failed, with its reason in failure. child-setup-failed: the child phase could not install the head.
  */
 export type CatchRunState =
   | 'setting-up'
   | 'ready'
   | 'worktree-failed'
   | 'setup-failed'
+  | 'child-running'
   | 'child-setup-failed'
+  | 'child-failed'
   | 'classified'
   | 'assessed'
   | 'finished';
@@ -255,6 +257,20 @@ export function writeRunJson(runDir: string, fileName: string, value: unknown): 
   writeFileAtomic(path.join(runDir, fileName), jsonText(value));
 }
 
+/** The phases whose setup output setup-output.json keeps: the start (parent) and the child reinstall on the head. */
+export type SetupPhase = 'parent' | 'child';
+
+/**
+ * Keeps the setup output of one phase in setup-output.json, keyed by phase: the start writes parent, and a child
+ * reinstall appends child to the same file. Callers hold the run lock. Output is never printed in full.
+ */
+export function writeSetupOutput(runDir: string, phase: SetupPhase, result: SetupResult): void {
+  const existing = existsSync(path.join(runDir, SETUP_OUTPUT_FILE))
+    ? readRunJson<Record<string, unknown>>(runDir, SETUP_OUTPUT_FILE)
+    : {};
+  writeRunJson(runDir, SETUP_OUTPUT_FILE, { ...existing, [phase]: result });
+}
+
 /**
  * Refuses a run that is not ready. The parent phase (context, risks, mutants, equivalence) needs the worktree at the
  * parent, which exists only in state ready; action names the command in the message.
@@ -271,7 +287,10 @@ const STATE_HINTS: Record<CatchRunState, string> = {
   ready: '',
   'worktree-failed': 'Start a new run after the worktree problem is fixed.',
   'setup-failed': 'Start a new run after catch.setup is fixed.',
+  'child-running':
+    'The worktree is at the head while the child phase runs: finish the run if that phase was interrupted.',
   'child-setup-failed': 'Start a new run after catch.setup is fixed.',
+  'child-failed': 'The worktree was left at the head by a failed child phase: finish the run, then start a new one.',
   classified: 'Start a new run to catch again.',
   assessed: 'Start a new run to catch again.',
   finished: 'Start a new run to catch again.',
@@ -642,7 +661,7 @@ async function prepareWorktree(
     failure = errorText(error);
   }
   if (result !== undefined) {
-    writeFileAtomic(path.join(runDir, SETUP_OUTPUT_FILE), jsonText(result));
+    writeSetupOutput(runDir, 'parent', result);
     if (!result.ok) {
       failure = describeSetupFailure(result);
     }
@@ -835,7 +854,20 @@ export interface CatchFunnel {
   assessed: Record<string, number>;
   judged: Record<string, number>;
   reported: { reported: number; confirmed: number; dismissed: number };
+  /**
+   * Records, ledger lines and report files that could not be read or are corrupt. Each is left out of the counts above
+   * and counted here, so one corrupt file never fails status.
+   */
+  unreadable: number;
 }
+
+/** Counts what a read could not use. Passed through the funnel's reads; one count per unusable file or line. */
+interface ReadTally {
+  unreadable: number;
+}
+
+const isJsonObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** The precision of the findings: confirmed over the answered findings (confirmed plus dismissed); null while none is. */
 export function catchPrecision(counts: { confirmed: number; dismissed: number }): number | null {
@@ -843,21 +875,88 @@ export function catchPrecision(counts: { confirmed: number; dismissed: number })
   return answered === 0 ? null : counts.confirmed / answered;
 }
 
-/** The reports of the run's assessment file; none before catch assess. */
-function assessedReports(runDir: string): Array<Record<string, unknown>> {
+/**
+ * The reports of the run's assessment file, none before catch assess. A file that is not a catch assessment, or a
+ * report that is not an object, is counted as unreadable and left out.
+ */
+function assessedReports(runDir: string, tally: ReadTally): Array<Record<string, unknown>> {
   const file = path.join(runDir, ASSESSMENT_FILE);
   if (!existsSync(file)) {
     return [];
   }
-  const assessment = JSON.parse(readFileSync(file, 'utf-8')) as { reports?: Array<Record<string, unknown>> };
-  return assessment.reports ?? [];
+  let assessment: unknown;
+  try {
+    assessment = JSON.parse(readFileSync(file, 'utf-8'));
+  } catch {
+    tally.unreadable += 1;
+    return [];
+  }
+  if (!isJsonObject(assessment) || !Array.isArray(assessment.reports)) {
+    tally.unreadable += 1;
+    return [];
+  }
+  return assessment.reports.filter((report): report is Record<string, unknown> => {
+    if (isJsonObject(report)) {
+      return true;
+    }
+    tally.unreadable += 1;
+    return false;
+  });
 }
 
-/** The records of a folder, read in id order; a missing folder has none. */
-function recordsIn(recordsDir: string, prefix: RecordPrefix): Array<Record<string, unknown>> {
-  return listRecordIds(recordsDir, prefix).map(
-    (id) => readRecord<Record<string, unknown>>(recordsDir, id) ?? {}
-  );
+/** A record of a folder that is a JSON object; any other record is counted as unreadable and gives undefined. */
+function readObjectRecord(recordsDir: string, id: string, tally: ReadTally): Record<string, unknown> | undefined {
+  try {
+    const record: unknown = readRecord<unknown>(recordsDir, id);
+    if (isJsonObject(record)) {
+      return record;
+    }
+  } catch {
+    // Counted below: an unreadable record is reported in the funnel, never fatal.
+  }
+  tally.unreadable += 1;
+  return undefined;
+}
+
+/** The readable records of a folder, read in id order; a missing folder has none. */
+function recordsIn(recordsDir: string, prefix: RecordPrefix, tally: ReadTally): Array<Record<string, unknown>> {
+  return listRecordIds(recordsDir, prefix).flatMap((id) => {
+    const record = readObjectRecord(recordsDir, id, tally);
+    return record === undefined ? [] : [record];
+  });
+}
+
+/** The ledger lines that parse as JSON objects; a line that does not is counted as unreadable and left out. */
+function ledgerEntries(runDir: string, tally: ReadTally): Array<Record<string, unknown>> {
+  const file = path.join(runDir, LEDGER_FILE);
+  if (!existsSync(file)) {
+    return [];
+  }
+  return readFileSync(file, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .flatMap((line) => {
+      try {
+        const entry: unknown = JSON.parse(line);
+        if (isJsonObject(entry)) {
+          return [entry];
+        }
+      } catch {
+        // Counted below.
+      }
+      tally.unreadable += 1;
+      return [];
+    });
+}
+
+/** The findings of the run; a findings file that cannot be read counts as one unreadable file and no finding. */
+function findingCount(runDir: string, tally: ReadTally): number {
+  try {
+    return readFindings(runDir).length;
+  } catch {
+    tally.unreadable += 1;
+    return 0;
+  }
 }
 
 /** Counts the values of one field across records, with the keys in sorted order. */
@@ -873,28 +972,34 @@ function countField(records: Array<Record<string, unknown>>, field: string): Rec
   return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)));
 }
 
+/**
+ * Reads the funnel of a run folder. A corrupt or unreadable record, ledger line or report is left out of its count and
+ * counted under unreadable, so status still answers. Reads only: it takes no lock.
+ */
 export function describeCatchFunnel(runDir: string): CatchFunnel {
-  const stages = countStages(readLedger(runDir));
-  return {
-    risks: listRecordIds(path.join(runDir, RISKS_DIRNAME), 'R').length,
-    mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M'), 'outcome'),
-    tests: countField(recordsIn(path.join(runDir, TESTS_DIRNAME), 'T'), 'outcome'),
-    classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T'), 'action'),
-    assessed: countField(assessedReports(runDir), 'outcome'),
-    judged: countField(recordsIn(path.join(runDir, JUDGES_DIRNAME), 'T'), 'outcome'),
+  const tally: ReadTally = { unreadable: 0 };
+  const stages = countStages(ledgerEntries(runDir, tally));
+  const funnel: Omit<CatchFunnel, 'unreadable'> = {
+    risks: recordsIn(path.join(runDir, RISKS_DIRNAME), 'R', tally).length,
+    mutants: countField(recordsIn(path.join(runDir, MUTANTS_DIRNAME), 'M', tally), 'outcome'),
+    tests: countField(recordsIn(path.join(runDir, TESTS_DIRNAME), 'T', tally), 'outcome'),
+    classified: countField(recordsIn(path.join(runDir, RESULTS_DIRNAME), 'T', tally), 'action'),
+    assessed: countField(assessedReports(runDir, tally), 'outcome'),
+    judged: countField(recordsIn(path.join(runDir, JUDGES_DIRNAME), 'T', tally), 'outcome'),
     reported: {
-      reported: readFindings(runDir).length,
+      reported: findingCount(runDir, tally),
       confirmed: stages.confirmed ?? 0,
       dismissed: stages.dismissed ?? 0,
     },
   };
+  return { ...funnel, unreadable: tally.unreadable };
 }
 
 /** The record and the ledger line counts per stage of one run folder. Reads only: it takes no lock. */
 function describeRunFolder(runDir: string): CatchRunStatus {
   return {
     run: readCatchRun(runDir),
-    ledger: countStages(readLedger(runDir)),
+    ledger: countStages(ledgerEntries(runDir, { unreadable: 0 })),
   };
 }
 

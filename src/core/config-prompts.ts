@@ -44,14 +44,15 @@ const QASPEC_PR_REVIEW_CONFIG_FOOTER = `
 # outside the project; QASpec does not sandbox them, so pass only the environment they need (env).
 # catch:
 #   baseRef: origin/main                        # base the PR is compared with (parent = merge-base with the head)
-#   setup:
+#   setup:                                      # setup commands run in the worktree and may run again on every
+#                                               # revision switch, so they must be idempotent (safe to run twice)
 #     commands: [npm ci]                        # install commands, run in the worktree in order
 #     reinstallWhenChanged: [package-lock.json] # reinstall only when the child differs in these paths
 #     timeoutSeconds: 900
 #   runner:
 #     adapter: jest
 #     command: npx jest                         # base test command the adapter runs
-#     timeoutSeconds: 300
+#     timeoutSeconds: 900
 #   env:
 #     inherit: [CI]                             # variables passed from your environment, on top of the built-in ones
 #     set:

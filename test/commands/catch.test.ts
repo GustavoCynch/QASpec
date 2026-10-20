@@ -822,7 +822,8 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     expect(`${result.stdout}${result.stderr}`).not.toContain(marker);
     expect(text.stdout).not.toContain(marker);
     const folder = path.join(fx.changeDir, 'catch', runId);
-    expect(fsSync.readFileSync(path.join(folder, 'child-setup-output.json'), 'utf8')).toContain(marker);
+    expect(fsSync.readFileSync(path.join(folder, 'setup-output.json'), 'utf8')).toContain(marker);
+    expect(JSON.parse(fsSync.readFileSync(path.join(folder, 'setup-output.json'), 'utf8')).child.ok).toBe(false);
   });
 
   it('status --run --json adds a funnel of risks, mutants and tests by outcome, and classified results by action', async () => {
@@ -855,7 +856,23 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
       assessed: {},
       judged: {},
       reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      unreadable: 0,
     });
+  });
+
+  it('status still succeeds when a record of the run is corrupt, and counts it under unreadable', async () => {
+    const runId = await startRun();
+    const folder = path.join(fx.changeDir, 'catch', runId);
+    fsSync.mkdirSync(path.join(folder, 'mutants'), { recursive: true });
+    fsSync.writeFileSync(path.join(folder, 'mutants', 'M1.json'), '{"outcome": ');
+
+    const result = await cli(['status', '--run', runId, '--json']);
+    const text = await cli(['status', '--run', runId]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout).funnel).toMatchObject({ mutants: {}, unreadable: 1 });
+    expect(text.exitCode).toBe(0);
+    expect(text.stdout).toMatch(/unreadable 1/);
   });
 
   it('status --run prints a Funnel block in text, and status --change --json gives each run its funnel', async () => {
@@ -876,6 +893,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
           assessed: {},
           judged: {},
           reported: { reported: 0, confirmed: 0, dismissed: 0 },
+          unreadable: 0,
         },
       }),
     ]);

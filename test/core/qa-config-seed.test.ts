@@ -167,6 +167,17 @@ describe('qa-config-seed', () => {
     }
   });
 
+  it('the catch seed says setup commands must be idempotent and shows the 900-second runner timeout', () => {
+    const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
+    const lines = yaml.split('\n');
+    const start = lines.indexOf('# catch:');
+    const example = lines.slice(start, lines.indexOf('#', start)).join('\n');
+
+    expect(example).toMatch(/idempotent/);
+    expect(example).toMatch(/runner:[\s\S]*timeoutSeconds: 900/);
+    expect(example).not.toMatch(/timeoutSeconds: 300/);
+  });
+
   it('catch seed example and seed values contain no adopter-specific values', () => {
     const yaml = serializeConfig({ schema: 'qaspec-pr-review' });
     const lines = yaml.split('\n');

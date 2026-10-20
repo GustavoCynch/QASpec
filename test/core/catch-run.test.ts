@@ -635,6 +635,7 @@ describe('catch start failures after the run exists', () => {
     expect(run.setup).toMatchObject({ ok: false, commands: [{ command: SETUP_FAILS, exitCode: 3, timedOut: false }] });
     expect(run.setup?.commands[0]).not.toHaveProperty('outputTail');
     expect(fs.readFileSync(path.join(runDir, 'setup-output.json'), 'utf8')).toContain(OUTPUT_MARKER);
+    expect(JSON.parse(fs.readFileSync(path.join(runDir, 'setup-output.json'), 'utf8'))).toMatchObject({ parent: { ok: false } });
     expect(fs.readFileSync(path.join(runDir, 'run.json'), 'utf8')).not.toContain(OUTPUT_MARKER);
     expect(fs.readFileSync(path.join(runDir, 'ledger.jsonl'), 'utf8')).not.toContain(OUTPUT_MARKER);
     expect(stagesOf(runDir)).toEqual(['started', 'setup', 'setup-failed']);
@@ -1041,6 +1042,15 @@ describe('catch run helpers of the child phase (T8)', () => {
     );
   });
 
+  it('requireReadyRun names the child-running and child-failed states, and says to finish the run in each', () => {
+    expect(() => requireReadyRun(runWith('child-running'), 'qaspec catch test')).toThrow(
+      /is child-running: qaspec catch test needs a ready run\. .*finish the run/
+    );
+    expect(() => requireReadyRun(runWith('child-failed'), 'qaspec catch risk')).toThrow(
+      /is child-failed: qaspec catch risk needs a ready run\. .*finish the run/
+    );
+  });
+
   it('nextRecordId and the record helpers accept test ids (T1, T2, ...) and refuse other prefixes', () => {
     const dir = path.join(tmp, 'tests');
     expect(nextRecordId(dir, 'T')).toBe('T1');
@@ -1077,6 +1087,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      unreadable: 0,
     });
   });
 
@@ -1092,7 +1103,52 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       reported: { reported: 0, confirmed: 0, dismissed: 0 },
+      unreadable: 0,
     });
+  });
+
+  it('describeCatchFunnel counts each unreadable or corrupt record under unreadable, and counts the readable ones', () => {
+    const runDir = path.join(tmp, 'corrupt-funnel-run');
+    for (const folder of ['risks', 'mutants', 'tests', 'results']) {
+      fs.mkdirSync(path.join(runDir, folder), { recursive: true });
+    }
+    fs.writeFileSync(path.join(runDir, 'risks', 'R1.json'), '{"requirement": ');
+    fs.writeFileSync(path.join(runDir, 'risks', 'R2.json'), '{}');
+    fs.writeFileSync(path.join(runDir, 'mutants', 'M1.json'), JSON.stringify({ outcome: 'surviving' }));
+    fs.writeFileSync(path.join(runDir, 'mutants', 'M2.json'), 'null');
+    fs.writeFileSync(path.join(runDir, 'tests', 'T1.json'), JSON.stringify({ outcome: 'gated' }));
+    fs.mkdirSync(path.join(runDir, 'tests', 'T2.json'));
+    fs.writeFileSync(path.join(runDir, 'results', 'T1.json'), JSON.stringify({ action: 'land' }));
+    fs.writeFileSync(path.join(runDir, 'assessment.json'), '{"reports": [');
+    fs.writeFileSync(path.join(runDir, 'findings.json'), '[oops');
+    fs.writeFileSync(path.join(runDir, 'ledger.jsonl'), `${JSON.stringify({ stage: 'confirmed' })}\n{"stage":\n`);
+
+    expect(describeCatchFunnel(runDir)).toEqual({
+      risks: 1,
+      mutants: { surviving: 1 },
+      tests: { gated: 1 },
+      classified: { land: 1 },
+      assessed: {},
+      judged: {},
+      reported: { reported: 0, confirmed: 1, dismissed: 0 },
+      unreadable: 6,
+    });
+  });
+
+  it('describeChangeRuns reads a run whose ledger has a corrupt line: the line is left out of the counts', () => {
+    const changeDir = path.join(tmp, 'change-with-corrupt-ledger');
+    const runDir = path.join(changeDir, 'catch', PARENT_RUN);
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'run.json'),
+      JSON.stringify({ schema: 'qaspec.catch-run/v1', runId: PARENT_RUN, change: CHANGE, state: 'classified' })
+    );
+    fs.writeFileSync(path.join(runDir, 'ledger.jsonl'), `${JSON.stringify({ stage: 'started' })}\n{"stage":\n`);
+
+    expect(describeChangeRuns(changeDir)).toEqual([
+      expect.objectContaining({ run: expect.objectContaining({ runId: PARENT_RUN, state: 'classified' }), ledger: { started: 1 } }),
+    ]);
+    expect(describeCatchFunnel(runDir)).toMatchObject({ unreadable: 1 });
   });
 });
 

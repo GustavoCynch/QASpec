@@ -414,6 +414,53 @@ describe('recordTest parent gates', () => {
   });
 });
 
+describe('recordTest keeps the adapter message of a run that did not pass (T14-F2)', () => {
+  it('keeps the message of a functionality test whose parent run fails, and no detail for a parent run that passed', async () => {
+    const fx = makeProjectFixture({ root: tmp });
+    const ready = await readyRun(fx);
+
+    const failing = await recordTest(
+      testInput(ready, {
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: 'test/catch-currency.spec.ts',
+        content: spec('export const value = 2;'),
+      })
+    );
+    expect(failing).toMatchObject({ ok: true, test: { parentOutcomes: ['fail'], outcome: 'gated' } });
+    expect((failing as { test: { detail?: string } }).test.detail).toMatch(/no longer kept: export const value = 2;/);
+
+    const passing = await recordTest(
+      testInput(ready, {
+        kind: 'functionality',
+        requirement: 'Currency',
+        path: 'test/catch-kept.spec.ts',
+        content: spec('export const value = 1;'),
+      })
+    );
+    expect(passing).toMatchObject({ ok: true, test: { parentOutcomes: ['pass'] } });
+    expect(passing).not.toMatchObject({ test: { detail: expect.anything() } });
+  });
+
+  it('keeps the message of the mutated run that caught a catching test', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+    const ready = await readyRun(fx);
+    await judgedMutant(ready, LABEL_ORIGINAL, LABEL_REPLACEMENT);
+
+    const outcome = await recordTest(
+      testInput(ready, {
+        kind: 'catching',
+        mutant: 'M1',
+        path: 'test/catch-label.spec.ts',
+        content: spec("export const label = 'value';"),
+      })
+    );
+
+    expect(outcome).toMatchObject({ ok: true, test: { outcome: 'gated', mutantOutcome: 'fail' } });
+    expect((outcome as { test: { detail?: string } }).test.detail).toMatch(/no longer kept: export const label = 'value';/);
+  });
+});
+
 describe('recordTest functionality and dodgy-diff tests', () => {
   it('records the parent outcome of a functionality test once, without gating it on the parent', async () => {
     const fx = makeProjectFixture({ root: tmp });

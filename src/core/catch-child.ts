@@ -1,8 +1,10 @@
 /**
- * The child phase of /qsx:catch (T8, L28, L35, S5 Table 3). The worktree switches to the PR head once. catch.setup runs
- * again only when needsReinstall says a configured path changed. Every gated test is then run on the head
- * gates.childRuns times and classified with its parent outcome. The run ends classified, and the worktree stays at the
- * head for landing. A failed reinstall ends the run in child-setup-failed with nothing classified.
+ * The child phase of /qsx:catch (T8, L28, L35, S5 Table 3). The run is marked child-running, then the worktree switches to
+ * the PR head once. catch.setup runs again only when needsReinstall says a configured path changed. Every gated test is
+ * then run on the head gates.childRuns times and classified with its parent outcome. The run ends classified, and the
+ * worktree stays at the head for landing. A failed reinstall ends the run in child-setup-failed with nothing classified.
+ * Any other step that fails after the worktree moved to the head ends the run in child-failed, so no parent-phase
+ * command can run on the head. A test's path is checked on the head before anything is written there.
  */
 
 import { mkdirSync, promises as fs, readFileSync } from 'node:fs';
@@ -18,11 +20,11 @@ import {
   RESULTS_DIRNAME,
   RUNNER_OUTPUT_DIRNAME,
   TESTS_DIRNAME,
-  CHILD_SETUP_OUTPUT_FILE,
   withoutOutput,
   withRunLockAsync,
   writeRunJson,
   writeRunRecord,
+  writeSetupOutput,
   type CatchRecordIssue,
   type CatchRunRecord,
 } from './catch-run.js';
@@ -37,7 +39,7 @@ import {
   openProjectFolder,
   runnerFor,
 } from './catch-runner.js';
-import { type CatchTest, type CatchTestKind, runPlacedTest } from './catch-test.js';
+import { type CatchTest, type CatchTestKind, runPlacedTest, testPlacement } from './catch-test.js';
 import { readProjectConfig } from './project-config.js';
 import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso } from './run-store.js';
 
@@ -140,8 +142,9 @@ async function pathExists(file: string): Promise<boolean> {
 }
 
 /**
- * Runs catch.setup on the head, in the worktree. Its output tail goes to child-setup-output.json only. The run it
- * returns is ready (installed for the head) or child-setup-failed (nothing is installed for a known revision).
+ * Runs catch.setup on the head, in the worktree. Its output tail goes to setup-output.json under the child key. The run
+ * it returns is child-running and installed for the head, or child-setup-failed (nothing is installed for a known
+ * revision). The run passed in is the child-running record.
  */
 async function reinstallOnHead(input: {
   projectRoot: string;
@@ -152,7 +155,7 @@ async function reinstallOnHead(input: {
 }): Promise<{ ok: true; run: CatchRunRecord } | { ok: false; run: CatchRunRecord }> {
   const { projectRoot, worktree, runDir, run, config } = input;
   const result = await runSetup(projectRoot, worktree, config, run.projectPrefix);
-  writeRunJson(runDir, CHILD_SETUP_OUTPUT_FILE, result);
+  writeSetupOutput(runDir, 'child', result);
   const setup = { ok: result.ok, commands: result.commands.map(withoutOutput) };
   const at = nowIso();
   appendLedgerEntry(runDir, {
@@ -178,7 +181,20 @@ async function reinstallOnHead(input: {
   };
 }
 
-/** Runs one gated test on the head, gates.childRuns times, and classifies it. A timeout or runner error stops the runs. */
+/** The fields every result carries, whatever the head did with the test. */
+type ResultBase = Pick<CatchResult, 'schema' | 'test' | 'kind' | 'parent'>;
+
+/** A test the head did not take: discarded as inconclusive, with the reason, and no child run. */
+function refusedOnHead(base: ResultBase, detail: string): CatchResult {
+  return { ...base, child: [], action: 'discard', reason: 'inconclusive', detail, childRuns: [], createdAt: nowIso() };
+}
+
+/**
+ * Runs one gated test on the head, gates.childRuns times, and classifies it. Its path is checked on the head before
+ * anything is written there: a path that leaves the project through a link, or runs under a file, or a file that
+ * already exists, is refused as inconclusive and never run. A timeout or runner error stops the runs. createdAt is the
+ * time of the classification, after its runs.
+ */
 async function classifyOnHead(input: {
   test: CatchTest;
   runDir: string;
@@ -188,18 +204,14 @@ async function classifyOnHead(input: {
   config: ResolvedCatchConfig;
 }): Promise<CatchResult> {
   const { test, runDir, folder, projectDir, adapter, config } = input;
-  const createdAt = nowIso();
   const parent = test.parentOutcomes[0];
-  const base = { schema: CATCH_RESULT_SCHEMA, test: test.id, kind: test.kind, parent, createdAt };
-  if (await pathExists(path.join(folder.real, ...test.path.split('/')))) {
-    return {
-      ...base,
-      child: [],
-      action: 'discard',
-      reason: 'inconclusive',
-      detail: `${test.path} exists on the head: the test was not run there.`,
-      childRuns: [],
-    };
+  const base: ResultBase = { schema: CATCH_RESULT_SCHEMA, test: test.id, kind: test.kind, parent };
+  const placed = await testPlacement(folder, test.path);
+  if (!placed.ok) {
+    return refusedOnHead(base, `${placed.message} The test was not run on the head.`);
+  }
+  if (await pathExists(placed.absolute)) {
+    return refusedOnHead(base, `${test.path} exists on the head: the test was not run there.`);
   }
 
   const bytes = readFileSync(path.join(runDir, test.content));
@@ -225,6 +237,7 @@ async function classifyOnHead(input: {
     action: classification.action,
     ...(classification.reason === undefined ? {} : { reason: classification.reason }),
     childRuns,
+    createdAt: nowIso(),
   };
 }
 
@@ -235,8 +248,9 @@ function writeResult(runDir: string, result: CatchResult): void {
 }
 
 /**
- * The child phase: refuses without a gated test (nothing changes); otherwise switches to the head, reinstalls when
- * needed, classifies every gated test and ends the run classified. Runs under the run lock.
+ * The child phase: refuses without a gated test (nothing changes); otherwise marks the run child-running, switches to the
+ * head, reinstalls when needed, classifies every gated test and ends the run classified. A step that fails after the
+ * switch ends the run in child-failed with its reason, and the failure is raised. Runs under the run lock.
  */
 export async function runChildPhase(input: RunChildInput): Promise<RunChildOutcome> {
   const location = findCatchRun(input.changesDir, input.runId);
@@ -259,47 +273,85 @@ export async function runChildPhase(input: RunChildInput): Promise<RunChildOutco
         throw new Error(`Catch run ${run.runId} has no worktree: start a new run.`);
       }
       const worktree = run.worktree;
-      await switchRevision(input.projectRoot, worktree, run.headSha);
 
-      let current = run;
-      if (await needsReinstall(input.projectRoot, run.parentSha, run.headSha, config.setup.reinstallWhenChanged ?? [])) {
-        const reinstalled = await reinstallOnHead({
-          projectRoot: input.projectRoot,
-          worktree,
-          runDir: location.runDir,
-          run,
-          config,
+      // Recorded before the worktree leaves the parent: from here on the run is never ready, so a parent-phase command
+      // cannot run on the head, even when this process stops in the middle of the switch.
+      const running: CatchRunRecord = { ...run, state: 'child-running', updatedAt: nowIso() };
+      writeRunRecord(location.runDir, running);
+      try {
+        appendLedgerEntry(location.runDir, { stage: 'child-running', at: running.updatedAt });
+        return await runOnHead({ projectRoot: input.projectRoot, runDir: location.runDir, run: running, worktree, tests, adapter, config });
+      } catch (error) {
+        const reason = errorText(error);
+        const failure = `The child phase stopped after the worktree moved to the head: ${reason}`;
+        recordChildFailure(location.runDir, running, failure);
+        throw new Error(`Catch run ${run.runId} is child-failed: ${reason} Finish the run, then start a new one.`, {
+          cause: error,
         });
-        if (!reinstalled.ok) {
-          writeRunRecord(location.runDir, reinstalled.run);
-          appendLedgerEntry(location.runDir, { stage: 'child-setup-failed', at: reinstalled.run.updatedAt });
-          return { status: 'setup-failed', run: reinstalled.run };
-        }
-        current = reinstalled.run;
       }
-
-      const projectDir = await projectDirInWorktree(input.projectRoot, current);
-      const folder = await openProjectFolder(projectDir);
-      const results: CatchResult[] = [];
-      for (const test of tests) {
-        const result = await classifyOnHead({ test, runDir: location.runDir, folder, projectDir, adapter, config });
-        writeResult(location.runDir, result);
-        appendLedgerEntry(location.runDir, {
-          stage: 'classified',
-          at: result.createdAt,
-          test: result.test,
-          kind: result.kind,
-          parent: result.parent,
-          child: result.child,
-          action: result.action,
-          ...(result.reason === undefined ? {} : { reason: result.reason }),
-        });
-        results.push(result);
-      }
-
-      const classified: CatchRunRecord = { ...current, state: 'classified', updatedAt: nowIso() };
-      writeRunRecord(location.runDir, classified);
-      return { status: 'classified', run: classified, results };
     }
   );
+}
+
+/** Ends a child-running run in child-failed with its reason, so no later step runs on the head. Keeps the original error. */
+function recordChildFailure(runDir: string, running: CatchRunRecord, failure: string): void {
+  const failed: CatchRunRecord = { ...running, state: 'child-failed', failure, updatedAt: nowIso() };
+  try {
+    writeRunRecord(runDir, failed);
+    appendLedgerEntry(runDir, { stage: 'child-failed', at: failed.updatedAt });
+  } catch {
+    // The run stays child-running, which refuses every parent-phase command too: the original error is what the caller sees.
+  }
+}
+
+/** The steps after the switch: reinstall when needed, classify every gated test on the head, and end the run classified. */
+async function runOnHead(input: {
+  projectRoot: string;
+  runDir: string;
+  run: CatchRunRecord;
+  worktree: string;
+  tests: CatchTest[];
+  adapter: TestRunnerAdapter;
+  config: ResolvedCatchConfig;
+}): Promise<RunChildOutcome> {
+  const { projectRoot, runDir, run, worktree, tests, adapter, config } = input;
+  await switchRevision(projectRoot, worktree, run.headSha);
+
+  let current = run;
+  if (await needsReinstall(projectRoot, run.parentSha, run.headSha, config.setup.reinstallWhenChanged ?? [])) {
+    const reinstalled = await reinstallOnHead({ projectRoot, worktree, runDir, run, config });
+    if (!reinstalled.ok) {
+      writeRunRecord(runDir, reinstalled.run);
+      appendLedgerEntry(runDir, { stage: 'child-setup-failed', at: reinstalled.run.updatedAt });
+      return { status: 'setup-failed', run: reinstalled.run };
+    }
+    current = reinstalled.run;
+  }
+
+  const projectDir = await projectDirInWorktree(projectRoot, current);
+  const folder = await openProjectFolder(projectDir);
+  const results: CatchResult[] = [];
+  for (const test of tests) {
+    const result = await classifyOnHead({ test, runDir, folder, projectDir, adapter, config });
+    writeResult(runDir, result);
+    appendLedgerEntry(runDir, {
+      stage: 'classified',
+      at: result.createdAt,
+      test: result.test,
+      kind: result.kind,
+      parent: result.parent,
+      child: result.child,
+      action: result.action,
+      ...(result.reason === undefined ? {} : { reason: result.reason }),
+    });
+    results.push(result);
+  }
+
+  const classified: CatchRunRecord = { ...current, state: 'classified', updatedAt: nowIso() };
+  writeRunRecord(runDir, classified);
+  return { status: 'classified', run: classified, results };
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

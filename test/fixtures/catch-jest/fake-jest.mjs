@@ -64,6 +64,7 @@ function writeFixtureReport(name) {
 //   // fake: flaky on head   every odd run of such a test fails; the count of those runs lives in <record>.flaky
 //   // fake: broken on head  the test does not build: a suite that failed to run, with no assertion
 //   // fake: message on head: connect ECONNREFUSED  the run fails one assertion with this message (one line per message)
+//   // fake: pause on head   the run takes one second longer, then runs as usual
 // Every test run appends the text each named test had at that moment to <record>.runs, one JSON line per run.
 const BASE_MARKER = 'export const value = 1;';
 const HEAD_MARKER = 'export const value = 2;';
@@ -90,7 +91,7 @@ function sideOf(name) {
 function directivesOf(name) {
   const text = fs.readFileSync(name, 'utf8');
   const side = sideOf(name);
-  return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken) on (base|head)\s*$/gm)]
+  return [...text.matchAll(/^\/\/ fake: (sleep|exit3|flaky|broken|pause) on (base|head)\s*$/gm)]
     .filter((match) => match[2] === side)
     .map((match) => match[1]);
 }
@@ -156,6 +157,10 @@ function runContracts(variant) {
     process.stderr.write('boom from the runner\n');
     process.exitCode = 3;
     return;
+  }
+  if (directives.some((list) => list.includes('pause'))) {
+    // A run that takes time, then reports as usual: the child phase stamps its classification after the runs.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000);
   }
   const oddRun = directives.some((list) => list.includes('flaky')) && nextFlakyCount() % 2 === 1;
   let failed = false;

@@ -152,6 +152,10 @@ export interface ProjectFixtureOptions {
   headApp?: string;
   /** Files the feature branch adds or changes besides src/app.ts (path to contents). */
   headFiles?: Record<string, string>;
+  /** Symbolic links the feature branch adds inside the project (path to target; an absolute target leaves the project). */
+  headSymlinks?: Record<string, string>;
+  /** Files committed on main besides the default ones (path to contents): existing tests the base runs. */
+  baseFiles?: Record<string, string>;
   /** catch.judges in the catch block (the config default when absent). */
   judges?: number;
   /** catch.rulesFile in the catch block; with content, the rules file is committed on main at that path. */
@@ -212,6 +216,7 @@ export function makeProjectFixture(options: ProjectFixtureOptions): ProjectFixtu
     'src/util.ts': BASE_UTIL,
     'test/app.spec.ts': SPEC_APP,
     'qaspec/specs/billing-export/spec.md': CHANGE_FILES.base,
+    ...(options.baseFiles ?? {}),
     ...(options.rulesFile?.content === undefined ? {} : { [options.rulesFile.path]: options.rulesFile.content }),
   });
   git(repo, 'add', '-A');
@@ -220,6 +225,10 @@ export function makeProjectFixture(options: ProjectFixtureOptions): ProjectFixtu
 
   git(repo, 'checkout', '-q', '-b', 'feature');
   writeFiles(project, { 'src/app.ts': options.headApp ?? HEAD_APP, ...(options.headFiles ?? {}) });
+  for (const [relative, target] of Object.entries(options.headSymlinks ?? {})) {
+    fs.mkdirSync(path.dirname(path.join(project, relative)), { recursive: true });
+    fs.symlinkSync(target, path.join(project, relative));
+  }
   if (subfolder !== '') {
     writeFiles(repo, { 'README.md': 'outside the project\n' });
   }
