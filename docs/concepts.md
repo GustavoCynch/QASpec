@@ -693,25 +693,32 @@ qaspec/
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                         QASPEC QA FLOW (core profile)                        │
+│                        QASPEC QA FLOW (core profile)                         │
 │                                                                              │
 │   ┌────────────────┐                                                         │
 │   │  1. ANALYZE    │  /qsx:analyze → analysis.md + delta specs (halt)        │
 │   └───────┬────────┘                                                         │
+│           ├──────► /qsx:catch → tests for the PR's code, in parallel:        │
+│           │        mutants of the parent, Harden & Catch table,              │
+│           │        likely regressions asked as "is this intended?"           │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  2. CASES     │  /qsx:cases → testcases.md covering specs (halt)      │
+│   │  2. CASES      │  /qsx:cases → testcases.md covering specs (halt)        │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐                                                         │
-│   │  3. PUBLISH    │  /qsx:publish → in-chat summary, TCMS upload, checkboxes │
+│   │  3. PUBLISH    │  /qsx:publish → in-chat summary, TCMS upload            │
+│   └───────┬────────┘                                                         │
+│           ▼                                                                  │
+│   ┌────────────────┐                                                         │
+│   │  4. EXECUTE    │  /qsx:execute → browser run, deterministic verdicts     │
 │   └───────┬────────┘                                                         │
 │           ▼                                                                  │
 │   ┌────────────────┐     ┌──────────────────────────────────────────────┐    │
-│   │  4. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
+│   │  5. ARCHIVE    │────►│  Merge deltas; move change to archive/       │    │
 │   └────────────────┘     └──────────────────────────────────────────────┘    │
 │                                                                              │
-│  Default workflow: `/qsx:*` commands installed by `qaspec init`.                 │
+│  Default workflow: `/qsx:*` commands installed by `qaspec init`.             │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 

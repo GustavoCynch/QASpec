@@ -67,6 +67,14 @@ export const WORKFLOW_PROMPT_META: Record<string, WorkflowPromptMeta> = {
     name: 'Publish to your TCMS',
     description: 'Upload approved test cases to your TCMS via MCP',
   },
+  execute: {
+    name: 'Execute test cases',
+    description: 'Run approved test cases in a browser through an agent, with deterministic verdicts',
+  },
+  catch: {
+    name: 'Catch PR regressions',
+    description: 'Generate tests for a PR from the approved intent and report likely regressions as questions',
+  },
   new: {
     name: 'New change',
     description: 'Create a new change scaffold quickly',
