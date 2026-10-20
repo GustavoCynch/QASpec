@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,6 +18,9 @@ import {
   setupLogging,
   type ProjectFixture,
 } from '../fixtures/catch-jest/catch-project.js';
+
+// Each test drives real git repositories and several runner processes; the default 10 s is too short under a full parallel suite.
+vi.setConfig({ testTimeout: 30_000 });
 
 let tmp: string;
 let envBackup: NodeJS.ProcessEnv;
