@@ -10,6 +10,7 @@ import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent, type CatchRequ
 import {
   CATCH_RUNS_DIRNAME,
   RESULTS_DIRNAME,
+  SETUP_OUTPUT_FILE,
   catchPrecision,
   describeCatchFunnel,
   describeCatchRun,
@@ -180,7 +181,7 @@ function printStarted(run: CatchRunRecord, runFolder: string): void {
   if (run.state === 'ready') {
     console.log(`Next: qaspec catch finish --run ${run.runId} when the run is done`);
   } else if (run.state === 'setup-failed') {
-    console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, 'setup-output.json')}`);
+    console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, SETUP_OUTPUT_FILE)}`);
   }
 }
 
@@ -250,7 +251,7 @@ function formatCounts(counts: Record<string, number>): string {
   return entries.length === 0 ? 'none' : entries.map(([key, count]) => `${key} ${count}`).join(', ');
 }
 
-/** The funnel of a run on one line: risks, mutants and tests by outcome, classified, assessed and judged results, findings. */
+/** The funnel of a run on one line: risks, mutants and tests by outcome, the results by stage, findings and landed tests. */
 function describeFunnel(funnel: CatchFunnel): string {
   const unreadable = funnel.unreadable > 0 ? `; unreadable ${funnel.unreadable}` : '';
   return (
@@ -258,7 +259,8 @@ function describeFunnel(funnel: CatchFunnel): string {
     `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}; ` +
     `assessed ${formatCounts(funnel.assessed)}; judged ${formatCounts(funnel.judged)}; ` +
     `findings ${funnel.findings.count} (confirmed ${funnel.findings.confirmed}, ` +
-    `dismissed ${funnel.findings.dismissed}, unanswered ${funnel.findings.unanswered})` +
+    `dismissed ${funnel.findings.dismissed}, unanswered ${funnel.findings.unanswered}); ` +
+    `landed ${funnel.landed}` +
     unreadable
   );
 }
@@ -679,7 +681,7 @@ export async function catchChildCommand(options: CatchChildCommandOptions): Prom
       if (run.failure) {
         console.log(chalk.red(`  ${run.failure}`));
       }
-      console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, 'setup-output.json')}`);
+      console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, SETUP_OUTPUT_FILE)}`);
     }
     process.exitCode = 1;
     return;

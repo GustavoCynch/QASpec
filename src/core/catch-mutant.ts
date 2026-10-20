@@ -5,7 +5,8 @@
  *   1. The comparable forms of the parent and the mutant (the adapter's normalizeSource) are equal:
  *      syntactic-equivalent. Discarded; nothing runs.
  *   2. The existing tests related to the file run on the unmutated parent first (the baseline, once per set of
- *      related tests, cached in the run). A set that is not passing there ends the mutant as baseline-not-passing:
+ *      related tests, cached in the run unless it timed out or failed to run, so the next mutant runs it again).
+ *      A set that is not passing there ends the mutant as baseline-not-passing:
  *      the mutant is not blamed, and no mutant run happens. Otherwise the mutant is applied in the parent's worktree
  *      and the same tests run on it. The file is restored byte for byte afterwards, whatever happened. no-build and
  *      caught-by-existing are discarded; caughtBy lists the tests that failed. surviving: no related test, or the
@@ -222,8 +223,11 @@ export function runDetail(run: RunResult): string | undefined {
   return lines.length === 0 ? undefined : keepHead(lines.join('\n'), MAX_TEXT_BYTES);
 }
 
-/** A detail as a record property: present only when the run said something that did not pass. */
-const withDetail = (detail: string | undefined): { detail?: string } => (detail === undefined ? {} : { detail });
+/** A timeout or a runner error: a run that says nothing stable about its tests. Shared by the mutant and test gates. */
+export const isInconclusive = (outcome: RunOutcome): boolean => outcome === 'timeout' || outcome === 'runner-error';
+
+/** A detail as a record property: present only when the run said something that did not pass. Shared by the gates. */
+export const withDetail = (detail: string | undefined): { detail?: string } => (detail === undefined ? {} : { detail });
 
 /** The related test files that failed in a run, sorted and unique: the tests that caught the mutant. */
 function caughtByOf(run: RunResult): string[] {
@@ -284,7 +288,10 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
 /** The baseline cache of a run: the outcome of each related-test set on the unmutated parent, keyed by the set. */
 export const BASELINES_FILE = 'baselines.json';
 
-/** The outcome of one related-test set on the unmutated parent, run once per run and reused by later mutants. */
+/**
+ * The outcome of one related-test set on the unmutated parent: run once per run and reused by later mutants when the
+ * outcome is stable (a timeout or a runner error is not stored).
+ */
 export interface CatchBaseline {
   /** The set: the related test files, sorted. */
   tests: string[];
@@ -298,7 +305,8 @@ const baselineKey = (sortedTests: readonly string[]): string => sha256(Buffer.fr
 
 /**
  * The baseline of a related-test set: read from the run's cache when the set has one, else run once on the unmutated
- * parent and stored there. Callers hold the run lock, and the mutant is not written before this returns.
+ * parent. A stable outcome is stored there; a timeout or a runner error is returned but not stored, so the next mutant
+ * of the set runs the baseline again. Callers hold the run lock, and the mutant is not written before this returns.
  */
 async function baselineOf(
   runDir: string,
@@ -316,7 +324,9 @@ async function baselineOf(
   }
   const result = await runSet();
   const baseline: CatchBaseline = { tests: sorted, outcome: result.outcome, ...withDetail(runDetail(result)), createdAt: nowIso() };
-  writeRunJson(runDir, BASELINES_FILE, { ...cache, [key]: baseline });
+  if (!isInconclusive(result.outcome)) {
+    writeRunJson(runDir, BASELINES_FILE, { ...cache, [key]: baseline });
+  }
   return baseline;
 }
 

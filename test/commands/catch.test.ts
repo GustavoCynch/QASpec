@@ -344,6 +344,7 @@ describe('qaspec catch start, status and finish', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout + result.stderr).not.toContain(OUTPUT_MARKER);
+    expect(result.stdout).toMatch(/Setup output is kept in the run folder: .*\/catch\/[^/\s]+\/setup-output\.json/);
     const [runId] = await runFolders();
     const runDir = path.join(changeDir(), 'catch', runId);
     expect(JSON.parse(await fs.readFile(path.join(runDir, 'run.json'), 'utf-8')).state).toBe('setup-failed');
@@ -761,6 +762,21 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({ recorded: false, errors: expect.arrayContaining([expect.objectContaining({ code: 'kind-invalid' })]) });
   });
 
+  it('catch test refuses a path an earlier test of the run already uses: exit 1, the code path-duplicate, and nothing recorded', async () => {
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+
+    const result = await cli(['test', '--run', runId, '--input', inputFile('again.json', currencyTest()), '--json']);
+    const status = await cli(['status', '--run', runId, '--json']);
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      recorded: false,
+      errors: [expect.objectContaining({ code: 'path-duplicate' })],
+    });
+    expect(JSON.parse(status.stdout).funnel.tests).toEqual({ gated: 1 });
+  });
+
   it('catch child runs the gated test on the head, prints its classification and exits 0', async () => {
     const runId = await startRun();
     expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
@@ -826,6 +842,25 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     expect(JSON.parse(fsSync.readFileSync(path.join(folder, 'setup-output.json'), 'utf8')).child.ok).toBe(false);
   });
 
+  it('catch child prints where the setup output of a failed head setup is kept, in text mode', async () => {
+    const failingSetup = nodeEval(
+      `process.exit(require('fs').readFileSync('src/app.ts', 'utf8').includes('value = 2') ? 3 : 0)`
+    );
+    fx.writeConfig({
+      baseRef: 'main',
+      setup: { commands: [failingSetup], reinstallWhenChanged: ['src/app.ts'] },
+      runner: { adapter: 'jest', command: contractRunner(fx.recordPath), timeoutSeconds: 30 },
+      gates: { parentRuns: 2, childRuns: 2 },
+    });
+    const runId = await startRun();
+    expect((await cli(['test', '--run', runId, '--input', inputFile('test.json', currencyTest()), '--json'])).exitCode).toBe(0);
+
+    const text = await cli(['child', '--run', runId]);
+
+    expect(text.exitCode).toBe(1);
+    expect(text.stdout).toMatch(/Setup output is kept in the run folder: .*\/catch\/[^/\s]+\/setup-output\.json/);
+  });
+
   it('status --run --json adds a funnel of risks, mutants and tests by outcome, and classified results by action', async () => {
     const runId = await startRun();
     expect(
@@ -856,6 +891,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
       assessed: {},
       judged: {},
       findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
+      landed: 0,
       unreadable: 0,
     });
   });
@@ -908,7 +944,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
     const listed = await cli(['status', '--change', CHANGE, '--json']);
 
     expect(text.stdout).toMatch(/^\s+Funnel: .*risks 0/m);
-    expect(text.stdout).toMatch(/findings 0 \(confirmed 0, dismissed 0, unanswered 0\)/);
+    expect(text.stdout).toMatch(/findings 0 \(confirmed 0, dismissed 0, unanswered 0\); landed 0/);
     expect(JSON.parse(listed.stdout).runs).toEqual([
       expect.objectContaining({
         run: runId,
@@ -920,6 +956,7 @@ describe('qaspec catch test, child and the funnel (T8)', () => {
           assessed: {},
           judged: {},
           findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
+          landed: 0,
           unreadable: 0,
         },
       }),

@@ -1087,6 +1087,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
+      landed: 0,
       unreadable: 0,
     });
   });
@@ -1103,6 +1104,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       findings: { count: 0, confirmed: 0, dismissed: 0, unanswered: 0 },
+      landed: 0,
       unreadable: 0,
     });
   });
@@ -1131,6 +1133,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       findings: { count: 0, confirmed: 1, dismissed: 0, unanswered: 0 },
+      landed: 0,
       unreadable: 6,
     });
   });
@@ -1148,6 +1151,7 @@ describe('catch run helpers of the child phase (T8)', () => {
       assessed: {},
       judged: {},
       findings: { count: 1, confirmed: 0, dismissed: 0, unanswered: 1 },
+      landed: 0,
       unreadable: 2,
     });
   });
@@ -1177,6 +1181,23 @@ describe('catch run helpers of the child phase (T8)', () => {
       findings: { count: 3, confirmed: 1, dismissed: 1, unanswered: 1 },
       unreadable: 0,
     });
+  });
+
+  it('describeCatchFunnel counts the tests recorded by catch landed, one landed ledger line per test', () => {
+    const runDir = path.join(tmp, 'landed-run');
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runDir, 'ledger.jsonl'),
+      [
+        { stage: 'classified' },
+        { stage: 'landed', test: 'T1', kind: 'functionality', path: 'test/catch-currency.spec.ts' },
+        { stage: 'landed', test: 'T2', kind: 'catching', path: 'test/catch-label.spec.ts' },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n') + '\n'
+    );
+
+    expect(describeCatchFunnel(runDir)).toMatchObject({ landed: 2, unreadable: 0 });
   });
 
   it('describeChangeRuns reads a run whose ledger has a corrupt line: the line is left out of the counts', () => {

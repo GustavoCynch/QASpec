@@ -5,7 +5,7 @@ import path from 'node:path';
 import { judgeCatchReport, assessCatchRun } from '../../src/core/catch-assess.js';
 import { answerCatchFinding, composeFindingQuestion, reportCatchFinding } from '../../src/core/catch-findings.js';
 import { runChildPhase } from '../../src/core/catch-child.js';
-import { startCatchRun } from '../../src/core/catch-run.js';
+import { finishCatchRun, startCatchRun } from '../../src/core/catch-run.js';
 import { recordTest } from '../../src/core/catch-test.js';
 import { CHANGE, makeProjectFixture, type ProjectFixture } from '../fixtures/catch-jest/catch-project.js';
 
@@ -272,6 +272,29 @@ describe('qaspec catch report and answer on a real run (S8, S10)', () => {
     expect(await answer('F1', 'no')).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'finding-answered' })] });
     expect(await answer('F1', 'maybe')).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: 'intended-invalid' })] });
     expect(ledgerOf(runDir).length).toBe(linesBefore);
+  });
+
+  it('accepts the answer to a finding of a finished run, because the person may answer after finish', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 1, childRuns: 1 } });
+    const { runId, runDir } = await reportRun(fx, [{ path: 'test/catch-currency.spec.ts', content: VALUE_ONE }]);
+    await judgedRun(fx, runId, { T1: true });
+    const reported = await reportCatchFinding({ changesDir: fx.changesDir, runId, test: 'T1', value: { before: 'a', after: 'b' } });
+    if (!reported.ok) {
+      throw new Error('the report should be recorded');
+    }
+    const finished = await finishCatchRun({ projectRoot: fx.project, changesDir: fx.changesDir, runId });
+    expect(finished.run.state).toBe('finished');
+
+    const answer = answerCatchFinding({
+      changesDir: fx.changesDir,
+      runId,
+      finding: 'F1',
+      intended: 'yes',
+      now: new Date(Date.parse(reported.finding.reportedAt) + 5000),
+    });
+
+    expect(answer).toMatchObject({ ok: true, run: runId, finding: 'F1', intended: 'yes', stage: 'dismissed', secondsToAnswer: 5 });
+    expect(ledgerOf(runDir)).toEqual(expect.arrayContaining([expect.objectContaining({ stage: 'dismissed', finding: 'F1' })]));
   });
 
   it('refuses an intended value other than yes or no with the reason and message of the shared answer core, and records nothing', async () => {

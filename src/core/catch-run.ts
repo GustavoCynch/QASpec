@@ -53,7 +53,7 @@ export const INTENT_FILE = 'intent.json';
 export const DIFF_FILE = 'diff.patch';
 export const CHANGED_FILES_FILE = 'changed-files.json';
 /** The setup tails of a run, keyed by phase: parent (start) and child (the reinstall on the head). Never printed. */
-const SETUP_OUTPUT_FILE = 'setup-output.json';
+export const SETUP_OUTPUT_FILE = 'setup-output.json';
 /** Records of the parent phase (T7): one JSON file per risk and per mutant, named by its id. */
 export const RISKS_DIRNAME = 'risks';
 export const MUTANTS_DIRNAME = 'mutants';
@@ -856,6 +856,8 @@ export interface CatchFunnel {
   judged: Record<string, number>;
   /** The findings of findings.json: how many, how many were confirmed or dismissed, and how many are unanswered. */
   findings: { count: number; confirmed: number; dismissed: number; unanswered: number };
+  /** The tests recorded by catch landed: one landed ledger line per test the person applied and recorded. */
+  landed: number;
   /**
    * Records, ledger lines and report files that could not be read or are corrupt. Each is left out of the counts above
    * and counted here, so one corrupt file never fails status.
@@ -1017,6 +1019,7 @@ export function describeCatchFunnel(runDir: string): CatchFunnel {
       dismissed: stages.dismissed ?? 0,
       unanswered: findings.filter((finding) => typeof finding.id !== 'string' || !answered.has(finding.id)).length,
     },
+    landed: stages.landed ?? 0,
   };
   return { ...funnel, unreadable: tally.unreadable };
 }
