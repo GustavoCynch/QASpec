@@ -12,6 +12,7 @@ import {
   CHANGE,
   makeProjectFixture,
   readRecordedStart,
+  readRunsLog,
   type ProjectFixture,
 } from '../fixtures/catch-jest/catch-project.js';
 
@@ -164,29 +165,50 @@ describe('recordMutant gates', () => {
     expect(args).not.toContain('--runTestsByPath');
   });
 
-  it('records a mutant whose test run times out as inconclusive, never as surviving, and restores the parent', async () => {
-    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp, runnerVariant: ':sleep', timeoutSeconds: 1 }));
-    const appPath = path.join(ready.worktree, 'src', 'app.ts');
+  it.each([
+    ['times out', ':sleep', /timed out/],
+    ['exits without a report', ':exit3', /boom|exit|report|3/],
+  ] as const)(
+    'ends a mutant as baseline-not-passing when its related tests %s on the unmutated parent, and restores the parent',
+    async (_label, runnerVariant, detail) => {
+      const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp, runnerVariant, timeoutSeconds: 1 }));
+      const appPath = path.join(ready.worktree, 'src', 'app.ts');
 
-    const outcome = await recordMutant(
-      mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;'))
-    );
+      const outcome = await recordMutant(
+        mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;'))
+      );
 
-    expect(outcome).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'inconclusive', runOutcome: 'timeout' } });
-    expect((outcome as { mutant: { reason: string } }).mutant.reason).toMatch(/timed out/);
-    expect(fs.readFileSync(appPath, 'utf8')).toBe(BASE_APP);
-  });
+      expect(outcome).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'baseline-not-passing', runOutcome: null } });
+      expect((outcome as { mutant: { detail?: string } }).mutant.detail).toMatch(detail);
+      expect(fs.readFileSync(appPath, 'utf8')).toBe(BASE_APP);
+    }
+  );
 
-  it('records a mutant whose runner exits without a report as inconclusive', async () => {
-    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp, runnerVariant: ':exit3' }));
+  it.each([
+    ['sleeps', 'sleep', 'timeout', /timed out/],
+    ['exits without a report', 'exit3', 'runner-error', /boom|exit|report|3/],
+  ] as const)(
+    'records a mutant whose run %s on the mutated parent as inconclusive, never as surviving, and restores the parent',
+    async (_label, directive, runOutcome, detail) => {
+      // The head-side directive reaches only the mutated parent: the unmutated parent passes every related test.
+      const ready = await readyRunWithRisk(
+        makeProjectFixture({
+          root: tmp,
+          timeoutSeconds: 1,
+          baseFiles: { 'test/head-fault.spec.ts': `// covers: src/app.ts\n// fake: ${directive} on head\n// expect: export const label = 'value';\n` },
+        })
+      );
+      const appPath = path.join(ready.worktree, 'src', 'app.ts');
 
-    const outcome = await recordMutant(
-      mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;'))
-    );
+      const outcome = await recordMutant(
+        mutantInput(ready, appMutant('export const value = 1;', 'export const value = 2;'))
+      );
 
-    expect(outcome).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'inconclusive', runOutcome: 'runner-error' } });
-    expect(changedInWorktree(ready.worktree, 'src/app.ts')).toBe(false);
-  });
+      expect(outcome).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'inconclusive', runOutcome } });
+      expect((outcome as { mutant: { reason: string } }).mutant.reason).toMatch(detail);
+      expect(fs.readFileSync(appPath, 'utf8')).toBe(BASE_APP);
+    }
+  );
 
   it('records a mutant whose related-test lookup fails as inconclusive, never as surviving', async () => {
     const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp, runnerVariant: ':list-fail' }));
@@ -276,6 +298,127 @@ describe('recordMutant gates', () => {
     expect(fs.existsSync(path.join(ready.runDir, 'mutants'))).toBe(false);
     expect(ledgerOf(ready.runDir)).toHaveLength(ledgerBefore);
     expect(fs.existsSync(ready.fx.recordPath)).toBe(false);
+  });
+});
+
+describe('recordMutant baseline, cache and diagnostics (T14-F2)', () => {
+  /** The existing expectation (value 1) already fails on the parent: the related tests are not passing before a mutant. */
+  const FAILING_BASE = "export const value = 0;\nexport const label = 'value';\n";
+  const LABEL = appMutant("export const label = 'value';", "export const label = 'other';");
+  const VALUE = appMutant('export const value = 1;', 'export const value = 2;');
+
+  it('ends a mutant as baseline-not-passing when a related test already fails on the unmutated parent, and runs no mutant', async () => {
+    const fx = makeProjectFixture({ root: tmp, baseApp: FAILING_BASE });
+    const ready = await readyRunWithRisk(fx);
+
+    const outcome = await recordMutant(mutantInput(ready, LABEL));
+
+    expect(outcome).toMatchObject({
+      ok: true,
+      mutant: { id: 'M1', outcome: 'baseline-not-passing', runOutcome: null, caughtBy: [] },
+    });
+    expect((outcome as { mutant: { detail?: string } }).mutant.detail).toMatch(/no longer kept: export const value = 1;/);
+    expect(readRunsLog(fx.recordPath)).toHaveLength(1);
+  });
+
+  it('reuses a failing baseline for every later mutant of the same set, so no later mutant runs', async () => {
+    const fx = makeProjectFixture({ root: tmp, baseApp: FAILING_BASE });
+    const ready = await readyRunWithRisk(fx);
+    await recordMutant(mutantInput(ready, LABEL));
+
+    const second = await recordMutant(
+      mutantInput(ready, appMutant("export const label = 'value';", "export const label = 'again';"))
+    );
+
+    expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'baseline-not-passing' } });
+    expect(readRunsLog(fx.recordPath)).toHaveLength(1);
+  });
+
+  it('runs the related tests on the parent before the first mutant of a set, and reuses that passing outcome for later mutants', async () => {
+    const fx = makeProjectFixture({ root: tmp });
+    const ready = await readyRunWithRisk(fx);
+
+    const first = await recordMutant(mutantInput(ready, LABEL));
+    const second = await recordMutant(mutantInput(ready, VALUE));
+
+    expect(first).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'surviving', runOutcome: 'pass' } });
+    expect(second).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'caught-by-existing', runOutcome: 'fail' } });
+    // Baseline and mutant of M1, then the mutant of M2: the baseline is not run again.
+    expect(readRunsLog(fx.recordPath)).toHaveLength(3);
+  });
+
+  it('keeps today\'s gate when the related tests execute no test on the parent: the mutant still runs and can be caught', async () => {
+    // An empty spec covers src/app.ts and names no expectation: its file executes no test, so the baseline is no-tests.
+    const fx = makeProjectFixture({ root: tmp, baseFiles: { 'test/empty.spec.ts': '// covers: src/app.ts\n' } });
+    const ready = await readyRunWithRisk(fx);
+
+    const outcome = await recordMutant(mutantInput(ready, VALUE));
+
+    expect(outcome).toMatchObject({
+      ok: true,
+      mutant: { id: 'M1', outcome: 'caught-by-existing', runOutcome: 'fail', caughtBy: ['test/app.spec.ts'] },
+    });
+  });
+
+  it('keeps one baseline per set of related tests: a mutant of another file runs its own baseline', async () => {
+    const fx = makeProjectFixture({
+      root: tmp,
+      baseFiles: { 'test/util.spec.ts': '// covers: src/util.ts\n// expect: export const util = 1;\n' },
+    });
+    const ready = await readyRunWithRisk(fx);
+
+    await recordMutant(mutantInput(ready, LABEL));
+    const util = await recordMutant(
+      mutantInput(ready, appMutant('export const util = 1;', 'export const util = 2;', 'src/util.ts'))
+    );
+
+    expect(util).toMatchObject({
+      ok: true,
+      mutant: { id: 'M2', outcome: 'caught-by-existing', relatedTests: ['test/util.spec.ts'], caughtBy: ['test/util.spec.ts'] },
+    });
+    // The app set: baseline and mutant. The util set: its own baseline and mutant.
+    expect(readRunsLog(fx.recordPath)).toHaveLength(4);
+  });
+
+  it('lists in caughtBy only the related test files that fail on the mutant', async () => {
+    const fx = makeProjectFixture({
+      root: tmp,
+      baseFiles: { 'test/label.spec.ts': "// covers: src/app.ts\n// expect: export const label = 'value';\n" },
+    });
+    const ready = await readyRunWithRisk(fx);
+
+    const outcome = await recordMutant(mutantInput(ready, VALUE));
+
+    expect(outcome).toMatchObject({
+      ok: true,
+      mutant: {
+        id: 'M1',
+        outcome: 'caught-by-existing',
+        relatedTests: ['test/app.spec.ts', 'test/label.spec.ts'],
+        caughtBy: ['test/app.spec.ts'],
+      },
+    });
+  });
+
+  it('keeps the adapter messages of a mutant caught by an existing test, and of a mutant that does not build', async () => {
+    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp }));
+    const caught = await recordMutant(mutantInput(ready, VALUE));
+    expect((caught as { mutant: { detail?: string } }).mutant.detail).toMatch(/no longer kept: export const value = 1;/);
+
+    const broken = await recordMutant(
+      mutantInput(ready, appMutant("export const label = 'value';", 'export const label = @@BROKEN@@;'))
+    );
+    expect(broken).toMatchObject({ ok: true, mutant: { id: 'M2', outcome: 'no-build', caughtBy: [] } });
+    expect((broken as { mutant: { detail?: string } }).mutant.detail).toMatch(/SyntaxError: the source does not build/);
+  });
+
+  it('keeps no detail on a mutant that survives, because its related tests passed', async () => {
+    const ready = await readyRunWithRisk(makeProjectFixture({ root: tmp }));
+
+    const outcome = await recordMutant(mutantInput(ready, LABEL));
+
+    expect(outcome).toMatchObject({ ok: true, mutant: { id: 'M1', outcome: 'surviving', caughtBy: [] } });
+    expect(outcome).not.toMatchObject({ mutant: { detail: expect.anything() } });
   });
 });
 

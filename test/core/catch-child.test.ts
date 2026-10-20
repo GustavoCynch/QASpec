@@ -3,9 +3,15 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { startCatchRun, type CatchRunRecord } from '../../src/core/catch-run.js';
-import { recordRisk } from '../../src/core/catch-context.js';
-import { recordMutant } from '../../src/core/catch-mutant.js';
+import {
+  finishCatchRun,
+  readCatchRun,
+  startCatchRun,
+  writeRunRecord,
+  type CatchRunRecord,
+} from '../../src/core/catch-run.js';
+import { loadCatchContext, recordRisk } from '../../src/core/catch-context.js';
+import { recordEquivalence, recordMutant } from '../../src/core/catch-mutant.js';
 import { classifyChild, runChildPhase } from '../../src/core/catch-child.js';
 import { recordTest } from '../../src/core/catch-test.js';
 import {
@@ -16,8 +22,12 @@ import {
   readRunsLog,
   readSetupLog,
   setupLogging,
+  shellWord,
+  worktreesOf,
   type ProjectFixture,
 } from '../fixtures/catch-jest/catch-project.js';
+
+const nodeEval = (code: string): string => `${shellWord(process.execPath)} -e ${shellWord(code)}`;
 
 // Each test drives real git repositories and several runner processes; the default 10 s is too short under a full parallel suite.
 vi.setConfig({ testTimeout: 30_000 });
@@ -294,11 +304,12 @@ describe('runChildPhase', () => {
     expect(outcome).toMatchObject({ status: 'setup-failed', run: { state: 'child-setup-failed', setup: { ok: false } } });
     expect(readRunsLog(fx.recordPath).length).toBe(runsBefore);
     expect(fs.existsSync(path.join(ready.runDir, 'results'))).toBe(false);
-    expect(fs.existsSync(path.join(ready.runDir, 'child-setup-output.json'))).toBe(true);
     expect(ledgerOf(ready.runDir).map((entry) => entry.stage)).toContain('child-setup-failed');
-    const setupOutput = JSON.parse(fs.readFileSync(path.join(ready.runDir, 'child-setup-output.json'), 'utf8'));
-    expect(setupOutput.commands[0]).toMatchObject({ exitCode: 3 });
-    expect(setupOutput.commands[0]).toHaveProperty('outputTail');
+    const setupOutput = JSON.parse(fs.readFileSync(path.join(ready.runDir, 'setup-output.json'), 'utf8'));
+    expect(setupOutput.child.commands[0]).toMatchObject({ exitCode: 3 });
+    expect(setupOutput.child.commands[0]).toHaveProperty('outputTail');
+    expect(setupOutput.parent.ok).toBe(true);
+    expect(fs.existsSync(path.join(ready.runDir, 'child-setup-output.json'))).toBe(false);
   });
 
   it('marks a test whose child runs disagree as flaky, and discards it', async () => {
@@ -362,7 +373,7 @@ describe('runChildPhase', () => {
     expect(fs.readFileSync(path.join(ready.worktree, ...CURRENCY_TEST.split('/')), 'utf8')).toBe(headFile);
   });
 
-  it('makes a test that cannot be written on the head inconclusive, and still classifies the run', async () => {
+  it('refuses a test whose folder is a file on the head before any run, and still classifies the run', async () => {
     const fx = makeProjectFixture({
       root: tmp,
       gates: { parentRuns: 2, childRuns: 2 },
@@ -371,15 +382,185 @@ describe('runChildPhase', () => {
     });
     const ready = await readyRun(fx);
     await gatedTest(ready, spec('export const value = 2;'), 'test/sub/catch-nested.spec.ts');
+    const runsBefore = readRunsLog(fx.recordPath).length;
 
     const outcome = await runChildPhase(childInput(ready));
 
     expect(outcome).toMatchObject({
       status: 'classified',
       run: { state: 'classified' },
-      results: [expect.objectContaining({ test: 'T1', parent: 'fail', child: ['runner-error'], action: 'discard', reason: 'inconclusive' })],
+      results: [
+        expect.objectContaining({
+          test: 'T1',
+          parent: 'fail',
+          child: [],
+          action: 'discard',
+          reason: 'inconclusive',
+          detail: expect.stringMatching(/which is a file, not a folder\. The test was not run on the head\./),
+        }),
+      ],
     });
+    expect(readRunsLog(fx.recordPath).length).toBe(runsBefore);
     expect(fs.readFileSync(path.join(ready.worktree, 'test', 'sub'), 'utf8')).toBe('a file, not a folder\n');
+  });
+
+  it('refuses a test whose folder is a symlink on the head that leads outside the project, and writes nothing outside', async () => {
+    const outside = path.join(tmp, 'outside');
+    fs.mkdirSync(outside);
+    const fx = makeProjectFixture({
+      root: tmp,
+      gates: { parentRuns: 2, childRuns: 2 },
+      // The PR head links a folder of the project to a folder outside it: the parent has no such link.
+      headSymlinks: { 'test/linked': outside },
+    });
+    const ready = await readyRun(fx);
+    await gatedTest(ready, spec('export const value = 2;'), 'test/linked/catch-linked.spec.ts');
+    const runsBefore = readRunsLog(fx.recordPath).length;
+
+    const outcome = await runChildPhase(childInput(ready));
+
+    expect(outcome).toMatchObject({
+      status: 'classified',
+      run: { state: 'classified' },
+      results: [
+        expect.objectContaining({
+          test: 'T1',
+          child: [],
+          action: 'discard',
+          reason: 'inconclusive',
+          detail: expect.stringMatching(/^Refusing "test\/linked\/catch-linked\.spec\.ts": .*stay inside it\. The test was not run on the head\.$/),
+        }),
+      ],
+    });
+    expect(readRunsLog(fx.recordPath).length).toBe(runsBefore);
+    expect(fs.readdirSync(outside)).toEqual([]);
+  });
+
+  /** A gated test whose stored content is gone: the child phase fails reading it, after the switch to the head. */
+  async function failingAfterSwitch(): Promise<{ fx: ProjectFixture; ready: ReadyRun }> {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+    const ready = await readyRun(fx);
+    await gatedTest(ready, spec('export const value = 2;'));
+    fs.rmSync(path.join(ready.runDir, 'tests', 'T1'), { recursive: true });
+    return { fx, ready };
+  }
+
+  it('ends the run in child-failed when a step fails after the worktree moved to the head, and parent-phase commands refuse it', async () => {
+    const { fx, ready } = await failingAfterSwitch();
+
+    await expect(runChildPhase(childInput(ready))).rejects.toThrow(/Catch run \S+ is child-failed/);
+
+    expect(readCatchRun(ready.runDir)).toMatchObject({ state: 'child-failed', worktree: ready.worktree });
+    expect(readCatchRun(ready.runDir).failure).toMatch(/moved to the head/);
+    expect(headOf(ready.worktree)).toBe(fx.head);
+    expect(ledgerOf(ready.runDir).map((entry) => entry.stage)).toEqual(expect.arrayContaining(['child-running', 'child-failed']));
+    expect(() =>
+      recordRisk({ changesDir: fx.changesDir, runId: ready.runId, value: { requirement: 'Currency', summary: 'late' } })
+    ).toThrow(/is child-failed: qaspec catch risk needs a ready run/);
+    await expect(
+      recordTest({
+        projectRoot: fx.project,
+        changesDir: fx.changesDir,
+        runId: ready.runId,
+        value: { kind: 'functionality', requirement: 'Currency', path: 'test/catch-late.spec.ts', content: spec('x') },
+      })
+    ).rejects.toThrow(/is child-failed: qaspec catch test needs a ready run/);
+    await expect(
+      recordMutant({
+        projectRoot: fx.project,
+        changesDir: fx.changesDir,
+        runId: ready.runId,
+        value: { risk: 'R1', file: 'src/app.ts', original: "export const label = 'value';", replacement: "export const label = 'other';" },
+      })
+    ).rejects.toThrow(/is child-failed: qaspec catch mutant needs a ready run/);
+    await expect(loadCatchContext({ projectRoot: fx.project, changesDir: fx.changesDir, runId: ready.runId })).rejects.toThrow(
+      /is child-failed: qaspec catch context needs a ready run/
+    );
+    expect(() =>
+      recordEquivalence({
+        changesDir: fx.changesDir,
+        runId: ready.runId,
+        mutant: 'M1',
+        value: { equivalent: true, rationale: 'late' },
+      })
+    ).toThrow(/is child-failed: qaspec catch equivalence needs a ready run/);
+  });
+
+  it('finish removes the worktree of a child-failed run and marks the run finished', async () => {
+    const { fx, ready } = await failingAfterSwitch();
+    await expect(runChildPhase(childInput(ready))).rejects.toThrow(/child-failed/);
+
+    const finished = await finishCatchRun({ projectRoot: fx.project, changesDir: fx.changesDir, runId: ready.runId });
+
+    expect(finished).toMatchObject({ alreadyFinished: false, run: { state: 'finished', worktree: null } });
+    expect(fs.existsSync(ready.worktree)).toBe(false);
+    expect(worktreesOf(fx.repo)).not.toContain(ready.worktree);
+  });
+
+  it('finish also cleans a child-running run left behind by an interrupted child phase', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+    const ready = await readyRun(fx);
+    // The state an interrupted child phase leaves: child-running, with the worktree of the run still in place.
+    writeRunRecord(ready.runDir, { ...ready.run, state: 'child-running' });
+
+    const finished = await finishCatchRun({ projectRoot: fx.project, changesDir: fx.changesDir, runId: ready.runId });
+
+    expect(finished).toMatchObject({ alreadyFinished: false, run: { state: 'finished', worktree: null } });
+    expect(fs.existsSync(ready.worktree)).toBe(false);
+  });
+
+  it('records child-running before the worktree moves to the head, so a setup run on the head sees that state', async () => {
+    const stateLog = path.join(tmp, 'states.log');
+    const catchDir = path.join(tmp, 'repo', 'qaspec', 'changes', CHANGE, 'catch');
+    // Setup runs at the parent while the run is setting-up, and again on the head after the switch.
+    const logState = nodeEval(
+      [
+        'const fs = require("fs"); const path = require("path");',
+        `const dir = ${JSON.stringify(catchDir)};`,
+        'const id = fs.readdirSync(dir).find((name) => fs.existsSync(path.join(dir, name, "run.json")));',
+        'const run = JSON.parse(fs.readFileSync(path.join(dir, id, "run.json"), "utf8"));',
+        `fs.appendFileSync(${JSON.stringify(stateLog)}, run.state + "\\n");`,
+      ].join(' ')
+    );
+    const fx = makeProjectFixture({
+      root: tmp,
+      gates: { parentRuns: 2, childRuns: 2 },
+      setupCommand: logState,
+      reinstallWhenChanged: ['src/app.ts'],
+    });
+    const ready = await readyRun(fx);
+    await gatedTest(ready, spec('export const value = 2;'));
+
+    const outcome = await runChildPhase(childInput(ready));
+
+    expect(outcome).toMatchObject({ status: 'classified' });
+    expect(fs.readFileSync(stateLog, 'utf8').trim().split('\n')).toEqual(['setting-up', 'child-running']);
+  });
+
+  it('keeps the setup output of the start and of the child reinstall in setup-output.json, keyed by phase', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 }, reinstallWhenChanged: ['src/app.ts'] });
+    const ready = await readyRun(fx);
+    await gatedTest(ready, spec('export const value = 2;'));
+
+    await runChildPhase(childInput(ready));
+
+    const setupOutput = JSON.parse(fs.readFileSync(path.join(ready.runDir, 'setup-output.json'), 'utf8'));
+    expect(setupOutput).toMatchObject({ parent: { ok: true }, child: { ok: true } });
+    expect(setupOutput.child.commands[0]).toHaveProperty('outputTail');
+    expect(fs.existsSync(path.join(ready.runDir, 'child-setup-output.json'))).toBe(false);
+  });
+
+  it('stamps each classified ledger line with the time the test was classified, after its child runs', async () => {
+    const fx = makeProjectFixture({ root: tmp, gates: { parentRuns: 2, childRuns: 2 } });
+    const ready = await readyRun(fx);
+    // Each child run takes one second, so the classification comes at least two seconds after the child phase starts.
+    await gatedTest(ready, `// fake: pause on head\n${spec('export const value = 2;')}`);
+    const startedAt = Date.now();
+
+    await runChildPhase(childInput(ready));
+
+    const [classified] = ledgerOf(ready.runDir).filter((entry) => entry.stage === 'classified');
+    expect(Date.parse(String(classified.at)) - startedAt).toBeGreaterThanOrEqual(1_500);
   });
 
   it('refuses every parent-phase command and a second child run once the child phase classified the run', async () => {

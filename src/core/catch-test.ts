@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, promises as fs, readFileSync, rmSync, rmdirSync,
 import path from 'node:path';
 import { findIntentRequirement, type CatchIntentArtifact } from './catch-context.js';
 import type { CatchRequirement } from './catch-intent.js';
-import { type CatchMutant, decodeText, replaceOnce, restoreFile, sha256 } from './catch-mutant.js';
+import { type CatchMutant, decodeText, replaceOnce, restoreFile, runDetail, sha256 } from './catch-mutant.js';
 import {
   type CatchRecordIssue,
   type CatchRunMode,
@@ -87,6 +87,8 @@ export interface CatchTest {
   parentOutcomes: RunOutcome[];
   /** The run of a catching test on the mutated parent; null for the other kinds. */
   mutantOutcome: RunOutcome | null;
+  /** The adapter's bounded words on the run that decided the gate, when that run did not pass. */
+  detail?: string;
   createdAt: string;
 }
 
@@ -107,7 +109,11 @@ interface GateVerdict {
   reason: string;
   parentOutcomes: RunOutcome[];
   mutantOutcome: RunOutcome | null;
+  detail?: string;
 }
+
+/** A detail as a record property: present only when the run said something that did not pass. */
+const withDetail = (detail: string | undefined): { detail?: string } => (detail === undefined ? {} : { detail });
 
 type JsonObject = Record<string, unknown>;
 
@@ -278,31 +284,47 @@ async function fileAbove(absolute: string, projectReal: string): Promise<string 
   return undefined;
 }
 
-/** The project-relative path of a new test file: inside the project, under folders, and absent on the parent. */
-async function checkTestPath(
+/**
+ * Where a project-relative test path may be written in a project folder: inside it (symlinks followed, a name that does
+ * not exist yet included) and under folders only. The parent gates check it on the parent; the child phase checks it
+ * again on the head before it writes there, because the head may link a folder of the project outside it.
+ */
+export async function testPlacement(
   folder: ProjectFolder,
   testPath: string
-): Promise<{ ok: true; relative: string } | { ok: false; issue: CatchRecordIssue }> {
+): Promise<{ ok: true; relative: string; absolute: string } | { ok: false; message: string }> {
   let relative: string;
   try {
     [relative] = await resolveProjectPaths(folder, [testPath]);
   } catch (error) {
-    return { ok: false, issue: { code: 'path-invalid', message: errorText(error) } };
+    return { ok: false, message: errorText(error) };
   }
   const absolute = path.join(folder.real, ...relative.split('/'));
   const blocker = await fileAbove(absolute, folder.real);
   if (blocker !== undefined) {
     const above = path.relative(folder.real, blocker).split(path.sep).join('/');
-    return { ok: false, issue: { code: 'path-invalid', message: `${relative} lies under ${above}, which is a file, not a folder.` } };
+    return { ok: false, message: `${relative} lies under ${above}, which is a file, not a folder.` };
   }
-  const exists = await fs.lstat(absolute).then(
+  return { ok: true, relative, absolute };
+}
+
+/** The project-relative path of a new test file: inside the project, under folders, and absent on the parent. */
+async function checkTestPath(
+  folder: ProjectFolder,
+  testPath: string
+): Promise<{ ok: true; relative: string } | { ok: false; issue: CatchRecordIssue }> {
+  const placed = await testPlacement(folder, testPath);
+  if (!placed.ok) {
+    return { ok: false, issue: { code: 'path-invalid', message: placed.message } };
+  }
+  const exists = await fs.lstat(placed.absolute).then(
     () => true,
     () => false
   );
   if (exists) {
-    return { ok: false, issue: { code: 'path-exists', message: `${relative} exists on the parent: a catch test is a new file.` } };
+    return { ok: false, issue: { code: 'path-exists', message: `${placed.relative} exists on the parent: a catch test is a new file.` } };
   }
-  return { ok: true, relative };
+  return { ok: true, relative: placed.relative };
 }
 
 /** A mutant applied to its parent file: the file, its original bytes, and the mutated text. */
@@ -419,15 +441,19 @@ async function gateCatchingTest(
   mutant: MutantApplication
 ): Promise<GateVerdict> {
   const parentOutcomes: RunOutcome[] = [];
+  // The words of the first parent run that did not pass: the one that says why the parent is not passing.
+  let parentDetail: string | undefined;
   for (let run = 0; run < parentRuns; run++) {
     const result = await runTest();
     parentOutcomes.push(result.outcome);
+    parentDetail ??= runDetail(result);
     if (isInconclusive(result.outcome)) {
       return {
         outcome: 'inconclusive',
         reason: `A parent run ended with ${result.outcome}.`,
         parentOutcomes,
         mutantOutcome: null,
+        ...withDetail(runDetail(result)),
       };
     }
   }
@@ -439,12 +465,14 @@ async function gateCatchingTest(
           reason: `Every parent run ended with ${first}: a catching test must pass on the parent.`,
           parentOutcomes,
           mutantOutcome: null,
+          ...withDetail(parentDetail),
         }
       : {
           outcome: 'flaky-parent',
           reason: 'The parent runs disagree: a catching test must pass on every run.',
           parentOutcomes,
           mutantOutcome: null,
+          ...withDetail(parentDetail),
         };
   }
 
@@ -461,6 +489,7 @@ async function gateCatchingTest(
       reason: 'Passes on the parent every run and fails on the mutated parent.',
       parentOutcomes,
       mutantOutcome: result.outcome,
+      ...withDetail(runDetail(result)),
     };
   }
   if (isInconclusive(result.outcome)) {
@@ -469,6 +498,7 @@ async function gateCatchingTest(
       reason: `The mutant run ended with ${result.outcome}.`,
       parentOutcomes,
       mutantOutcome: result.outcome,
+      ...withDetail(runDetail(result)),
     };
   }
   return {
@@ -476,6 +506,7 @@ async function gateCatchingTest(
     reason: `The test ${result.outcome} on the mutated parent: the mutant is not caught.`,
     parentOutcomes,
     mutantOutcome: result.outcome,
+    ...withDetail(runDetail(result)),
   };
 }
 
@@ -488,6 +519,7 @@ async function gateRecordedTest(runTest: () => Promise<RunResult>): Promise<Gate
       reason: `The parent run ended with ${result.outcome}.`,
       parentOutcomes: [result.outcome],
       mutantOutcome: null,
+      ...withDetail(runDetail(result)),
     };
   }
   return {
@@ -495,6 +527,7 @@ async function gateRecordedTest(runTest: () => Promise<RunResult>): Promise<Gate
     reason: `Recorded on the parent: ${result.outcome}.`,
     parentOutcomes: [result.outcome],
     mutantOutcome: null,
+    ...withDetail(runDetail(result)),
   };
 }
 

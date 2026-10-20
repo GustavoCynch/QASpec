@@ -2,11 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { CatchConfigSchema } from '../../src/core/catch-config.js';
 import { readProjectConfig } from '../../src/core/project-config.js';
 
 describe('catch config', () => {
   let tempDir: string;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+  it('describes the default runner timeout as 900 seconds, the value the resolved config gives', () => {
+    const runner = CatchConfigSchema.shape.runner.unwrap();
+
+    expect(runner.shape.timeoutSeconds.description).toBe('Timeout per test run (default 900)');
+  });
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qaspec-catch-config-'));
@@ -81,7 +88,7 @@ describe('catch config', () => {
     expect(config?.catch).toEqual({
       baseRef: 'origin/main',
       setup: { timeoutSeconds: 900 },
-      runner: { timeoutSeconds: 300 },
+      runner: { timeoutSeconds: 900 },
       gates: { parentRuns: 5, childRuns: 3 },
       judges: 3,
     });
@@ -95,7 +102,7 @@ describe('catch config', () => {
 
     expect(config?.catch).toEqual({
       setup: { timeoutSeconds: 900 },
-      runner: { timeoutSeconds: 300 },
+      runner: { timeoutSeconds: 900 },
       gates: { parentRuns: 5, childRuns: 3 },
       judges: 3,
     });
@@ -122,7 +129,7 @@ describe('catch config', () => {
     expect(config?.catch).toEqual({
       baseRef: 'origin/main',
       setup: { commands: ['npm ci'], timeoutSeconds: 900 },
-      runner: { command: 'npx jest', timeoutSeconds: 300 },
+      runner: { command: 'npx jest', timeoutSeconds: 900 },
       gates: { parentRuns: 5, childRuns: 2 },
       judges: 3,
     });
@@ -147,7 +154,7 @@ describe('catch config', () => {
     expect(config?.catch).toEqual({
       baseRef: 'origin/main',
       setup: { timeoutSeconds: 900 },
-      runner: { timeoutSeconds: 300 },
+      runner: { timeoutSeconds: 900 },
       gates: { parentRuns: 5, childRuns: 3 },
       judges: 3,
     });
@@ -195,13 +202,13 @@ describe('catch config', () => {
   it('should accept only the jest runner adapter', () => {
     writeConfig(`catch:\n  runner:\n    adapter: mocha\n`);
 
-    expect(readProjectConfig(tempDir)?.catch?.runner).toEqual({ timeoutSeconds: 300 });
+    expect(readProjectConfig(tempDir)?.catch?.runner).toEqual({ timeoutSeconds: 900 });
     expectWarnings(['catch.runner.adapter']);
 
     consoleWarnSpy.mockClear();
     writeConfig(`catch:\n  runner:\n    adapter: jest\n`);
 
-    expect(readProjectConfig(tempDir)?.catch?.runner).toEqual({ adapter: 'jest', timeoutSeconds: 300 });
+    expect(readProjectConfig(tempDir)?.catch?.runner).toEqual({ adapter: 'jest', timeoutSeconds: 900 });
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
@@ -264,7 +271,7 @@ describe('catch config', () => {
     const config = readProjectConfig(tempDir);
 
     expect(config?.catch?.setup?.timeoutSeconds).toBe(900);
-    expect(config?.catch?.runner?.timeoutSeconds).toBe(300);
+    expect(config?.catch?.runner?.timeoutSeconds).toBe(900);
     expect(config?.catch?.gates).toEqual({ parentRuns: 5, childRuns: 3 });
     expectWarnings(['catch.setup.timeoutSeconds', 'catch.runner.timeoutSeconds', 'catch.gates.parentRuns']);
   });

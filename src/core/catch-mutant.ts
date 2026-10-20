@@ -4,26 +4,31 @@
  *
  *   1. The comparable forms of the parent and the mutant (the adapter's normalizeSource) are equal:
  *      syntactic-equivalent. Discarded; nothing runs.
- *   2. The mutant is applied in the parent's worktree and the existing tests related to its file run through the
- *      adapter. The file is restored byte for byte afterwards, whatever happened. no-build and caught-by-existing
- *      are discarded. surviving: no related test, or the tests passed or executed nothing. inconclusive: timeout,
- *      runner error or a failed lookup. An inconclusive mutant is never a surviving one.
+ *   2. The existing tests related to the file run on the unmutated parent first (the baseline, once per set of
+ *      related tests, cached in the run). A set that is not passing there ends the mutant as baseline-not-passing:
+ *      the mutant is not blamed, and no mutant run happens. Otherwise the mutant is applied in the parent's worktree
+ *      and the same tests run on it. The file is restored byte for byte afterwards, whatever happened. no-build and
+ *      caught-by-existing are discarded; caughtBy lists the tests that failed. surviving: no related test, or the
+ *      tests passed or executed nothing. inconclusive: timeout, runner error or a failed lookup. An inconclusive
+ *      mutant is never a surviving one.
  *
  * A surviving mutant waits for a fresh-context verdict (qaspec catch equivalence): equivalent discards it
  * (judged-equivalent); not equivalent leaves it non-equivalent for the test stage.
  */
 
 import { createHash } from 'node:crypto';
-import { promises as fs, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, promises as fs, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import type { CatchRisk } from './catch-context.js';
 import {
+  MAX_TEXT_BYTES,
   type RunOutcome,
   type RunResult,
   type RunnerContext,
   type TestRunnerAdapter,
   createRunnerContext,
+  keepHead,
   openProjectFolder,
   resolveProjectPaths,
   runnerFor,
@@ -40,10 +45,12 @@ import {
   projectDirInWorktree,
   readCatchRun,
   readRecord,
+  readRunJson,
   requireReadyRun,
   withCatchRunLock,
   withRunLockAsync,
   writeRecord,
+  writeRunJson,
 } from './catch-run.js';
 import { RUN_LOCK_TIMEOUT_MS, appendLedgerEntry, nowIso } from './run-store.js';
 
@@ -60,6 +67,7 @@ export type MutantOutcome =
   | 'syntactic-equivalent'
   | 'no-build'
   | 'caught-by-existing'
+  | 'baseline-not-passing'
   | 'surviving'
   | 'inconclusive'
   | 'judged-equivalent'
@@ -81,6 +89,10 @@ export interface CatchMutant {
   relatedTests: string[];
   /** What the test run reported; null when no test ran. */
   runOutcome: RunOutcome | null;
+  /** The related test files that failed on the mutant (fail outcome), sorted: the tests that caught it. */
+  caughtBy: string[];
+  /** The adapter's bounded words on the run that did not pass: the failing messages, or why the run ended. */
+  detail?: string;
   equivalence?: { equivalent: boolean; rationale: string; judgedAt: string };
   createdAt: string;
 }
@@ -114,6 +126,8 @@ interface GateResult {
   reason: string;
   relatedTests: string[];
   runOutcome: RunOutcome | null;
+  caughtBy: string[];
+  detail?: string;
 }
 
 interface MutantFields {
@@ -192,8 +206,33 @@ function checkMutantValue(value: unknown): MutantCheck {
   return { ok: true, fields: { risk, file, original, replacement } };
 }
 
+/**
+ * The adapter's words on a run that did not pass, bounded for a record: its reason, then the messages of each file with
+ * the file's name. Undefined when the run passed or said nothing. The output tail is raw output and is never kept here.
+ * Shared by the mutant gates and the test gates (catch-test.ts).
+ */
+export function runDetail(run: RunResult): string | undefined {
+  if (run.outcome === 'pass') {
+    return undefined;
+  }
+  const lines = [
+    ...(run.reason === undefined ? [] : [run.reason]),
+    ...run.files.flatMap((file) => file.messages.map((message) => `${file.file}: ${message}`)),
+  ];
+  return lines.length === 0 ? undefined : keepHead(lines.join('\n'), MAX_TEXT_BYTES);
+}
+
+/** A detail as a record property: present only when the run said something that did not pass. */
+const withDetail = (detail: string | undefined): { detail?: string } => (detail === undefined ? {} : { detail });
+
+/** The related test files that failed in a run, sorted and unique: the tests that caught the mutant. */
+function caughtByOf(run: RunResult): string[] {
+  return [...new Set(run.files.filter((file) => file.outcome === 'fail').map((file) => file.file))].sort();
+}
+
 /** Maps the outcome of a test run on the mutant to a gate result. Only a pass that executed a test survives. */
 function gateOf(run: RunResult, tests: string[]): GateResult {
+  const detail = withDetail(runDetail(run));
   switch (run.outcome) {
     case 'pass':
       return {
@@ -201,6 +240,7 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
         reason: 'Every related existing test passes on the mutant.',
         relatedTests: tests,
         runOutcome: run.outcome,
+        caughtBy: [],
       };
     case 'fail':
       return {
@@ -208,15 +248,26 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
         reason: 'A related existing test fails on the mutant.',
         relatedTests: tests,
         runOutcome: run.outcome,
+        caughtBy: caughtByOf(run),
+        ...detail,
       };
     case 'no-build':
-      return { outcome: 'no-build', reason: 'The mutant does not build.', relatedTests: tests, runOutcome: run.outcome };
+      return {
+        outcome: 'no-build',
+        reason: 'The mutant does not build.',
+        relatedTests: tests,
+        runOutcome: run.outcome,
+        caughtBy: [],
+        ...detail,
+      };
     case 'no-tests':
       return {
         outcome: 'surviving',
         reason: 'The related tests execute no test on the mutant.',
         relatedTests: tests,
         runOutcome: run.outcome,
+        caughtBy: [],
+        ...detail,
       };
     default:
       return {
@@ -224,8 +275,49 @@ function gateOf(run: RunResult, tests: string[]): GateResult {
         reason: run.reason ?? `The test run ended with ${run.outcome}.`,
         relatedTests: tests,
         runOutcome: run.outcome,
+        caughtBy: [],
+        ...detail,
       };
   }
+}
+
+/** The baseline cache of a run: the outcome of each related-test set on the unmutated parent, keyed by the set. */
+export const BASELINES_FILE = 'baselines.json';
+
+/** The outcome of one related-test set on the unmutated parent, run once per run and reused by later mutants. */
+export interface CatchBaseline {
+  /** The set: the related test files, sorted. */
+  tests: string[];
+  outcome: RunOutcome;
+  detail?: string;
+  createdAt: string;
+}
+
+/** The cache key of a related-test set: the hash of its sorted list. */
+const baselineKey = (sortedTests: readonly string[]): string => sha256(Buffer.from(JSON.stringify(sortedTests)));
+
+/**
+ * The baseline of a related-test set: read from the run's cache when the set has one, else run once on the unmutated
+ * parent and stored there. Callers hold the run lock, and the mutant is not written before this returns.
+ */
+async function baselineOf(
+  runDir: string,
+  tests: readonly string[],
+  runSet: () => Promise<RunResult>
+): Promise<CatchBaseline> {
+  const sorted = [...tests].sort();
+  const key = baselineKey(sorted);
+  const cache = existsSync(path.join(runDir, BASELINES_FILE))
+    ? readRunJson<Record<string, CatchBaseline>>(runDir, BASELINES_FILE)
+    : {};
+  const cached = cache[key];
+  if (cached !== undefined) {
+    return cached;
+  }
+  const result = await runSet();
+  const baseline: CatchBaseline = { tests: sorted, outcome: result.outcome, ...withDetail(runDetail(result)), createdAt: nowIso() };
+  writeRunJson(runDir, BASELINES_FILE, { ...cache, [key]: baseline });
+  return baseline;
 }
 
 /** Writes the original bytes back and proves they are back: a run never leaves the parent changed. */
@@ -247,6 +339,8 @@ interface MutantRunInput {
   config: ResolvedCatchConfig;
   projectDir: string;
   scratchDir: string;
+  /** The run folder, which keeps the baseline cache. */
+  runDir: string;
   target: string;
   relative: string;
   original: Buffer;
@@ -254,8 +348,10 @@ interface MutantRunInput {
 }
 
 /**
- * Gate 2: applies the mutant, runs the existing tests related to its file on the mutated parent, and restores the
- * file in every case. An error of the adapter is an inconclusive result, never a surviving one.
+ * Gate 2: the existing tests related to the file run on the unmutated parent first (the baseline of their set). When
+ * that baseline is not passing, the mutant is discarded as baseline-not-passing and never run. Otherwise the mutant is
+ * applied and the same tests run on it, and the file is restored in every case. An error of the adapter is an
+ * inconclusive result, never a surviving one.
  */
 async function runAgainstMutant(input: MutantRunInput): Promise<GateResult> {
   const ctx: RunnerContext = createRunnerContext(input.config, {
@@ -265,14 +361,33 @@ async function runAgainstMutant(input: MutantRunInput): Promise<GateResult> {
   let tests: string[] = [];
   let gate: GateResult;
   try {
-    writeFileSync(input.target, input.mutated);
     tests = await input.adapter.relatedTests(ctx, [input.relative]);
-    gate =
-      tests.length === 0
-        ? { outcome: 'surviving', reason: 'No existing test relates to the file.', relatedTests: [], runOutcome: null }
-        : gateOf(await input.adapter.run(ctx, tests), tests);
+    if (tests.length === 0) {
+      gate = {
+        outcome: 'surviving',
+        reason: 'No existing test relates to the file.',
+        relatedTests: [],
+        runOutcome: null,
+        caughtBy: [],
+      };
+    } else {
+      const baseline = await baselineOf(input.runDir, tests, () => input.adapter.run(ctx, tests));
+      if (baseline.outcome !== 'pass' && baseline.outcome !== 'no-tests') {
+        gate = {
+          outcome: 'baseline-not-passing',
+          reason: `The related tests end with ${baseline.outcome} on the unmutated parent, so the mutant is not blamed for it.`,
+          relatedTests: tests,
+          runOutcome: null,
+          caughtBy: [],
+          ...withDetail(baseline.detail),
+        };
+      } else {
+        writeFileSync(input.target, input.mutated);
+        gate = gateOf(await input.adapter.run(ctx, tests), tests);
+      }
+    }
   } catch (error) {
-    gate = { outcome: 'inconclusive', reason: errorText(error), relatedTests: tests, runOutcome: null };
+    gate = { outcome: 'inconclusive', reason: errorText(error), relatedTests: tests, runOutcome: null, caughtBy: [] };
   } finally {
     restoreFile(input.target, input.original);
   }
@@ -351,12 +466,14 @@ export async function recordMutant(input: RecordMutantInput): Promise<RecordMuta
               reason: 'The mutant differs from the parent only in comments or whitespace.',
               relatedTests: [],
               runOutcome: null,
+              caughtBy: [],
             }
           : await runAgainstMutant({
               adapter,
               config,
               projectDir,
               scratchDir: path.join(location.runDir, RUNNER_OUTPUT_DIRNAME),
+              runDir: location.runDir,
               target,
               relative,
               original: bytes,

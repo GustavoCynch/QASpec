@@ -9,7 +9,6 @@ import path from 'node:path';
 import { buildCatchIntent, CATCH_INTENT_SCHEMA, type CatchIntent, type CatchRequirement } from '../core/catch-intent.js';
 import {
   CATCH_RUNS_DIRNAME,
-  CHILD_SETUP_OUTPUT_FILE,
   RESULTS_DIRNAME,
   catchPrecision,
   describeCatchFunnel,
@@ -253,11 +252,13 @@ function formatCounts(counts: Record<string, number>): string {
 
 /** The funnel of a run on one line: risks, mutants and tests by outcome, classified, assessed and judged results, findings. */
 function describeFunnel(funnel: CatchFunnel): string {
+  const unreadable = funnel.unreadable > 0 ? `; unreadable ${funnel.unreadable}` : '';
   return (
     `Funnel: risks ${funnel.risks}; mutants ${formatCounts(funnel.mutants)}; ` +
     `tests ${formatCounts(funnel.tests)}; classified ${formatCounts(funnel.classified)}; ` +
     `assessed ${formatCounts(funnel.assessed)}; judged ${formatCounts(funnel.judged)}; ` +
-    `reported ${funnel.reported.reported} (confirmed ${funnel.reported.confirmed}, dismissed ${funnel.reported.dismissed})`
+    `reported ${funnel.reported.reported} (confirmed ${funnel.reported.confirmed}, dismissed ${funnel.reported.dismissed})` +
+    unreadable
   );
 }
 
@@ -677,7 +678,7 @@ export async function catchChildCommand(options: CatchChildCommandOptions): Prom
       if (run.failure) {
         console.log(chalk.red(`  ${run.failure}`));
       }
-      console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, CHILD_SETUP_OUTPUT_FILE)}`);
+      console.log(`  Setup output is kept in the run folder: ${path.join(runFolder, 'setup-output.json')}`);
     }
     process.exitCode = 1;
     return;
