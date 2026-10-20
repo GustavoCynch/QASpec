@@ -13,25 +13,23 @@ import path from 'node:path';
 import { parseTestcaseDetails, type TestcaseStepRow } from './cases-validation.js';
 import { parseJsonText, type ExecutionIssue, type ExecutionPlan } from './execution-plan.js';
 import {
-  appendLedgerEntry,
   CONTROL_ARG,
   CONTROL_DIR,
   CONTROL_END,
   CONTROL_START,
+  EXECUTE_COMMAND,
   listAttemptEvidence,
   parseCaseArg,
-  readLedger,
   readRun,
   readStoredPlan,
   testcaseTitle,
-  withRunLock,
-  writeFileAtomic,
   type CaseStatus,
   type ReadinessRecord,
   type RunLocation,
   type RunRecord,
   type RunState,
 } from './execution-run.js';
+import { appendLedgerEntry, readLedger, withRunLock, writeFileAtomic } from './run-store.js';
 
 export const TRIAGE_CONTEXT_SCHEMA = 'qaspec.execution-triage-context/v1';
 export const CLASSIFICATIONS = ['agent', 'environment', 'app'] as const;
@@ -445,7 +443,9 @@ export function triageCase(location: RunLocation, caseArg: string, input: Triage
   if (issues.length > 0) {
     return { ok: false, issues };
   }
-  return withRunLock<TriageOutcome>(location.runDir, () => judgeLocked(location, caseId, input));
+  return withRunLock<TriageOutcome>(location.runDir, () => judgeLocked(location, caseId, input), {
+    command: EXECUTE_COMMAND,
+  });
 }
 
 /** The caller holds the run lock, so the findings, the ledger and the run are read and written as one step. */
@@ -523,7 +523,11 @@ export function answerFinding(location: RunLocation, input: AnswerInput): Answer
   if (!isIntended(input.intended)) {
     return { ok: false, issues: [{ message: '--intended must be yes or no' }] };
   }
-  return withRunLock<AnswerResult>(location.runDir, () => answerLocked(location, input, input.intended as 'yes' | 'no'));
+  return withRunLock<AnswerResult>(
+    location.runDir,
+    () => answerLocked(location, input, input.intended as 'yes' | 'no'),
+    { command: EXECUTE_COMMAND }
+  );
 }
 
 /** The caller holds the run lock. */

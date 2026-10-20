@@ -8,13 +8,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { computeAnalyzeContentHash, writeApprovalRecord } from '../../src/core/approval-ledger.js';
 import {
-  acquireRunLock,
   confirmRun,
   describeRunStatus,
   findRun,
   finishRun,
-  generateRunId,
-  isValidRunId,
   listRuns,
   parseCaseArg,
   recordObservations,
@@ -22,6 +19,7 @@ import {
   storePlan,
   testcaseTitle,
 } from '../../src/core/execution-run.js';
+import { acquireRunLock, generateRunId, isValidRunId } from '../../src/core/run-store.js';
 import { writeChangeMetadata } from '../../src/utils/change-metadata.js';
 
 const NODE = JSON.stringify(process.execPath);
